@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Special Needs World - Realistic Icons with Crayon Effect</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(145deg, #FFF8E1 0%, #E3F2FD 50%, #FFF8E1 100%);
+      padding: 2rem;
+      max-width: 1100px;
+      margin: 0 auto;
+      min-height: 100vh;
+    }
+    h1 {
+      text-align: center;
+      color: #5D4E8C;
+      margin-bottom: 0.5rem;
+      font-size: 2.4rem;
+      font-weight: 700;
+    }
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 2.5rem;
+      font-size: 1.15rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 2rem;
+    }
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 1.8rem;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+      border: 3px solid #e8e8e8;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.15);
+    }
+    .card h3 {
+      color: #333;
+      margin: 1.2rem 0 0.6rem;
+      font-size: 1.35rem;
+    }
+    .card p {
+      color: #555;
+      font-size: 0.95rem;
+      margin: 0;
+      line-height: 1.6;
+    }
+    .icon-preview {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      align-items: flex-end;
+      padding: 1.5rem;
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      border-radius: 16px;
+      margin-bottom: 0.5rem;
+    }
+    .icon-preview img {
+      border-radius: 50%;
+      background: white;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .size-label {
+      font-size: 0.7rem;
+      color: #888;
+      margin-top: 6px;
+      font-weight: 500;
+    }
+    .size-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.35rem 1rem;
+      border-radius: 25px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge.red { background: linear-gradient(135deg, #E74C3C, #C0392B); color: white; }
+    .badge.purple { background: linear-gradient(135deg, #9B59B6, #7D3C98); color: white; }
+    .badge.blue { background: linear-gradient(135deg, #3498DB, #2874A6); color: white; }
+    .badge.green { background: linear-gradient(135deg, #27AE60, #1E8449); color: white; }
+    .badge.pink { background: linear-gradient(135deg, #E74C8C, #C73873); color: white; }
+    
+    .features {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-top: 1rem;
+    }
+    .feature-tag {
+      background: #f0f4f8;
+      padding: 0.3rem 0.7rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      color: #5a6c7d;
+      font-weight: 500;
+    }
+    
+    .note {
+      background: white;
+      border-left: 5px solid #3498DB;
+      padding: 1.5rem;
+      margin-top: 3rem;
+      border-radius: 0 16px 16px 0;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    }
+    .note h4 {
+      margin: 0 0 0.8rem;
+      color: #2874A6;
+      font-size: 1.15rem;
+    }
+    .note p {
+      margin: 0.6rem 0;
+      color: #555;
+      line-height: 1.7;
+    }
+    .note strong {
+      color: #333;
+    }
+    
+    .comparison {
+      margin-top: 3rem;
+      padding: 2rem;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    }
+    .comparison h4 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 1.5rem;
+    }
+    .comparison-grid {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 2rem;
+    }
+    .comparison-item {
+      text-align: center;
+    }
+    .comparison-item img {
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .comparison-item span {
+      display: block;
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌍 Special Needs World</h1>
+  <p class="subtitle">Realistic World + Handprints with Crayon Drawing Effect</p>
+  
+  <div class="grid">
+    <div class="card">
+      <span class="badge red">Supportive</span>
+      <div class="icon-preview">
+        <div class="size-group">
+          <img src="favicon-world-r1.svg" width="110" height="110" alt="World R1">
+          <div class="size-label">Full Size</div>
+        </div>
+        <div class="size-group">
+          <img src="favicon-world-r1.svg" width="48" height="48" alt="World R1">
+          <div class="size-label">Medium</div>
+        </div>
+        <div class="size-group">
+          <img src="favicon-world-r1.svg" width="32" height="32" alt="World R1">
+          <div class="size-label">Favicon</div>
+        </div>
+      </div>
+      <h3>Version 1: Supporting Hands</h3>
+      <p>Two realistic child handprints holding up a detailed globe with recognizable continents. The hands reach up to support the world.</p>
+      <div class="features">
+        <span class="feature-tag">Realistic hands</span>
+        <span class="feature-tag">Detailed continents</span>
+        <span class="feature-tag">Supportive gesture</span>
+      </div>
+    </div>
+    
+    <div class="card">
+      <span class="badge purple">Community</span>
+      <div class="icon-preview">
+        <div class="size-group">
+          <img src="favicon-world-r2.svg" width="110" height="110" alt="World R2">
+          <div class="size-label">Full Size</div>
+        </div>
+        <div class="size-group">
+          <img src="favicon-world-r2.svg" width="48" height="48" alt="World R2">
+          <div class="size-label">Medium</div>
+        </div>
+        <div class="size-group">
+          <img src="favicon-world-r2.svg" width="32" height="32" alt="World R2">
+          <div class="size-label">Favicon</div>
+        </div>
+      </div>
+      <h3>Version 2: Reaching Together</h3>
+      <p>Four detailed handprints in rainbow colors reaching toward the globe from each corner — community coming together from all directions.</p>
+      <div class="features">
+        <span class="feature-tag">Four hands</span>
+        <span class="feature-tag">Rainbow colors</span>
+        <span class="feature-tag">Dynamic composition</span>
+      </div>
+    </div>
+    
+    <div class="card">
+      <span class="badge blue">Connection</span>
+      <div class="icon-preview">
+        <div class="size-group">
+          <img src="favicon-world-r3.svg" width="110" height="110" alt="World R3">
+          <div class="size-label">Full Size</div>
+        </div>
+        <div class="size-group">
+          <img src="favicon-world-r3.svg" width="48" height="48" alt="World R3">
+          <div class="size-label">Medium</div>
+        </div>
+        <div class="size-group">
+          <img src="favicon-world-r3.svg" width="32" height="32" alt="World R3">
+          <div class="size-label">Favicon</div>
+        </div>
+      </div>
+      <h3>Version 3: Painted Globe</h3>
+      <p>Handprints stamped directly ON the globe's surface — like children dipped their hands in paint and pressed them onto Earth! Large globe with detailed geography.</p>
+      <div class="features">
+        <span class="feature-tag">Paint stamp effect</span>
+        <span class="feature-tag">Large globe</span>
+        <span class="feature-tag">Personal touch</span>
+      </div>
+    </div>
+    
+    <div class="card">
+      <span class="badge green">Unity</span>
+      <div class="icon-preview">
+        <div class="size-group">
+          <img src="favicon-world-r4.svg" width="110" height="110" alt="World R4">
+          <div class="size-label">Full Size</div>
+        </div>
+        <div class="size-group">
+          <img src="favicon-world-r4.svg" width="48" height="48" alt="World R4">
+          <div class="size-label">Medium</div>
+        </div>
+        <div class="size-group">
+          <img src="favicon-world-r4.svg" width="32" height="32" alt="World R4">
+          <div class="size-label">Favicon</div>
+        </div>
+      </div>
+      <h3>Version 4: Circle of Hands</h3>
+      <p>Six realistic child handprints forming a protective rainbow ring around the centered globe. Unity, diversity, and protection.</p>
+      <div class="features">
+        <span class="feature-tag">Six hands</span>
+        <span class="feature-tag">Rainbow spectrum</span>
+        <span class="feature-tag">Protective circle</span>
+      </div>
+    </div>
+    
+    <div class="card">
+      <span class="badge pink">Love</span>
+      <div class="icon-preview">
+        <div class="size-group">
+          <img src="favicon-world-r5.svg" width="110" height="110" alt="World R5">
+          <div class="size-label">Full Size</div>
+        </div>
+        <div class="size-group">
+          <img src="favicon-world-r5.svg" width="48" height="48" alt="World R5">
+          <div class="size-label">Medium</div>
+        </div>
+        <div class="size-group">
+          <img src="favicon-world-r5.svg" width="32" height="32" alt="World R5">
+          <div class="size-label">Favicon</div>
+        </div>
+      </div>
+      <h3>Version 5: Cradled with Love</h3>
+      <p>Two hands gently cradling the world from below, with a heart above. Warm and nurturing — symbolizing the love and care for special needs children.</p>
+      <div class="features">
+        <span class="feature-tag">Cradling gesture</span>
+        <span class="feature-tag">Heart symbol</span>
+        <span class="feature-tag">Nurturing</span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="comparison">
+    <h4>📏 All Five at Favicon Size (32×32px)</h4>
+    <div class="comparison-grid">
+      <div class="comparison-item">
+        <img src="favicon-world-r1.svg" width="32" height="32" alt="V1">
+        <span>V1</span>
+      </div>
+      <div class="comparison-item">
+        <img src="favicon-world-r2.svg" width="32" height="32" alt="V2">
+        <span>V2</span>
+      </div>
+      <div class="comparison-item">
+        <img src="favicon-world-r3.svg" width="32" height="32" alt="V3">
+        <span>V3</span>
+      </div>
+      <div class="comparison-item">
+        <img src="favicon-world-r4.svg" width="32" height="32" alt="V4">
+        <span>V4</span>
+      </div>
+      <div class="comparison-item">
+        <img src="favicon-world-r5.svg" width="32" height="32" alt="V5">
+        <span>V5</span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="note">
+    <h4>🎨 Design Notes</h4>
+    <p><strong>Realistic Hands:</strong> Each handprint uses anatomically accurate child hand shapes — proper finger proportions, thumb placement, and palm curves. They look like actual paint handprints a child would make!</p>
+    <p><strong>Detailed Globe:</strong> The Earth features recognizable continents (North/South America, Europe, Africa, Asia) with realistic positioning, rather than abstract shapes.</p>
+    <p><strong>Crayon Effect:</strong> SVG displacement filters add a hand-drawn, slightly wobbly crayon texture to everything — giving it that childhood art feel while maintaining realistic shapes.</p>
+    <p><strong>Scalability:</strong> Check the 32×32 favicon comparison row to see how recognizable each design remains at small sizes!</p>
+  </div>
+</body>
+</html>

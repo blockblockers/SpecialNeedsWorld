@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="rainbow-heart" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#EE4035"/>
+      <stop offset="20%" style="stop-color:#F37736"/>
+      <stop offset="40%" style="stop-color:#FCE94F"/>
+      <stop offset="60%" style="stop-color:#7BC043"/>
+      <stop offset="80%" style="stop-color:#0392CF"/>
+      <stop offset="100%" style="stop-color:#9B59B6"/>
+    </linearGradient>
+  </defs>
+  <!-- Background circle -->
+  <circle cx="50" cy="50" r="48" fill="#FFF8E1" stroke="#E91E8C" stroke-width="3"/>
+  <!-- Large heart -->
+  <path d="M50 85 C20 55, 10 35, 25 22 C35 14, 50 20, 50 32 C50 20, 65 14, 75 22 C90 35, 80 55, 50 85" 
+        fill="url(#rainbow-heart)" 
+        stroke="#8B4513" 
+        stroke-width="2"/>
+  <!-- Small decorative hearts -->
+  <path d="M25 70 C20 65, 18 60, 22 57 C25 55, 28 58, 28 62 C28 58, 31 55, 34 57 C38 60, 36 65, 28 72 Z" fill="#FCE94F" opacity="0.8"/>
+  <path d="M72 68 C68 64, 66 60, 69 57 C72 55, 75 58, 75 61 C75 58, 78 55, 81 57 C84 60, 82 64, 75 70 Z" fill="#7BC043" opacity="0.8"/>
+</svg>

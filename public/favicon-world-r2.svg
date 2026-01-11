@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <!-- Crayon texture effect -->
+    <filter id="crayonTexture2" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="4" result="noise" seed="5"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.8" xChannelSelector="R" yChannelSelector="G"/>
+      <feGaussianBlur stdDeviation="0.25"/>
+    </filter>
+    
+    <filter id="crayonEdge2">
+      <feTurbulence type="fractalNoise" baseFrequency="0.025" numOctaves="3" result="noise" seed="6"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.2" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+  
+  <!-- Paper background -->
+  <rect width="100" height="100" fill="#FFF8E1"/>
+  <circle cx="50" cy="50" r="48" fill="#FFFDF5" stroke="#C9A86C" stroke-width="2" filter="url(#crayonEdge2)"/>
+  
+  <!-- Central globe -->
+  <g filter="url(#crayonTexture2)">
+    <!-- Ocean -->
+    <circle cx="50" cy="50" r="22" fill="#4A9BD9"/>
+    
+    <!-- Americas -->
+    <path d="M36 40 Q40 36, 44 40 Q46 44, 44 48 Q42 50, 40 48 Q38 46, 36 44 Q34 42, 36 40" fill="#5DAE4D"/>
+    <path d="M42 52 Q44 50, 46 54 Q48 60, 46 64 Q44 66, 42 64 Q40 60, 42 52" fill="#5DAE4D"/>
+    
+    <!-- Europe/Africa -->
+    <path d="M54 38 Q58 36, 60 40 Q62 46, 60 52 Q58 58, 56 62 Q54 64, 52 60 Q52 54, 54 48 Q56 42, 54 38" fill="#5DAE4D"/>
+    
+    <!-- Globe shine -->
+    <ellipse cx="42" cy="42" rx="6" ry="4" fill="white" opacity="0.25"/>
+    
+    <!-- Globe outline -->
+    <circle cx="50" cy="50" r="22" fill="none" stroke="#2B6B96" stroke-width="2"/>
+  </g>
+  
+  <!-- Top-left hand (red) reaching down-right -->
+  <g filter="url(#crayonTexture2)" transform="translate(2, 2) rotate(135, 20, 20) scale(0.4)">
+    <path d="
+      M 20 85
+      L 18 70 Q 16 65, 12 60 L 8 45 Q 6 38, 10 38 Q 14 38, 15 45 L 17 55
+      L 18 50 Q 17 42, 15 32 L 13 20 Q 12 12, 17 12 Q 22 12, 23 20 L 25 35
+      L 27 30 Q 27 22, 26 14 L 25 6 Q 25 -2, 30 -2 Q 35 -2, 36 6 L 37 18 L 38 32
+      L 42 28 Q 44 22, 44 14 Q 44 6, 49 6 Q 54 6, 54 14 L 53 26 L 50 38
+      L 56 34 Q 60 30, 64 28 Q 70 26, 72 32 Q 74 38, 68 44 L 58 54
+      Q 52 62, 48 72 Q 44 82, 36 88 Q 28 92, 20 85 Z
+    " fill="#E74C3C"/>
+    <path d="M 20 85 L 18 70 Q 16 65, 12 60 L 8 45 Q 6 38, 10 38 Q 14 38, 15 45 L 17 55 L 18 50 Q 17 42, 15 32 L 13 20 Q 12 12, 17 12 Q 22 12, 23 20 L 25 35 L 27 30 Q 27 22, 26 14 L 25 6 Q 25 -2, 30 -2 Q 35 -2, 36 6 L 37 18 L 38 32 L 42 28 Q 44 22, 44 14 Q 44 6, 49 6 Q 54 6, 54 14 L 53 26 L 50 38 L 56 34 Q 60 30, 64 28 Q 70 26, 72 32 Q 74 38, 68 44 L 58 54 Q 52 62, 48 72 Q 44 82, 36 88 Q 28 92, 20 85 Z" fill="none" stroke="#C0392B" stroke-width="3"/>
+  </g>
+  
+  <!-- Top-right hand (yellow) reaching down-left -->
+  <g filter="url(#crayonTexture2)" transform="translate(62, 0) rotate(225, 20, 22) scale(0.4)">
+    <path d="
+      M 20 85
+      L 18 70 Q 16 65, 12 60 L 8 45 Q 6 38, 10 38 Q 14 38, 15 45 L 17 55
+      L 18 50 Q 17 42, 15 32 L 13 20 Q 12 12, 17 12 Q 22 12, 23 20 L 25 35
+      L 27 30 Q 27 22, 26 14 L 25 6 Q 25 -2, 30 -2 Q 35 -2, 36 6 L 37 18 L 38 32
+      L 42 28 Q 44 22, 44 14 Q 44 6, 49 6 Q 54 6, 54 14 L 53 26 L 50 38
+      L 56 34 Q 60 30, 64 28 Q 70 26, 72 32 Q 74 38, 68 44 L 58 54
+      Q 52 62, 48 72 Q 44 82, 36 88 Q 28 92, 20 85 Z
+    " fill="#F4D03F"/>
+    <path d="M 20 85 L 18 70 Q 16 65, 12 60 L 8 45 Q 6 38, 10 38 Q 14 38, 15 45 L 17 55 L 18 50 Q 17 42, 15 32 L 13 20 Q 12 12, 17 12 Q 22 12, 23 20 L 25 35 L 27 30 Q 27 22, 26 14 L 25 6 Q 25 -2, 30 -2 Q 35 -2, 36 6 L 37 18 L 38 32 L 42 28 Q 44 22, 44 14 Q 44 6, 49 6 Q 54 6, 54 14 L 53 26 L 50 38 L 56 34 Q 60 30, 64 28 Q 70 26, 72 32 Q 74 38, 68 44 L 58 54 Q 52 62, 48 72 Q 44 82, 36 88 Q 28 92, 20 85 Z" fill="none" stroke="#D4AC0D" stroke-width="3"/>
+  </g>
+  
+  <!-- Bottom-left hand (green) reaching up-right -->
+  <g filter="url(#crayonTexture2)" transform="translate(0, 62) rotate(45, 22, 20) scale(0.4)">
+    <path d="
+      M 20 85
+      L 18 70 Q 16 65, 12 60 L 8 45 Q 6 38, 10 38 Q 14 38, 15 45 L 17 55
+      L 18 50 Q 17 42, 15 32 L 13 20 Q 12 12, 17 12 Q 22 12, 23 20 L 25 35
+      L 27 30 Q 27 22, 26 14 L 25 6 Q 25 -2, 30 -2 Q 35 -2, 36 6 L 37 18 L 38 32
+      L 42 28 Q 44 22, 44 14 Q 44 6, 49 6 Q 54 6, 54 14 L 53 26 L 50 38
+      L 56 34 Q 60 30, 64 28 Q 70 26, 72 32 Q 74 38, 68 44 L 58 54
+      Q 52 62, 48 72 Q 44 82, 36 88 Q 28 92, 20 85 Z
+    " fill="#58D68D"/>
+    <path d="M 20 85 L 18 70 Q 16 65, 12 60 L 8 45 Q 6 38, 10 38 Q 14 38, 15 45 L 17 55 L 18 50 Q 17 42, 15 32 L 13 20 Q 12 12, 17 12 Q 22 12, 23 20 L 25 35 L 27 30 Q 27 22, 26 14 L 25 6 Q 25 -2, 30 -2 Q 35 -2, 36 6 L 37 18 L 38 32 L 42 28 Q 44 22, 44 14 Q 44 6, 49 6 Q 54 6, 54 14 L 53 26 L 50 38 L 56 34 Q 60 30, 64 28 Q 70 26, 72 32 Q 74 38, 68 44 L 58 54 Q 52 62, 48 72 Q 44 82, 36 88 Q 28 92, 20 85 Z" fill="none" stroke="#28B463" stroke-width="3"/>
+  </g>
+  
+  <!-- Bottom-right hand (purple) reaching up-left -->
+  <g filter="url(#crayonTexture2)" transform="translate(60, 58) rotate(-45, 22, 22) scale(0.4)">
+    <path d="
+      M 20 85
+      L 18 70 Q 16 65, 12 60 L 8 45 Q 6 38, 10 38 Q 14 38, 15 45 L 17 55
+      L 18 50 Q 17 42, 15 32 L 13 20 Q 12 12, 17 12 Q 22 12, 23 20 L 25 35
+      L 27 30 Q 27 22, 26 14 L 25 6 Q 25 -2, 30 -2 Q 35 -2, 36 6 L 37 18 L 38 32
+      L 42 28 Q 44 22, 44 14 Q 44 6, 49 6 Q 54 6, 54 14 L 53 26 L 50 38
+      L 56 34 Q 60 30, 64 28 Q 70 26, 72 32 Q 74 38, 68 44 L 58 54
+      Q 52 62, 48 72 Q 44 82, 36 88 Q 28 92, 20 85 Z
+    " fill="#AF7AC5"/>
+    <path d="M 20 85 L 18 70 Q 16 65, 12 60 L 8 45 Q 6 38, 10 38 Q 14 38, 15 45 L 17 55 L 18 50 Q 17 42, 15 32 L 13 20 Q 12 12, 17 12 Q 22 12, 23 20 L 25 35 L 27 30 Q 27 22, 26 14 L 25 6 Q 25 -2, 30 -2 Q 35 -2, 36 6 L 37 18 L 38 32 L 42 28 Q 44 22, 44 14 Q 44 6, 49 6 Q 54 6, 54 14 L 53 26 L 50 38 L 56 34 Q 60 30, 64 28 Q 70 26, 72 32 Q 74 38, 68 44 L 58 54 Q 52 62, 48 72 Q 44 82, 36 88 Q 28 92, 20 85 Z" fill="none" stroke="#7D3C98" stroke-width="3"/>
+  </g>
+</svg>
