@@ -274,21 +274,13 @@ export const preloadPictograms = (buttonIds) => {
 };
 
 /**
- * ARASAAC Attribution component (required by license)
+ * ARASAAC Attribution text (required by license)
+ * Use this in your UI: "Pictograms by ARASAAC (https://arasaac.org) - CC BY-NC-SA"
  */
-export const ArasaacAttribution = () => {
-  return (
-    <div className="text-xs text-gray-500 text-center mt-4">
-      <a 
-        href="https://arasaac.org" 
-        target="_blank" 
-        rel="noopener noreferrer"
-        className="hover:underline"
-      >
-        Pictograms by ARASAAC (CC BY-NC-SA)
-      </a>
-    </div>
-  );
+export const ARASAAC_ATTRIBUTION = {
+  text: 'Pictograms by ARASAAC (CC BY-NC-SA)',
+  url: 'https://arasaac.org',
+  license: 'CC BY-NC-SA 4.0',
 };
 
 export default {
@@ -299,4 +291,5 @@ export default {
   getButtonPictogramUrl,
   preloadPictograms,
   ARASAAC_PICTOGRAM_IDS,
+  ARASAAC_ATTRIBUTION,
 };
