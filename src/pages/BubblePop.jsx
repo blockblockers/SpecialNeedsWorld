@@ -67,10 +67,10 @@ const BubblePop = () => {
     if (!gameAreaRef.current) return null;
     
     const area = gameAreaRef.current.getBoundingClientRect();
-    const size = Math.random() * 40 + 40; // 40-80px
+    const size = Math.random() * 50 + 50; // 50-100px (bigger bubbles)
     const x = Math.random() * (area.width - size);
     const color = COLORS[Math.floor(Math.random() * COLORS.length)];
-    const speed = Math.random() * 2 + 1; // 1-3 seconds to rise
+    const speed = Math.random() * 4 + 4; // 4-8 seconds to rise (much slower)
     
     return {
       id: Date.now() + Math.random(),
@@ -129,7 +129,7 @@ const BubblePop = () => {
       if (newBubble) {
         setBubbles(prev => [...prev, newBubble]);
       }
-    }, 800); // New bubble every 800ms
+    }, 1200); // New bubble every 1.2 seconds (slower spawn)
 
     return () => clearInterval(spawner);
   }, [gameStarted, gameOver, isPaused, createBubble]);
@@ -373,13 +373,22 @@ const BubblePop = () => {
           return (
             <button
               key={bubble.id}
-              onClick={() => popBubble(bubble.id)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                popBubble(bubble.id);
+              }}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                popBubble(bubble.id);
+              }}
               className={`
                 absolute rounded-full border-4 
                 ${bubble.color.bg} ${bubble.color.border}
                 transition-transform duration-100
                 hover:scale-110 active:scale-90
                 shadow-lg ${bubble.color.glow}
+                cursor-pointer
               `}
               style={{
                 width: bubble.size,
@@ -388,11 +397,12 @@ const BubblePop = () => {
                 bottom: bottom,
                 opacity: isPaused ? 0.5 : opacity,
                 transform: poppedBubble === bubble.id ? 'scale(1.5)' : 'scale(1)',
+                zIndex: 20,
               }}
             >
-              {/* Bubble shine */}
+              {/* Bubble shine - pointer-events none so it doesn't block clicks */}
               <div 
-                className="absolute top-1 left-2 w-3 h-3 bg-white/60 rounded-full"
+                className="absolute top-1 left-2 w-3 h-3 bg-white/60 rounded-full pointer-events-none"
               />
             </button>
           );

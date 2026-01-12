@@ -1,7 +1,7 @@
 // SocialStories.jsx - Social Stories creator and viewer
 // Generates personalized visual stories to help understand situations
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -17,7 +17,6 @@ import {
   Loader2,
   BookMarked,
   Lightbulb,
-  User,
   Cloud,
   CloudOff
 } from 'lucide-react';
@@ -31,6 +30,7 @@ import {
   getUserSavedStories,
   SUGGESTED_TOPICS,
 } from '../services/socialStories';
+import { searchPictograms, getPictogramUrl } from '../services/arasaac';
 
 // ============================================
 // STORY VIEWER COMPONENT
@@ -39,12 +39,39 @@ import {
 const StoryViewer = ({ story, onClose, onSave, isSaved }) => {
   const [currentPage, setCurrentPage] = useState(0);
   const [isFlipping, setIsFlipping] = useState(false);
+  const [pictograms, setPictograms] = useState({}); // Cache pictogram IDs by keyword
+  const [loadingPictogram, setLoadingPictogram] = useState(false);
   
   if (!story || !story.pages) return null;
   
   const pages = story.pages;
   const totalPages = pages.length;
   const page = pages[currentPage];
+  
+  // Load pictogram for current page
+  useEffect(() => {
+    const loadPictogram = async () => {
+      const keyword = page?.arasaacKeyword;
+      if (!keyword || pictograms[keyword]) return;
+      
+      setLoadingPictogram(true);
+      try {
+        const results = await searchPictograms(keyword, 'en');
+        if (results && results.length > 0) {
+          setPictograms(prev => ({
+            ...prev,
+            [keyword]: results[0]._id
+          }));
+        }
+      } catch (error) {
+        console.error('Error loading pictogram:', error);
+      } finally {
+        setLoadingPictogram(false);
+      }
+    };
+    
+    loadPictogram();
+  }, [page, pictograms]);
   
   const goToPage = (newPage) => {
     if (newPage < 0 || newPage >= totalPages || isFlipping) return;
@@ -145,7 +172,29 @@ const StoryViewer = ({ story, onClose, onSave, isSaved }) => {
             {/* Illustration Area */}
             <div className="flex-1 flex items-center justify-center mb-4">
               <div className="w-full max-w-xs aspect-square bg-white/60 rounded-2xl flex flex-col items-center justify-center p-4 border-4 border-dashed border-white/50">
-                <span className="text-6xl sm:text-8xl mb-2">
+                {/* Show ARASAAC pictogram if available, otherwise emoji */}
+                {page.arasaacKeyword && pictograms[page.arasaacKeyword] ? (
+                  <img 
+                    src={getPictogramUrl(pictograms[page.arasaacKeyword])}
+                    alt={page.imageDescription}
+                    className="w-32 h-32 sm:w-40 sm:h-40 object-contain mb-2"
+                    onError={(e) => {
+                      // Fallback to emoji on error
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'block';
+                    }}
+                  />
+                ) : loadingPictogram ? (
+                  <div className="w-32 h-32 flex items-center justify-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                  </div>
+                ) : (
+                  <span className="text-6xl sm:text-8xl mb-2">
+                    {getPageEmoji(page, currentPage, totalPages)}
+                  </span>
+                )}
+                {/* Hidden emoji fallback */}
+                <span className="text-6xl sm:text-8xl mb-2 hidden">
                   {getPageEmoji(page, currentPage, totalPages)}
                 </span>
                 <p className="text-xs sm:text-sm text-gray-500 text-center font-crayon">
@@ -207,9 +256,6 @@ const StoryViewer = ({ story, onClose, onSave, isSaved }) => {
         {/* Story Info */}
         <div className="mt-4 text-center">
           <h3 className="font-display text-white text-lg">{story.topic}</h3>
-          <p className="font-crayon text-white/70 text-sm">
-            Starring {story.character_name || 'Sam'}
-          </p>
         </div>
       </div>
     </div>
@@ -252,7 +298,6 @@ const SocialStories = () => {
   // State
   const [view, setView] = useState('home'); // home, create, viewer
   const [topic, setTopic] = useState('');
-  const [characterName, setCharacterName] = useState('Sam');
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentStory, setCurrentStory] = useState(null);
   const [popularStories, setPopularStories] = useState([]);
@@ -288,7 +333,6 @@ const SocialStories = () => {
     
     try {
       const result = await generateStory(selectedTopic, {
-        characterName,
         userId: user?.id,
       });
       
@@ -401,21 +445,6 @@ const SocialStories = () => {
                     onChange={(e) => setTopic(e.target.value)}
                     placeholder="e.g., Going to the dentist, Making friends..."
                     className="w-full px-4 py-3 rounded-xl border-3 border-[#8E6BBF]/30 
-                               font-crayon focus:border-[#8E6BBF] focus:outline-none"
-                  />
-                </div>
-                
-                <div>
-                  <label className="font-crayon text-sm text-gray-600 block mb-1">
-                    <User size={14} className="inline mr-1" />
-                    Character name (optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={characterName}
-                    onChange={(e) => setCharacterName(e.target.value)}
-                    placeholder="Sam"
-                    className="w-full px-4 py-3 rounded-xl border-3 border-gray-200 
                                font-crayon focus:border-[#8E6BBF] focus:outline-none"
                   />
                 </div>

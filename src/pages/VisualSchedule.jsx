@@ -8,6 +8,7 @@
 // - Completed task tracking
 // - Calendar integration with recurring schedules
 // - Push notifications with repeat until complete
+// - Individual notification settings per task (sound, vibration)
 
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -46,7 +47,15 @@ import {
   Camera,
   Upload,
   Calendar,
-  Bell
+  Bell,
+  BellRing,
+  Volume2,
+  VolumeX,
+  Vibrate,
+  Settings,
+  Sunrise,
+  Sunset,
+  CloudSun
 } from 'lucide-react';
 import { useAuth } from '../App';
 import { imageStorage, compressImage } from '../services/storage';
@@ -54,6 +63,84 @@ import ScheduleCalendarWrapper from '../components/ScheduleCalendarWrapper';
 import ActivityIconEditor from '../components/ActivityIconEditor';
 import { formatTime, formatDate, getToday } from '../services/calendar';
 import { markActivityComplete } from '../services/notifications';
+
+// ============================================
+// TIME & NOTIFICATION CONFIGURATION
+// ============================================
+
+// Quick time presets for easier selection
+const TIME_PRESETS = [
+  { label: '🌅 Early Morning', times: ['5:00', '5:30', '6:00', '6:30'] },
+  { label: '☀️ Morning', times: ['7:00', '7:30', '8:00', '8:30', '9:00', '9:30'] },
+  { label: '🌤️ Late Morning', times: ['10:00', '10:30', '11:00', '11:30'] },
+  { label: '🍽️ Midday', times: ['12:00', '12:30', '13:00', '13:30'] },
+  { label: '☀️ Afternoon', times: ['14:00', '14:30', '15:00', '15:30', '16:00', '16:30'] },
+  { label: '🌆 Evening', times: ['17:00', '17:30', '18:00', '18:30', '19:00', '19:30'] },
+  { label: '🌙 Night', times: ['20:00', '20:30', '21:00', '21:30', '22:00', '22:30'] },
+];
+
+// Sound effect options
+const SOUND_OPTIONS = [
+  { id: 'chime', name: 'Gentle Chime', emoji: '🔔', frequency: 523.25, duration: 300 },
+  { id: 'bell', name: 'Bell', emoji: '🛎️', frequency: 659.25, duration: 400 },
+  { id: 'xylophone', name: 'Xylophone', emoji: '🎵', frequency: 784, duration: 250 },
+  { id: 'soft', name: 'Soft Tone', emoji: '🎶', frequency: 392, duration: 500 },
+  { id: 'alert', name: 'Alert', emoji: '⚡', frequency: 880, duration: 200 },
+  { id: 'melody', name: 'Melody', emoji: '🎼', frequency: 440, duration: 600 },
+  { id: 'none', name: 'No Sound', emoji: '🔇', frequency: 0, duration: 0 },
+];
+
+// Vibration pattern options (in milliseconds)
+const VIBRATION_OPTIONS = [
+  { id: 'short', name: 'Short Buzz', emoji: '📳', pattern: [200] },
+  { id: 'double', name: 'Double Buzz', emoji: '📳📳', pattern: [200, 100, 200] },
+  { id: 'long', name: 'Long Buzz', emoji: '📶', pattern: [500] },
+  { id: 'pulse', name: 'Pulse', emoji: '💓', pattern: [100, 50, 100, 50, 100] },
+  { id: 'gentle', name: 'Gentle', emoji: '🌊', pattern: [100, 200, 100] },
+  { id: 'urgent', name: 'Urgent', emoji: '🚨', pattern: [300, 100, 300, 100, 300] },
+  { id: 'none', name: 'No Vibration', emoji: '📴', pattern: [] },
+];
+
+// Helper to format time for display
+const formatTimeDisplay = (time) => {
+  if (!time) return '';
+  const [hours, minutes] = time.split(':');
+  const hour = parseInt(hours, 10);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour % 12 || 12;
+  return `${hour12}:${minutes} ${ampm}`;
+};
+
+// Play a preview sound
+let audioContext = null;
+const playPreviewSound = (frequency, duration) => {
+  if (!frequency) return;
+  try {
+    if (!audioContext) {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    oscillator.frequency.value = frequency;
+    oscillator.type = 'sine';
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + duration / 1000);
+  } catch (e) {
+    console.log('Audio preview not available');
+  }
+};
+
+// Trigger vibration preview
+const playPreviewVibration = (pattern) => {
+  if (pattern.length === 0) return;
+  if ('vibrate' in navigator) {
+    navigator.vibrate(pattern);
+  }
+};
 
 // Pre-defined activity icons with their metadata
 const activityIcons = [
@@ -120,6 +207,235 @@ const scheduleTemplates = [
   },
 ];
 
+// ============================================
+// TIME & NOTIFICATION SETTINGS MODAL
+// ============================================
+
+const TimeNotificationModal = ({ item, onSave, onClose }) => {
+  const [time, setTime] = useState(item.time || '');
+  const [notify, setNotify] = useState(item.notify !== false);
+  const [sound, setSound] = useState(item.sound || 'chime');
+  const [vibration, setVibration] = useState(item.vibration || 'short');
+  const [showCustomTime, setShowCustomTime] = useState(false);
+
+  const handleSave = () => {
+    onSave({ time: time || null, notify, sound, vibration });
+  };
+
+  const selectPresetTime = (t) => {
+    setTime(t);
+    setShowCustomTime(false);
+  };
+
+  const clearTime = () => {
+    setTime('');
+    setShowCustomTime(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div 
+        className="bg-[#FFFEF5] w-full max-w-md max-h-[90vh] rounded-3xl overflow-hidden
+                   border-4 border-[#4A9FD4] shadow-crayon-lg"
+      >
+        {/* Header */}
+        <div className="bg-[#4A9FD4] text-white p-4 flex items-center justify-between">
+          <h3 className="font-display text-xl flex items-center gap-2">
+            <Clock size={24} />
+            {item.name}
+          </h3>
+          <button 
+            onClick={onClose}
+            className="p-1 hover:bg-white/20 rounded-full transition-colors"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        <div className="p-4 overflow-y-auto max-h-[calc(90vh-140px)]">
+          {/* Time Selection */}
+          <div className="mb-6">
+            <h4 className="font-display text-gray-700 mb-3 flex items-center gap-2">
+              <Clock size={18} className="text-[#4A9FD4]" />
+              Set Time
+            </h4>
+            
+            {/* Current time display */}
+            {time && (
+              <div className="flex items-center justify-between mb-3 p-3 bg-[#4A9FD4]/10 rounded-xl">
+                <span className="font-display text-xl text-[#4A9FD4]">
+                  {formatTimeDisplay(time)}
+                </span>
+                <button
+                  onClick={clearTime}
+                  className="text-gray-400 hover:text-red-500 p-1"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            )}
+
+            {/* Quick time presets */}
+            <div className="space-y-3">
+              {TIME_PRESETS.map((preset) => (
+                <div key={preset.label}>
+                  <p className="font-crayon text-xs text-gray-500 mb-1">{preset.label}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {preset.times.map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => selectPresetTime(t)}
+                        className={`px-3 py-1.5 rounded-lg font-crayon text-sm transition-all
+                          ${time === t 
+                            ? 'bg-[#4A9FD4] text-white' 
+                            : 'bg-white border-2 border-gray-200 hover:border-[#4A9FD4] text-gray-600'
+                          }`}
+                      >
+                        {formatTimeDisplay(t)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Custom time option */}
+            <div className="mt-4">
+              {showCustomTime ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="time"
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    className="flex-1 px-3 py-2 border-3 border-[#4A9FD4] rounded-xl font-crayon text-lg focus:outline-none"
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => setShowCustomTime(false)}
+                    className="px-3 py-2 bg-gray-200 rounded-xl font-crayon text-gray-600"
+                  >
+                    Done
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowCustomTime(true)}
+                  className="w-full py-2 border-2 border-dashed border-gray-300 rounded-xl font-crayon text-gray-500 hover:border-[#4A9FD4] hover:text-[#4A9FD4] transition-all"
+                >
+                  ⌨️ Enter custom time
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Notification Toggle */}
+          <div className="mb-6">
+            <button
+              onClick={() => setNotify(!notify)}
+              className={`w-full p-4 rounded-xl border-3 flex items-center justify-between transition-all
+                ${notify 
+                  ? 'bg-[#F5A623]/10 border-[#F5A623]' 
+                  : 'bg-gray-100 border-gray-200'
+                }`}
+            >
+              <div className="flex items-center gap-3">
+                {notify ? <BellRing size={24} className="text-[#F5A623]" /> : <Bell size={24} className="text-gray-400" />}
+                <div className="text-left">
+                  <p className="font-display text-gray-800">Notifications</p>
+                  <p className="font-crayon text-xs text-gray-500">
+                    {notify ? 'Remind me at this time' : 'No reminder'}
+                  </p>
+                </div>
+              </div>
+              <div className={`w-12 h-7 rounded-full p-1 transition-all ${notify ? 'bg-[#F5A623]' : 'bg-gray-300'}`}>
+                <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${notify ? 'translate-x-5' : 'translate-x-0'}`} />
+              </div>
+            </button>
+          </div>
+
+          {/* Sound Selection */}
+          {notify && (
+            <div className="mb-6">
+              <h4 className="font-display text-gray-700 mb-3 flex items-center gap-2">
+                <Volume2 size={18} className="text-[#F5A623]" />
+                Notification Sound
+              </h4>
+              <div className="grid grid-cols-2 gap-2">
+                {SOUND_OPTIONS.map((option) => (
+                  <button
+                    key={option.id}
+                    onClick={() => {
+                      setSound(option.id);
+                      playPreviewSound(option.frequency, option.duration);
+                    }}
+                    className={`p-3 rounded-xl border-3 flex items-center gap-2 transition-all
+                      ${sound === option.id 
+                        ? 'bg-[#F5A623]/10 border-[#F5A623]' 
+                        : 'bg-white border-gray-200 hover:border-[#F5A623]'
+                      }`}
+                  >
+                    <span className="text-xl">{option.emoji}</span>
+                    <span className="font-crayon text-sm text-gray-700">{option.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Vibration Selection */}
+          {notify && (
+            <div className="mb-6">
+              <h4 className="font-display text-gray-700 mb-3 flex items-center gap-2">
+                <Vibrate size={18} className="text-[#8E6BBF]" />
+                Vibration Pattern
+              </h4>
+              <div className="grid grid-cols-2 gap-2">
+                {VIBRATION_OPTIONS.map((option) => (
+                  <button
+                    key={option.id}
+                    onClick={() => {
+                      setVibration(option.id);
+                      playPreviewVibration(option.pattern);
+                    }}
+                    className={`p-3 rounded-xl border-3 flex items-center gap-2 transition-all
+                      ${vibration === option.id 
+                        ? 'bg-[#8E6BBF]/10 border-[#8E6BBF]' 
+                        : 'bg-white border-gray-200 hover:border-[#8E6BBF]'
+                      }`}
+                  >
+                    <span className="text-xl">{option.emoji}</span>
+                    <span className="font-crayon text-sm text-gray-700">{option.name}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="font-crayon text-xs text-gray-400 mt-2 text-center">
+                Tap an option to preview the vibration
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t-3 border-gray-200 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 bg-gray-200 rounded-xl font-crayon text-gray-600 hover:bg-gray-300 transition-all"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            className="flex-1 py-3 bg-[#5CB85C] text-white rounded-xl font-display hover:bg-green-600 transition-all flex items-center justify-center gap-2"
+          >
+            <Check size={20} />
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const VisualSchedule = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -139,6 +455,7 @@ const VisualSchedule = () => {
   const [newImageData, setNewImageData] = useState(null);
   const [editingActivity, setEditingActivity] = useState(null); // For custom icon editor
   const [currentDateStr, setCurrentDateStr] = useState(formatDate(getToday())); // Track current date for notifications
+  const [showTimeNotifyModal, setShowTimeNotifyModal] = useState(null); // Index of item being edited, or null
 
   // Load saved schedule and custom images from storage
   useEffect(() => {
@@ -209,6 +526,8 @@ const VisualSchedule = () => {
       customImage: null,
       time: time, // HH:MM format
       notify: true, // Enable notifications by default
+      sound: 'chime', // Default sound
+      vibration: 'short', // Default vibration
     };
     
     if (editingIndex !== null) {
@@ -226,6 +545,13 @@ const VisualSchedule = () => {
   const updateActivityTime = (index, time) => {
     const newItems = [...scheduleItems];
     newItems[index] = { ...newItems[index], time };
+    setScheduleItems(newItems);
+  };
+
+  // Update activity notification settings
+  const updateActivityNotification = (index, settings) => {
+    const newItems = [...scheduleItems];
+    newItems[index] = { ...newItems[index], ...settings };
     setScheduleItems(newItems);
   };
 
@@ -616,7 +942,7 @@ const VisualSchedule = () => {
                   </button>
                 </div>
 
-                {/* Activity Name & Time */}
+                {/* Activity Name & Time/Notification */}
                 <div className="flex-1 min-w-0">
                   <h3 className={`
                     font-display text-lg sm:text-xl
@@ -624,23 +950,32 @@ const VisualSchedule = () => {
                   `}>
                     {item.name}
                   </h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <input
-                      type="time"
-                      value={item.time || ''}
-                      onChange={(e) => updateActivityTime(index, e.target.value)}
-                      className="font-crayon text-sm text-gray-500 bg-transparent border-b border-dashed border-gray-300 focus:border-[#4A9FD4] focus:outline-none w-20"
-                      placeholder="Time"
-                    />
-                    {item.time && (
-                      <button
-                        onClick={() => toggleActivityNotify(index)}
-                        className={`p-1 rounded ${item.notify ? 'text-[#F5A623]' : 'text-gray-300'}`}
-                        title={item.notify ? 'Notifications on' : 'Notifications off'}
-                      >
-                        <Bell size={14} />
-                      </button>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    {/* Time & Notification Button */}
+                    <button
+                      onClick={() => setShowTimeNotifyModal(index)}
+                      className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-sm font-crayon transition-all
+                        ${item.time 
+                          ? 'bg-[#4A9FD4]/10 text-[#4A9FD4] hover:bg-[#4A9FD4]/20' 
+                          : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                        }`}
+                    >
+                      <Clock size={14} />
+                      {item.time ? formatTimeDisplay(item.time) : 'Set time'}
+                    </button>
+                    
+                    {/* Notification indicators */}
+                    {item.time && item.notify && (
+                      <div className="flex items-center gap-1">
+                        <span className={`p-1 rounded ${item.sound !== 'none' ? 'text-[#F5A623]' : 'text-gray-300'}`} title={`Sound: ${SOUND_OPTIONS.find(s => s.id === item.sound)?.name || 'Chime'}`}>
+                          {item.sound !== 'none' ? <Volume2 size={12} /> : <VolumeX size={12} />}
+                        </span>
+                        <span className={`p-1 rounded ${item.vibration !== 'none' ? 'text-[#8E6BBF]' : 'text-gray-300'}`} title={`Vibration: ${VIBRATION_OPTIONS.find(v => v.id === item.vibration)?.name || 'Short'}`}>
+                          <Vibrate size={12} />
+                        </span>
+                      </div>
                     )}
+                    
                     {!item.time && (
                       <span className="font-crayon text-xs text-gray-400">
                         Tap icon to {item.completed ? 'undo' : 'complete'}
@@ -674,6 +1009,18 @@ const VisualSchedule = () => {
           })
         )}
       </div>
+
+      {/* Time & Notification Settings Modal */}
+      {showTimeNotifyModal !== null && scheduleItems[showTimeNotifyModal] && (
+        <TimeNotificationModal
+          item={scheduleItems[showTimeNotifyModal]}
+          onSave={(settings) => {
+            updateActivityNotification(showTimeNotifyModal, settings);
+            setShowTimeNotifyModal(null);
+          }}
+          onClose={() => setShowTimeNotifyModal(null)}
+        />
+      )}
 
       {/* Add Activity Button */}
       {scheduleItems.length > 0 && (

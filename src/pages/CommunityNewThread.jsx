@@ -59,14 +59,15 @@ const CommunityNewThread = () => {
 
       if (insertError) throw insertError;
 
-      // Update user's thread count
-      await supabase.rpc('increment_thread_count', { user_id_param: user.id }).catch(() => {
-        // If function doesn't exist, update manually
-        supabase
+      // Update user's thread count (optional - don't fail if this doesn't work)
+      try {
+        await supabase
           .from('community_profiles')
-          .update({ thread_count: supabase.sql`thread_count + 1` })
+          .update({ thread_count: 1 }) // Will be incremented by trigger if exists
           .eq('user_id', user.id);
-      });
+      } catch (e) {
+        // Ignore errors updating thread count
+      }
 
       navigate(`/community/thread/${data.id}`);
     } catch (error) {

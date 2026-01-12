@@ -8,7 +8,7 @@ import {
   Circle,
   Shapes,
   Music,
-  Puzzle
+  Disc
 } from 'lucide-react';
 
 // Game items
@@ -69,14 +69,14 @@ const games = [
     ready: true,
   },
   {
-    id: 'puzzles',
-    name: 'Simple Puzzles',
-    description: 'Put pieces together!',
-    icon: Puzzle,
+    id: 'pattern',
+    name: 'Pattern Sequence',
+    description: 'Remember the pattern!',
+    icon: Disc,
     color: 'bg-[#E86B9A]',
     borderColor: 'border-pink-500',
-    path: '/games/puzzles',
-    emoji: '🧩',
+    path: '/games/pattern',
+    emoji: '🎵',
     ready: true,
   },
 ];

@@ -20,6 +20,7 @@ import {
   Users
 } from 'lucide-react';
 import { useIsAppInstalled } from '../components/PWAInstallPrompt';
+import PushNotificationPrompt from '../components/PushNotificationPrompt';
 import { useAuth } from '../App';
 
 // App category data - colors matched to logo
@@ -321,6 +322,9 @@ const AppHub = () => {
           )}
         </div>
       </main>
+
+      {/* Push Notification Prompt */}
+      <PushNotificationPrompt user={user} />
 
       {/* Footer */}
       <footer className="relative z-10 text-center py-6 px-4">

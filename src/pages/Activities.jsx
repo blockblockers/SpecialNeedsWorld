@@ -11,7 +11,8 @@ import {
   Camera,
   Sparkles,
   Heart,
-  Star
+  Star,
+  Mic
 } from 'lucide-react';
 
 // Activity apps
@@ -24,6 +25,16 @@ const activityApps = [
     color: '#8E6BBF',
     emoji: '📖',
     path: '/activities/social-stories',
+    ready: true,
+  },
+  {
+    id: 'pronunciation',
+    name: 'Say It Right',
+    description: 'Practice pronouncing words with pictures',
+    icon: Mic,
+    color: '#5CB85C',
+    emoji: '🗣️',
+    path: '/activities/pronunciation',
     ready: true,
   },
   {
@@ -41,7 +52,7 @@ const activityApps = [
     name: 'Music & Sounds',
     description: 'Calming music and fun sounds',
     icon: Music,
-    color: '#5CB85C',
+    color: '#4A9FD4',
     emoji: '🎵',
     path: '/activities/music',
     ready: false,
@@ -61,7 +72,7 @@ const activityApps = [
     name: 'Photo Journal',
     description: 'Capture and share special moments',
     icon: Camera,
-    color: '#4A9FD4',
+    color: '#E86B9A',
     emoji: '📸',
     path: '/activities/photo-journal',
     ready: false,

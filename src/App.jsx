@@ -11,6 +11,7 @@ import Settings from './pages/Settings';
 import Activities from './pages/Activities';
 import SocialStories from './pages/SocialStories';
 import ColoringBook from './pages/ColoringBook';
+import PronunciationPractice from './pages/PronunciationPractice';
 import Knowledge from './pages/Knowledge';
 import Games from './pages/Games';
 import MatchingGame from './pages/MatchingGame';
@@ -19,6 +20,7 @@ import BubblePop from './pages/BubblePop';
 import ColorSort from './pages/ColorSort';
 import SoundMatch from './pages/SoundMatch';
 import SimplePuzzles from './pages/SimplePuzzles';
+import PatternSequence from './pages/PatternSequence';
 import Services from './pages/Services';
 import AppointmentTracker from './pages/AppointmentTracker';
 import GoalTracker from './pages/GoalTracker';
@@ -651,6 +653,14 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/games/pattern" 
+            element={
+              <ProtectedRoute>
+                <PatternSequence />
+              </ProtectedRoute>
+            } 
+          />
           
           {/* Activities Routes */}
           <Route 
@@ -674,6 +684,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <ColoringBook />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/activities/pronunciation" 
+            element={
+              <ProtectedRoute>
+                <PronunciationPractice />
               </ProtectedRoute>
             } 
           />

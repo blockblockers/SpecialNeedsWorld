@@ -45,35 +45,56 @@ const CommunityThread = () => {
       // Load thread
       const { data: threadData, error: threadError } = await supabase
         .from('community_threads')
-        .select(`
-          *,
-          community_profiles!community_threads_user_id_fkey (
-            display_name,
-            avatar_id
-          )
-        `)
+        .select('*')
         .eq('id', threadId)
         .single();
 
       if (threadError) throw threadError;
-      setThread(threadData);
 
       // Load replies
       const { data: repliesData, error: repliesError } = await supabase
         .from('community_replies')
-        .select(`
-          *,
-          community_profiles!community_replies_user_id_fkey (
-            display_name,
-            avatar_id
-          )
-        `)
+        .select('*')
         .eq('thread_id', threadId)
         .eq('is_hidden', false)
         .order('created_at', { ascending: true });
 
       if (repliesError) throw repliesError;
-      setReplies(repliesData || []);
+      
+      // Get all user IDs
+      const userIds = [
+        threadData?.user_id,
+        ...(repliesData?.map(r => r.user_id) || [])
+      ].filter(Boolean);
+      const uniqueUserIds = [...new Set(userIds)];
+      
+      // Fetch profiles
+      let profilesMap = {};
+      if (uniqueUserIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('community_profiles')
+          .select('user_id, display_name, avatar_id')
+          .in('user_id', uniqueUserIds);
+        
+        if (profilesData) {
+          profilesMap = profilesData.reduce((acc, p) => {
+            acc[p.user_id] = p;
+            return acc;
+          }, {});
+        }
+      }
+      
+      // Attach profile to thread
+      setThread({
+        ...threadData,
+        community_profiles: profilesMap[threadData.user_id] || null
+      });
+      
+      // Attach profiles to replies
+      setReplies(repliesData?.map(r => ({
+        ...r,
+        community_profiles: profilesMap[r.user_id] || null
+      })) || []);
 
       // Increment view count
       await supabase

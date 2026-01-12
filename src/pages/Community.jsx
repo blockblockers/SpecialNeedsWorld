@@ -69,13 +69,7 @@ const Community = () => {
     try {
       let query = supabase
         .from('community_threads')
-        .select(`
-          *,
-          community_profiles!community_threads_user_id_fkey (
-            display_name,
-            avatar_id
-          )
-        `)
+        .select('*')
         .eq('is_hidden', false)
         .order('is_pinned', { ascending: false })
         .order('last_activity_at', { ascending: false })
@@ -89,10 +83,36 @@ const Community = () => {
         query = query.or(`title.ilike.%${searchQuery}%,content.ilike.%${searchQuery}%`);
       }
 
-      const { data, error } = await query;
+      const { data: threadsData, error } = await query;
 
       if (error) throw error;
-      setThreads(data || []);
+      
+      // Get unique user IDs from threads
+      const userIds = [...new Set(threadsData?.map(t => t.user_id).filter(Boolean) || [])];
+      
+      // Fetch profiles for those users
+      let profilesMap = {};
+      if (userIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('community_profiles')
+          .select('user_id, display_name, avatar_id')
+          .in('user_id', userIds);
+        
+        if (profilesData) {
+          profilesMap = profilesData.reduce((acc, p) => {
+            acc[p.user_id] = p;
+            return acc;
+          }, {});
+        }
+      }
+      
+      // Attach profiles to threads
+      const threadsWithProfiles = threadsData?.map(t => ({
+        ...t,
+        community_profiles: profilesMap[t.user_id] || null
+      })) || [];
+      
+      setThreads(threadsWithProfiles);
     } catch (error) {
       console.error('Error loading threads:', error);
     } finally {
