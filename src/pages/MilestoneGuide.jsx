@@ -491,9 +491,9 @@ const MilestoneGuide = () => {
           <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
             <button
               onClick={() => navigate('/tools')}
-              className="flex items-center gap-2 px-3 py-2 bg-white border-3 border-[#F8D14A] 
-                         rounded-full font-crayon text-[#F8D14A] hover:bg-[#F8D14A] 
-                         hover:text-white transition-all shadow-sm text-sm"
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F8D14A] 
+                         rounded-xl font-display font-bold text-[#F8D14A] hover:bg-[#F8D14A] 
+                         hover:text-white transition-all shadow-md"
             >
               <ArrowLeft size={16} />
               Back
@@ -597,9 +597,9 @@ const MilestoneGuide = () => {
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => setSelectedAge(null)}
-            className="flex items-center gap-2 px-3 py-2 bg-white border-3 border-[#F8D14A] 
-                       rounded-full font-crayon text-[#F8D14A] hover:bg-[#F8D14A] 
-                       hover:text-white transition-all shadow-sm text-sm"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F8D14A] 
+                       rounded-xl font-display font-bold text-[#F8D14A] hover:bg-[#F8D14A] 
+                       hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
             Ages

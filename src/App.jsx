@@ -32,6 +32,15 @@ import Reminders from './pages/Reminders';
 import FeelingsTracker from './pages/FeelingsTracker';
 import WaterTracker from './pages/WaterTracker';
 import SleepTracker from './pages/SleepTracker';
+import SoundBoard from './pages/SoundBoard';
+import Counter from './pages/Counter';
+import DailyRoutines from './pages/DailyRoutines';
+import MoveExercise from './pages/MoveExercise';
+import HealthyChoices from './pages/HealthyChoices';
+import Community from './pages/Community';
+import CommunityProfileSetup from './pages/CommunityProfileSetup';
+import CommunityNewThread from './pages/CommunityNewThread';
+import CommunityThread from './pages/CommunityThread';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { supabase, isSupabaseConfigured } from './services/supabase';
 
@@ -493,6 +502,84 @@ function App() {
             element={
               <ProtectedRoute>
                 <SleepTracker />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/health/exercise" 
+            element={
+              <ProtectedRoute>
+                <MoveExercise />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/health/choices" 
+            element={
+              <ProtectedRoute>
+                <HealthyChoices />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* New Tool Routes */}
+          <Route 
+            path="/tools/soundboard" 
+            element={
+              <ProtectedRoute>
+                <SoundBoard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/tools/counter" 
+            element={
+              <ProtectedRoute>
+                <Counter />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* New Service Routes */}
+          <Route 
+            path="/services/routines" 
+            element={
+              <ProtectedRoute>
+                <DailyRoutines />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Community Routes */}
+          <Route 
+            path="/community" 
+            element={
+              <ProtectedRoute>
+                <Community />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/community/profile/setup" 
+            element={
+              <ProtectedRoute>
+                <CommunityProfileSetup />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/community/new" 
+            element={
+              <ProtectedRoute>
+                <CommunityNewThread />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/community/thread/:threadId" 
+            element={
+              <ProtectedRoute>
+                <CommunityThread />
               </ProtectedRoute>
             } 
           />

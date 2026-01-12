@@ -15,7 +15,7 @@ DROP POLICY IF EXISTS "Users can delete own appointments" ON appointments;
 -- ============================================
 
 DROP TRIGGER IF EXISTS appointments_updated_at ON appointments;
-DROP FUNCTION IF EXISTS update_appointments_updated_at();
+DROP FUNCTION IF EXISTS update_appointments_updated_at() CASCADE;
 
 -- ============================================
 -- CREATE TABLE (IF NOT EXISTS)

@@ -89,7 +89,12 @@ const StoryViewer = ({ story, onClose, onSave, isSaved }) => {
     return colors[pageNum % colors.length];
   };
   
-  const getPageEmoji = (pageNum, total) => {
+  // Get emoji for the page - use page's emoji or fallback
+  const getPageEmoji = (page, pageNum, total) => {
+    // If the page has an emoji, use it
+    if (page?.emoji) return page.emoji;
+    
+    // Fallback emojis based on position
     if (pageNum === 0) return '📖';
     if (pageNum === total - 1) return '🌟';
     const emojis = ['🌈', '✨', '💫', '🎈', '🌻', '🦋'];
@@ -141,7 +146,7 @@ const StoryViewer = ({ story, onClose, onSave, isSaved }) => {
             <div className="flex-1 flex items-center justify-center mb-4">
               <div className="w-full max-w-xs aspect-square bg-white/60 rounded-2xl flex flex-col items-center justify-center p-4 border-4 border-dashed border-white/50">
                 <span className="text-6xl sm:text-8xl mb-2">
-                  {getPageEmoji(currentPage, totalPages)}
+                  {getPageEmoji(page, currentPage, totalPages)}
                 </span>
                 <p className="text-xs sm:text-sm text-gray-500 text-center font-crayon">
                   {page.imageDescription}
@@ -334,9 +339,9 @@ const SocialStories = () => {
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => view === 'home' ? navigate('/activities') : setView('home')}
-            className="flex items-center gap-2 px-3 py-2 bg-white border-3 border-[#8E6BBF] 
-                       rounded-full font-crayon text-[#8E6BBF] hover:bg-[#8E6BBF] 
-                       hover:text-white transition-all shadow-sm text-sm"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#8E6BBF] 
+                       rounded-xl font-display font-bold text-[#8E6BBF] hover:bg-[#8E6BBF] 
+                       hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
             Back

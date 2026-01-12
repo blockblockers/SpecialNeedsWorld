@@ -16,7 +16,8 @@ import {
   Sparkles,
   Cloud,
   Smartphone,
-  Settings
+  Settings,
+  Users
 } from 'lucide-react';
 import { useIsAppInstalled } from '../components/PWAInstallPrompt';
 import { useAuth } from '../App';
@@ -51,8 +52,7 @@ const appCategories = [
     description: 'Helpful everyday tools!',
     icon: Wrench,
     color: 'bg-[#F8D14A]',  // Yellow like sun center
-    borderColor: 'border-yellow-500',
-    textColor: 'text-gray-800',
+    borderColor: 'border-yellow-600',
     hoverRotate: 'hover:rotate-1',
     path: '/tools',
     emoji: '🔧',
@@ -111,6 +111,17 @@ const appCategories = [
     hoverRotate: 'hover:rotate-1',
     path: '/knowledge',
     emoji: '📚',
+  },
+  {
+    id: 'community',
+    name: 'Community',
+    description: 'Connect with others!',
+    icon: Users,
+    color: 'bg-[#E86B9A]',  // Pink
+    borderColor: 'border-pink-700',
+    hoverRotate: 'hover:-rotate-1',
+    path: '/community',
+    emoji: '👥',
   },
 ];
 
@@ -208,7 +219,7 @@ const AppHub = () => {
             <button
               onClick={() => navigate('/settings')}
               className="flex items-center gap-2 px-4 py-2 bg-white border-3 border-[#8E6BBF] 
-                         rounded-full font-crayon text-[#8E6BBF] hover:bg-[#8E6BBF] 
+                         rounded-xl font-display font-bold text-[#8E6BBF] hover:bg-[#8E6BBF] 
                          hover:text-white transition-all shadow-sm hover:shadow-crayon"
             >
               <Settings size={18} />
@@ -233,7 +244,7 @@ const AppHub = () => {
       <main className="relative z-10 px-4 pb-8">
         <div className="max-w-4xl mx-auto">
           {/* Tagline */}
-          <p className="text-center text-gray-600 font-crayon text-sm sm:text-base mb-6 max-w-md mx-auto">
+          <p className="text-center text-gray-700 font-display text-lg sm:text-xl mb-6 max-w-lg mx-auto leading-relaxed crayon-text">
             An ecosystem of helpful applications, tools, and services for the special needs community.
           </p>
           
@@ -317,9 +328,9 @@ const AppHub = () => {
           <img 
             src="/logo.jpeg" 
             alt="" 
-            className="w-6 h-6 rounded-md opacity-70"
+            className="w-8 h-8 rounded-md"
           />
-          <p className="text-gray-500 font-crayon text-sm">
+          <p className="text-gray-700 font-display text-lg crayon-text">
             Special Needs World
           </p>
         </div>

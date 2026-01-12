@@ -68,18 +68,18 @@ const healthApps = [
     borderColor: 'border-red-500',
     path: '/health/exercise',
     emoji: '🏃',
-    ready: false,
+    ready: true,
   },
   {
     id: 'healthy-choices',
     name: 'Healthy Choices',
-    description: 'Learn what\'s healthy',
+    description: 'Track healthy decisions',
     icon: Apple,
     color: 'bg-[#E86B9A]',
     borderColor: 'border-pink-500',
     path: '/health/choices',
-    emoji: '🍎',
-    ready: false,
+    emoji: '✨',
+    ready: true,
   },
 ];
 
@@ -99,9 +99,9 @@ const Health = () => {
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/hub')}
-            className="flex items-center gap-2 px-3 py-2 bg-white border-3 border-[#E86B9A] 
-                       rounded-full font-crayon text-[#E86B9A] hover:bg-[#E86B9A] 
-                       hover:text-white transition-all shadow-sm text-sm"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#E86B9A] 
+                       rounded-xl font-display font-bold text-[#E86B9A] hover:bg-[#E86B9A] 
+                       hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
             Back

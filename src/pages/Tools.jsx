@@ -63,9 +63,9 @@ const tools = [
     icon: Volume2,
     color: 'bg-[#8E6BBF]',
     borderColor: 'border-purple-600',
-    path: '/tools/sounds',
+    path: '/tools/soundboard',
     emoji: '🔊',
-    ready: false,
+    ready: true,
   },
   {
     id: 'counter',
@@ -76,7 +76,7 @@ const tools = [
     borderColor: 'border-pink-600',
     path: '/tools/counter',
     emoji: '🔢',
-    ready: false,
+    ready: true,
   },
 ];
 
@@ -96,9 +96,9 @@ const Tools = () => {
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/hub')}
-            className="flex items-center gap-2 px-3 py-2 bg-white border-3 border-[#F8D14A] 
-                       rounded-full font-crayon text-[#8B5A2B] hover:bg-[#F8D14A] 
-                       hover:text-white transition-all shadow-sm text-sm"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F8D14A] 
+                       rounded-xl font-display font-bold text-[#8B5A2B] hover:bg-[#F8D14A] 
+                       hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
             Back

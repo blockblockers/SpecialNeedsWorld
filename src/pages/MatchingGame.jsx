@@ -111,9 +111,9 @@ const MatchingGame = () => {
           <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
             <button
               onClick={() => navigate('/games')}
-              className="flex items-center gap-2 px-3 py-2 bg-white border-3 border-[#E63B2E] 
-                         rounded-full font-crayon text-[#E63B2E] hover:bg-[#E63B2E] 
-                         hover:text-white transition-all shadow-sm text-sm"
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#E63B2E] 
+                         rounded-xl font-display font-bold text-[#E63B2E] hover:bg-[#E63B2E] 
+                         hover:text-white transition-all shadow-md"
             >
               <ArrowLeft size={16} />
               Back
@@ -250,9 +250,9 @@ const MatchingGame = () => {
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => setGameStarted(false)}
-            className="flex items-center gap-2 px-3 py-2 bg-white border-3 border-[#E63B2E] 
-                       rounded-full font-crayon text-[#E63B2E] hover:bg-[#E63B2E] 
-                       hover:text-white transition-all shadow-sm text-sm"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#E63B2E] 
+                       rounded-xl font-display font-bold text-[#E63B2E] hover:bg-[#E63B2E] 
+                       hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
             Menu

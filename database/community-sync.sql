@@ -3,8 +3,101 @@
 -- Text and links only - no images for safety
 
 -- ============================================
--- DROP EXISTING (if any)
+-- CREATE TABLES FIRST (IF NOT EXISTS)
 -- ============================================
+
+-- Community Profiles (Avatars & Display Names)
+CREATE TABLE IF NOT EXISTS community_profiles (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL UNIQUE,
+  
+  -- Display info
+  display_name TEXT NOT NULL,
+  avatar_id TEXT NOT NULL DEFAULT 'star',
+  bio TEXT,
+  
+  -- Stats
+  thread_count INTEGER DEFAULT 0,
+  reply_count INTEGER DEFAULT 0,
+  joined_at TIMESTAMPTZ DEFAULT NOW(),
+  
+  -- Metadata
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Community Threads
+CREATE TABLE IF NOT EXISTS community_threads (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  
+  -- Thread content
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'general',
+  
+  -- Stats
+  reply_count INTEGER DEFAULT 0,
+  view_count INTEGER DEFAULT 0,
+  
+  -- Status
+  is_pinned BOOLEAN DEFAULT FALSE,
+  is_locked BOOLEAN DEFAULT FALSE,
+  is_hidden BOOLEAN DEFAULT FALSE,
+  
+  -- Metadata
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  last_activity_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Community Replies
+CREATE TABLE IF NOT EXISTS community_replies (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  thread_id UUID REFERENCES community_threads(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  
+  -- Reply content
+  content TEXT NOT NULL,
+  
+  -- Status
+  is_hidden BOOLEAN DEFAULT FALSE,
+  
+  -- Metadata
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Community Reports
+CREATE TABLE IF NOT EXISTS community_reports (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  reporter_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  
+  -- What is being reported
+  thread_id UUID REFERENCES community_threads(id) ON DELETE CASCADE,
+  reply_id UUID REFERENCES community_replies(id) ON DELETE CASCADE,
+  
+  -- Report details
+  reason TEXT NOT NULL,
+  description TEXT,
+  
+  -- Status
+  status TEXT DEFAULT 'pending',
+  reviewed_at TIMESTAMPTZ,
+  
+  -- Metadata
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  
+  CHECK (thread_id IS NOT NULL OR reply_id IS NOT NULL)
+);
+
+-- ============================================
+-- NOW DROP AND RECREATE POLICIES
+-- ============================================
+
+DROP POLICY IF EXISTS "Anyone can view public profiles" ON community_profiles;
+DROP POLICY IF EXISTS "Users can view own profile" ON community_profiles;
+DROP POLICY IF EXISTS "Users can create own profile" ON community_profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON community_profiles;
 
 DROP POLICY IF EXISTS "Anyone can view threads" ON community_threads;
 DROP POLICY IF EXISTS "Authenticated users can create threads" ON community_threads;
@@ -16,118 +109,16 @@ DROP POLICY IF EXISTS "Authenticated users can create replies" ON community_repl
 DROP POLICY IF EXISTS "Users can update own replies" ON community_replies;
 DROP POLICY IF EXISTS "Users can delete own replies" ON community_replies;
 
-DROP POLICY IF EXISTS "Users can view own profile" ON community_profiles;
-DROP POLICY IF EXISTS "Anyone can view public profiles" ON community_profiles;
-DROP POLICY IF EXISTS "Users can update own profile" ON community_profiles;
-DROP POLICY IF EXISTS "Users can create own profile" ON community_profiles;
-
 DROP POLICY IF EXISTS "Authenticated users can report" ON community_reports;
 DROP POLICY IF EXISTS "Users can view own reports" ON community_reports;
 
-DROP FUNCTION IF EXISTS increment_thread_reply_count();
-DROP FUNCTION IF EXISTS decrement_thread_reply_count();
-DROP FUNCTION IF EXISTS update_thread_activity();
-
-DROP TRIGGER IF EXISTS on_reply_created ON community_replies;
-DROP TRIGGER IF EXISTS on_reply_deleted ON community_replies;
-DROP TRIGGER IF EXISTS on_reply_update_activity ON community_replies;
-
 -- ============================================
--- COMMUNITY PROFILES (Avatars & Display Names)
+-- DROP AND RECREATE FUNCTIONS/TRIGGERS
 -- ============================================
 
-CREATE TABLE IF NOT EXISTS community_profiles (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL UNIQUE,
-  
-  -- Display info
-  display_name TEXT NOT NULL,
-  avatar_id TEXT NOT NULL DEFAULT 'star', -- References predefined avatars
-  bio TEXT, -- Optional short bio (max 200 chars)
-  
-  -- Stats
-  thread_count INTEGER DEFAULT 0,
-  reply_count INTEGER DEFAULT 0,
-  joined_at TIMESTAMPTZ DEFAULT NOW(),
-  
-  -- Metadata
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- ============================================
--- COMMUNITY THREADS
--- ============================================
-
-CREATE TABLE IF NOT EXISTS community_threads (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  
-  -- Thread content
-  title TEXT NOT NULL,
-  content TEXT NOT NULL,
-  category TEXT NOT NULL DEFAULT 'general', -- general, question, support, tips, resources
-  
-  -- Stats
-  reply_count INTEGER DEFAULT 0,
-  view_count INTEGER DEFAULT 0,
-  
-  -- Status
-  is_pinned BOOLEAN DEFAULT FALSE,
-  is_locked BOOLEAN DEFAULT FALSE,
-  is_hidden BOOLEAN DEFAULT FALSE, -- Hidden by moderator
-  
-  -- Metadata
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  last_activity_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- ============================================
--- COMMUNITY REPLIES
--- ============================================
-
-CREATE TABLE IF NOT EXISTS community_replies (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  thread_id UUID REFERENCES community_threads(id) ON DELETE CASCADE NOT NULL,
-  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  
-  -- Reply content
-  content TEXT NOT NULL,
-  
-  -- Status
-  is_hidden BOOLEAN DEFAULT FALSE, -- Hidden by moderator
-  
-  -- Metadata
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- ============================================
--- COMMUNITY REPORTS (for inappropriate content)
--- ============================================
-
-CREATE TABLE IF NOT EXISTS community_reports (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  reporter_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  
-  -- What is being reported
-  thread_id UUID REFERENCES community_threads(id) ON DELETE CASCADE,
-  reply_id UUID REFERENCES community_replies(id) ON DELETE CASCADE,
-  
-  -- Report details
-  reason TEXT NOT NULL, -- spam, inappropriate, harassment, other
-  description TEXT, -- Optional additional details
-  
-  -- Status
-  status TEXT DEFAULT 'pending', -- pending, reviewed, resolved, dismissed
-  reviewed_at TIMESTAMPTZ,
-  
-  -- Metadata
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  
-  -- Must report either thread OR reply
-  CHECK (thread_id IS NOT NULL OR reply_id IS NOT NULL)
-);
+DROP FUNCTION IF EXISTS increment_thread_reply_count() CASCADE;
+DROP FUNCTION IF EXISTS decrement_thread_reply_count() CASCADE;
+DROP FUNCTION IF EXISTS update_thread_activity() CASCADE;
 
 -- ============================================
 -- ENABLE RLS

@@ -463,9 +463,9 @@ const ColoringBook = () => {
                 navigate('/activities');
               }
             }}
-            className="flex items-center gap-2 px-3 py-2 bg-white border-3 border-[#E63B2E] 
-                       rounded-full font-crayon text-[#E63B2E] hover:bg-[#E63B2E] 
-                       hover:text-white transition-all shadow-sm text-sm"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#E63B2E] 
+                       rounded-xl font-display font-bold text-[#E63B2E] hover:bg-[#E63B2E] 
+                       hover:text-white transition-all shadow-md"
           >
             <ChevronLeft size={16} />
             {view === 'coloring' ? 'Back' : 'Activities'}

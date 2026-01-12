@@ -14,7 +14,10 @@ import {
   Volume2,
   ChevronRight,
   Check,
-  Info
+  Info,
+  User,
+  Edit2,
+  Save
 } from 'lucide-react';
 import {
   isNotificationSupported,
@@ -25,6 +28,7 @@ import {
   setGlobalNotifications,
   updateAppNotificationSetting,
 } from '../services/notifications';
+import { useAuth } from '../App';
 
 // Reminder time options
 const REMINDER_OPTIONS = [
@@ -87,15 +91,48 @@ const APP_CONFIGS = [
 
 const Settings = () => {
   const navigate = useNavigate();
+  const { user, isGuest } = useAuth();
   const [settings, setSettings] = useState(getNotificationSettings());
   const [permissionStatus, setPermissionStatus] = useState(getPermissionStatus());
   const [expandedApp, setExpandedApp] = useState(null);
   const notificationsSupported = isNotificationSupported();
+  
+  // Profile state
+  const [displayName, setDisplayName] = useState('');
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [tempName, setTempName] = useState('');
+
+  // Load profile settings
+  useEffect(() => {
+    const savedName = localStorage.getItem('snw_display_name');
+    if (savedName) {
+      setDisplayName(savedName);
+    } else if (user?.user_metadata?.full_name) {
+      setDisplayName(user.user_metadata.full_name);
+    } else if (user?.email) {
+      setDisplayName(user.email.split('@')[0]);
+    }
+  }, [user]);
 
   // Check permission on mount
   useEffect(() => {
     setPermissionStatus(getPermissionStatus());
   }, []);
+
+  // Save display name
+  const handleSaveName = () => {
+    if (tempName.trim()) {
+      setDisplayName(tempName.trim());
+      localStorage.setItem('snw_display_name', tempName.trim());
+    }
+    setIsEditingName(false);
+  };
+
+  // Start editing name
+  const startEditingName = () => {
+    setTempName(displayName);
+    setIsEditingName(true);
+  };
 
   // Handle global toggle
   const handleGlobalToggle = async () => {
@@ -145,9 +182,9 @@ const Settings = () => {
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/hub')}
-            className="flex items-center gap-2 px-3 py-2 bg-white border-3 border-[#8E6BBF] 
-                       rounded-full font-crayon text-[#8E6BBF] hover:bg-[#8E6BBF] 
-                       hover:text-white transition-all shadow-sm text-sm"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#8E6BBF] 
+                       rounded-xl font-display font-bold text-[#8E6BBF] hover:bg-[#8E6BBF] 
+                       hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
             Back
@@ -165,6 +202,95 @@ const Settings = () => {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+        {/* Profile Section */}
+        <section className="bg-white rounded-2xl border-4 border-[#5CB85C] shadow-crayon overflow-hidden">
+          <div className="bg-[#5CB85C] text-white p-4">
+            <h2 className="font-display text-xl flex items-center gap-2">
+              <User size={24} />
+              Your Profile
+            </h2>
+          </div>
+          
+          <div className="p-4 space-y-4">
+            {/* Display Name */}
+            <div className="p-4 bg-gray-50 rounded-xl">
+              <label className="block font-crayon text-sm text-gray-600 mb-2">
+                Display Name
+              </label>
+              {isEditingName ? (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={tempName}
+                    onChange={(e) => setTempName(e.target.value)}
+                    placeholder="Enter your name"
+                    maxLength={30}
+                    className="flex-1 p-3 border-3 border-gray-300 rounded-xl font-crayon
+                             focus:border-[#5CB85C] focus:outline-none"
+                    autoFocus
+                  />
+                  <button
+                    onClick={handleSaveName}
+                    className="px-4 py-2 bg-[#5CB85C] text-white rounded-xl font-crayon
+                             hover:bg-green-600 transition-colors flex items-center gap-1"
+                  >
+                    <Save size={16} />
+                    Save
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <span className="font-display text-lg text-gray-800">
+                    {displayName || 'Not set'}
+                  </span>
+                  <button
+                    onClick={startEditingName}
+                    className="px-3 py-1.5 bg-white border-2 border-gray-300 rounded-lg font-crayon text-sm
+                             hover:border-[#5CB85C] transition-colors flex items-center gap-1"
+                  >
+                    <Edit2 size={14} />
+                    Edit
+                  </button>
+                </div>
+              )}
+              <p className="font-crayon text-xs text-gray-400 mt-2">
+                This name is shown in the app. Your Google account name is not used.
+              </p>
+            </div>
+
+            {/* Community Profile Link */}
+            {!isGuest && user && (
+              <button
+                onClick={() => navigate('/community/profile/setup')}
+                className="w-full p-4 bg-purple-50 rounded-xl border-2 border-purple-200
+                         hover:border-purple-400 transition-colors text-left"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-display text-purple-700">Community Profile</p>
+                    <p className="font-crayon text-sm text-purple-500">
+                      Set up your avatar and community name
+                    </p>
+                  </div>
+                  <ChevronRight size={20} className="text-purple-400" />
+                </div>
+              </button>
+            )}
+
+            {/* Account Info */}
+            {user && !isGuest && (
+              <div className="p-3 bg-blue-50 rounded-xl border-2 border-blue-200">
+                <p className="font-crayon text-sm text-blue-600">
+                  ✓ Signed in with Google
+                </p>
+                <p className="font-crayon text-xs text-blue-400 mt-1">
+                  {user.email}
+                </p>
+              </div>
+            )}
+          </div>
+        </section>
+
         {/* Notifications Section */}
         <section className="bg-white rounded-2xl border-4 border-[#4A9FD4] shadow-crayon overflow-hidden">
           <div className="bg-[#4A9FD4] text-white p-4">

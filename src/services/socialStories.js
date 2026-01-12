@@ -182,38 +182,68 @@ export const generateStory = async (topic, options = {}) => {
  */
 const generateLocalStory = (topic, characterName = 'Sam') => {
   const id = `local_${Date.now()}`;
+  const topicLower = topic.toLowerCase();
   
-  // Generic template pages
+  // Check for pre-built stories first
+  const prebuilt = PREBUILT_STORIES[topicLower];
+  if (prebuilt) {
+    return {
+      id,
+      topic,
+      topic_normalized: topicLower,
+      pages: prebuilt.map((page, idx) => ({
+        ...page,
+        pageNumber: idx + 1,
+        text: page.text.replace(/\{name\}/g, characterName),
+      })),
+      character_name: characterName,
+      is_public: false,
+      use_count: 1,
+      created_at: new Date().toISOString(),
+    };
+  }
+  
+  // Find topic emoji
+  const topicData = SUGGESTED_TOPICS.find(t => t.topic.toLowerCase() === topicLower);
+  const topicEmoji = topicData?.emoji || '📖';
+  
+  // Generic template pages with appropriate emojis
   const pages = [
     {
       pageNumber: 1,
       text: `Sometimes ${characterName} needs to do ${topic}.`,
       imageDescription: `A friendly child thinking about ${topic}`,
+      emoji: '💭',
     },
     {
       pageNumber: 2,
       text: `${characterName} knows that ${topic} is something important.`,
       imageDescription: `A child preparing for ${topic}`,
+      emoji: topicEmoji,
     },
     {
       pageNumber: 3,
       text: `First, ${characterName} gets ready. It's good to be prepared!`,
       imageDescription: `A child getting ready, looking confident`,
+      emoji: '✅',
     },
     {
       pageNumber: 4,
       text: `${characterName} takes it one step at a time. There's no rush.`,
       imageDescription: `A child taking a first step, calm and focused`,
+      emoji: '👣',
     },
     {
       pageNumber: 5,
       text: `If ${characterName} feels nervous, that's okay. Deep breaths help!`,
       imageDescription: `A child taking a deep breath, feeling calm`,
+      emoji: '🌬️',
     },
     {
       pageNumber: 6,
       text: `${characterName} did it! ${topic} wasn't so bad after all.`,
       imageDescription: `A proud, happy child celebrating`,
+      emoji: '🎉',
     },
   ];
   
@@ -227,6 +257,210 @@ const generateLocalStory = (topic, characterName = 'Sam') => {
     use_count: 1,
     created_at: new Date().toISOString(),
   };
+};
+
+// ============================================
+// PRE-BUILT STORIES (High Quality)
+// ============================================
+
+const PREBUILT_STORIES = {
+  'going to the dentist': [
+    {
+      text: '{name} has a dentist appointment today.',
+      imageDescription: 'A calendar with a dentist appointment circled',
+      emoji: '📅',
+    },
+    {
+      text: 'The dentist office has a waiting room with chairs and toys.',
+      imageDescription: 'A friendly waiting room with colorful chairs',
+      emoji: '🏥',
+    },
+    {
+      text: 'A nice dentist will look at {name}\'s teeth with a tiny mirror.',
+      imageDescription: 'A smiling dentist holding a small dental mirror',
+      emoji: '🦷',
+    },
+    {
+      text: '{name} opens wide and says "Ahh!" This helps the dentist see.',
+      imageDescription: 'A child sitting in a dentist chair with mouth open',
+      emoji: '😮',
+    },
+    {
+      text: 'The dentist counts {name}\'s teeth. It doesn\'t hurt!',
+      imageDescription: 'Dentist counting teeth, child looking calm',
+      emoji: '🔢',
+    },
+    {
+      text: '{name} did great! Healthy teeth make {name} smile.',
+      imageDescription: 'A happy child showing off a big smile',
+      emoji: '😁',
+    },
+  ],
+  
+  'getting a haircut': [
+    {
+      text: '{name}\'s hair is getting long. Time for a haircut!',
+      imageDescription: 'A child looking at their long hair in a mirror',
+      emoji: '👀',
+    },
+    {
+      text: 'The hair salon has special chairs that go up and down.',
+      imageDescription: 'A barber chair in a friendly salon',
+      emoji: '💈',
+    },
+    {
+      text: 'A cape goes around {name} to keep the hair off clothes.',
+      imageDescription: 'Child wearing a colorful cape in salon chair',
+      emoji: '🧥',
+    },
+    {
+      text: 'The scissors go "snip snip." It doesn\'t hurt at all!',
+      imageDescription: 'Hairdresser carefully cutting hair with scissors',
+      emoji: '✂️',
+    },
+    {
+      text: '{name} can look in the mirror and watch.',
+      imageDescription: 'Child watching their reflection during haircut',
+      emoji: '🪞',
+    },
+    {
+      text: 'All done! {name} looks great with a fresh haircut.',
+      imageDescription: 'Happy child with a new haircut',
+      emoji: '💇',
+    },
+  ],
+  
+  'visiting the doctor': [
+    {
+      text: '{name} is going to visit the doctor today.',
+      imageDescription: 'A child getting ready to leave for the doctor',
+      emoji: '🏥',
+    },
+    {
+      text: 'The doctor\'s office has a waiting room with books and toys.',
+      imageDescription: 'A colorful waiting room with books',
+      emoji: '📚',
+    },
+    {
+      text: 'A nurse will check {name}\'s height and weight.',
+      imageDescription: 'A nurse measuring a child on a scale',
+      emoji: '📏',
+    },
+    {
+      text: 'The doctor uses a stethoscope to hear {name}\'s heart. Thump thump!',
+      imageDescription: 'Doctor with stethoscope, child sitting calmly',
+      emoji: '💓',
+    },
+    {
+      text: 'The doctor looks in {name}\'s ears, eyes, and mouth. "Say Ahh!"',
+      imageDescription: 'Doctor examining child with otoscope',
+      emoji: '👨‍⚕️',
+    },
+    {
+      text: '{name} was brave! The doctor helps keep {name} healthy.',
+      imageDescription: 'Doctor and child giving high-five',
+      emoji: '🌟',
+    },
+  ],
+  
+  'taking a bath': [
+    {
+      text: 'It\'s bath time for {name}!',
+      imageDescription: 'A bathtub filling up with warm water',
+      emoji: '🛁',
+    },
+    {
+      text: '{name} can test the water to make sure it\'s just right.',
+      imageDescription: 'A hand testing the water temperature',
+      emoji: '🌡️',
+    },
+    {
+      text: 'Bubbles and toys make bath time fun!',
+      imageDescription: 'Bubbles and rubber duck in bathtub',
+      emoji: '🫧',
+    },
+    {
+      text: '{name} washes with soap. It smells nice!',
+      imageDescription: 'Child washing with colorful soap',
+      emoji: '🧼',
+    },
+    {
+      text: 'Rinse off all the soap and bubbles. Splash splash!',
+      imageDescription: 'Water splashing gently',
+      emoji: '💦',
+    },
+    {
+      text: 'All clean! {name} dries off with a fluffy towel.',
+      imageDescription: 'Child wrapped in a cozy towel, smiling',
+      emoji: '✨',
+    },
+  ],
+  
+  'going to school': [
+    {
+      text: 'Today {name} is going to school!',
+      imageDescription: 'Backpack and school supplies ready',
+      emoji: '🎒',
+    },
+    {
+      text: '{name} says goodbye to family. "See you later!"',
+      imageDescription: 'Child waving goodbye at the door',
+      emoji: '👋',
+    },
+    {
+      text: 'School has a classroom with tables and chairs.',
+      imageDescription: 'A bright, colorful classroom',
+      emoji: '🏫',
+    },
+    {
+      text: '{name}\'s teacher is kind and helps everyone learn.',
+      imageDescription: 'A smiling teacher at the front of class',
+      emoji: '👩‍🏫',
+    },
+    {
+      text: '{name} can play and make friends at recess!',
+      imageDescription: 'Children playing together on playground',
+      emoji: '🤝',
+    },
+    {
+      text: 'School is over! {name} learned new things today.',
+      imageDescription: 'Happy child walking home with backpack',
+      emoji: '🌟',
+    },
+  ],
+  
+  'making a new friend': [
+    {
+      text: '{name} sees someone new at the playground.',
+      imageDescription: 'Two children at a playground, one waving',
+      emoji: '👀',
+    },
+    {
+      text: '{name} walks over and says "Hi! My name is {name}."',
+      imageDescription: 'Child smiling and waving hello',
+      emoji: '👋',
+    },
+    {
+      text: '"What\'s your name? Do you want to play?"',
+      imageDescription: 'Two children talking to each other',
+      emoji: '💬',
+    },
+    {
+      text: 'Friends take turns and share toys.',
+      imageDescription: 'Two children sharing a toy together',
+      emoji: '🔄',
+    },
+    {
+      text: 'Friends are kind to each other and have fun together.',
+      imageDescription: 'Two children laughing and playing',
+      emoji: '😊',
+    },
+    {
+      text: '{name} made a new friend today! Friends make life better.',
+      imageDescription: 'Two children holding hands, smiling',
+      emoji: '💝',
+    },
+  ],
 };
 
 // ============================================

@@ -23,7 +23,7 @@ DROP POLICY IF EXISTS "Users can unsave stories" ON user_saved_stories;
 
 DROP FUNCTION IF EXISTS get_popular_stories(INTEGER);
 DROP FUNCTION IF EXISTS search_stories(TEXT, INTEGER);
-DROP FUNCTION IF EXISTS update_social_stories_timestamp();
+DROP FUNCTION IF EXISTS update_social_stories_timestamp() CASCADE;
 
 -- ============================================
 -- DROP EXISTING TRIGGERS (if any)
