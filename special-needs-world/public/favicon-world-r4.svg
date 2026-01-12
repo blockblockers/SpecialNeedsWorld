@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <!-- Crayon texture effect -->
+    <filter id="crayonTexture4" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.038" numOctaves="4" result="noise" seed="15"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.6" xChannelSelector="R" yChannelSelector="G"/>
+      <feGaussianBlur stdDeviation="0.25"/>
+    </filter>
+    
+    <!-- Realistic child handprint path -->
+    <g id="childHand">
+      <path d="
+        M 18 58
+        Q 14 54, 12 48 L 10 40
+        Q 6 34, 4 26 L 3 18 Q 2 12, 6 12 Q 10 12, 11 18 L 13 28
+        Q 12 24, 11 16 L 10 8 Q 9 2, 14 2 Q 19 2, 20 8 L 21 18 L 22 26
+        Q 22 20, 22 12 L 22 5 Q 22 -1, 27 -1 Q 32 -1, 32 5 L 32 14 L 31 24
+        Q 34 18, 36 10 L 37 4 Q 38 -1, 42 0 Q 46 1, 45 6 L 43 16 L 40 26
+        Q 44 22, 50 20 Q 56 18, 58 24 Q 60 30, 54 36 L 46 44
+        Q 40 50, 36 56 Q 30 62, 18 58 Z
+      "/>
+    </g>
+  </defs>
+  
+  <!-- Paper background -->
+  <rect width="100" height="100" fill="#FFF8E1"/>
+  <circle cx="50" cy="50" r="48" fill="none" stroke="#DEB887" stroke-width="2" filter="url(#crayonTexture4)"/>
+  
+  <!-- Ring of 6 colorful handprints around the edge -->
+  
+  <!-- Red - top -->
+  <g filter="url(#crayonTexture4)" transform="translate(40, 2) scale(0.32)">
+    <use href="#childHand" fill="#E74C3C"/>
+    <use href="#childHand" fill="none" stroke="#C0392B" stroke-width="2"/>
+  </g>
+  
+  <!-- Orange - top right -->
+  <g filter="url(#crayonTexture4)" transform="translate(72, 14) rotate(60, 15, 30) scale(0.32)">
+    <use href="#childHand" fill="#F39C12"/>
+    <use href="#childHand" fill="none" stroke="#D68910" stroke-width="2"/>
+  </g>
+  
+  <!-- Yellow - bottom right -->
+  <g filter="url(#crayonTexture4)" transform="translate(76, 52) rotate(120, 15, 28) scale(0.32)">
+    <use href="#childHand" fill="#F7DC6F"/>
+    <use href="#childHand" fill="none" stroke="#D4AC0D" stroke-width="2"/>
+  </g>
+  
+  <!-- Green - bottom -->
+  <g filter="url(#crayonTexture4)" transform="translate(44, 76) rotate(180, 18, 28) scale(0.32)">
+    <use href="#childHand" fill="#58D68D"/>
+    <use href="#childHand" fill="none" stroke="#28B463" stroke-width="2"/>
+  </g>
+  
+  <!-- Blue - bottom left -->
+  <g filter="url(#crayonTexture4)" transform="translate(6, 58) rotate(240, 22, 26) scale(0.32)">
+    <use href="#childHand" fill="#5DADE2"/>
+    <use href="#childHand" fill="none" stroke="#2E86C1" stroke-width="2"/>
+  </g>
+  
+  <!-- Purple - top left -->
+  <g filter="url(#crayonTexture4)" transform="translate(4, 18) rotate(300, 24, 28) scale(0.32)">
+    <use href="#childHand" fill="#AF7AC5"/>
+    <use href="#childHand" fill="none" stroke="#7D3C98" stroke-width="2"/>
+  </g>
+  
+  <!-- Central globe -->
+  <g filter="url(#crayonTexture4)">
+    <!-- Ocean -->
+    <circle cx="50" cy="50" r="22" fill="#4A9BD9"/>
+    
+    <!-- North America -->
+    <path d="M36 42 Q40 38, 44 42 Q46 46, 44 50 Q42 52, 38 50 Q36 48, 36 42" fill="#5DAE4D"/>
+    
+    <!-- South America -->
+    <path d="M42 54 Q44 52, 46 56 Q48 62, 46 66 Q44 68, 42 66 Q40 62, 42 54" fill="#5DAE4D"/>
+    
+    <!-- Europe/Africa -->
+    <path d="M54 40 Q58 38, 60 42 Q62 48, 60 54 Q58 60, 56 62 Q54 60, 54 54 Q52 48, 54 40" fill="#5DAE4D"/>
+    
+    <!-- Asia -->
+    <path d="M62 42 Q66 40, 68 44 Q70 48, 68 52 Q66 54, 64 50 Q62 46, 62 42" fill="#5DAE4D"/>
+    
+    <!-- Highlight -->
+    <ellipse cx="42" cy="44" rx="5" ry="3" fill="white" opacity="0.2"/>
+    
+    <!-- Globe outline -->
+    <circle cx="50" cy="50" r="22" fill="none" stroke="#2C5F7C" stroke-width="2"/>
+  </g>
+</svg>

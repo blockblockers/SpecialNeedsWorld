@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <!-- Crayon texture effect -->
+    <filter id="crayonTexture3" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="5" result="noise" seed="10"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.5" xChannelSelector="R" yChannelSelector="G"/>
+      <feGaussianBlur stdDeviation="0.2"/>
+    </filter>
+    
+    <!-- Clip path for globe -->
+    <clipPath id="globeClip3">
+      <circle cx="50" cy="50" r="40"/>
+    </clipPath>
+  </defs>
+  
+  <!-- Paper background -->
+  <rect width="100" height="100" fill="#FFF8E1"/>
+  
+  <!-- Globe -->
+  <g filter="url(#crayonTexture3)">
+    <!-- Ocean -->
+    <circle cx="50" cy="50" r="40" fill="#5DADE2"/>
+    
+    <!-- Continents - more detailed -->
+    <!-- North America -->
+    <path d="M22 32 Q28 26, 36 28 Q42 30, 46 36 Q48 42, 44 48 Q40 52, 34 50 Q28 48, 24 42 Q20 36, 22 32" fill="#7DCEA0"/>
+    
+    <!-- South America -->
+    <path d="M34 54 Q38 52, 42 56 Q46 64, 44 74 Q42 80, 36 78 Q32 74, 32 66 Q32 58, 34 54" fill="#7DCEA0"/>
+    
+    <!-- Europe -->
+    <path d="M52 28 Q58 26, 62 30 Q64 34, 62 38 Q60 42, 56 40 Q52 38, 52 32 Q52 28, 52 28" fill="#7DCEA0"/>
+    
+    <!-- Africa -->
+    <path d="M54 44 Q60 42, 66 48 Q70 56, 68 66 Q64 74, 58 72 Q52 68, 52 60 Q52 52, 54 44" fill="#7DCEA0"/>
+    
+    <!-- Asia hint -->
+    <path d="M66 30 Q74 28, 80 34 Q84 42, 80 50 Q76 54, 72 50 Q68 44, 66 36 Q64 30, 66 30" fill="#7DCEA0"/>
+    
+    <!-- Australia hint -->
+    <path d="M72 62 Q78 60, 82 64 Q84 70, 80 74 Q76 76, 72 72 Q70 68, 72 62" fill="#7DCEA0"/>
+    
+    <!-- Globe highlight -->
+    <ellipse cx="35" cy="35" rx="12" ry="8" fill="white" opacity="0.15"/>
+  </g>
+  
+  <!-- Handprints ON the globe (clipped) - like paint stamps -->
+  <g clip-path="url(#globeClip3)">
+    <!-- Red handprint - upper left -->
+    <g filter="url(#crayonTexture3)" transform="translate(12, 18) scale(0.38)" opacity="0.85">
+      <path d="
+        M 25 80
+        Q 20 75, 18 68 L 15 58 
+        Q 10 52, 8 42 L 6 30 Q 5 22, 10 22 Q 15 22, 16 30 L 18 42
+        Q 18 38, 17 28 L 15 16 Q 14 8, 20 8 Q 26 8, 27 16 L 28 28 L 29 38
+        Q 30 32, 30 22 L 30 12 Q 30 4, 36 4 Q 42 4, 42 12 L 42 24 L 41 36
+        Q 44 30, 46 20 L 47 12 Q 48 5, 54 6 Q 59 7, 58 14 L 56 26 L 53 38
+        Q 58 34, 64 32 Q 72 30, 76 38 Q 78 46, 72 52 L 60 62
+        Q 52 70, 46 78 Q 38 86, 25 80 Z
+      " fill="#E74C3C"/>
+    </g>
+    
+    <!-- Yellow handprint - right side -->
+    <g filter="url(#crayonTexture3)" transform="translate(48, 30) scale(0.35)" opacity="0.85">
+      <path d="
+        M 25 80
+        Q 20 75, 18 68 L 15 58 
+        Q 10 52, 8 42 L 6 30 Q 5 22, 10 22 Q 15 22, 16 30 L 18 42
+        Q 18 38, 17 28 L 15 16 Q 14 8, 20 8 Q 26 8, 27 16 L 28 28 L 29 38
+        Q 30 32, 30 22 L 30 12 Q 30 4, 36 4 Q 42 4, 42 12 L 42 24 L 41 36
+        Q 44 30, 46 20 L 47 12 Q 48 5, 54 6 Q 59 7, 58 14 L 56 26 L 53 38
+        Q 58 34, 64 32 Q 72 30, 76 38 Q 78 46, 72 52 L 60 62
+        Q 52 70, 46 78 Q 38 86, 25 80 Z
+      " fill="#F7DC6F"/>
+    </g>
+    
+    <!-- Green handprint - bottom -->
+    <g filter="url(#crayonTexture3)" transform="translate(24, 52) scale(0.36)" opacity="0.85">
+      <path d="
+        M 25 80
+        Q 20 75, 18 68 L 15 58 
+        Q 10 52, 8 42 L 6 30 Q 5 22, 10 22 Q 15 22, 16 30 L 18 42
+        Q 18 38, 17 28 L 15 16 Q 14 8, 20 8 Q 26 8, 27 16 L 28 28 L 29 38
+        Q 30 32, 30 22 L 30 12 Q 30 4, 36 4 Q 42 4, 42 12 L 42 24 L 41 36
+        Q 44 30, 46 20 L 47 12 Q 48 5, 54 6 Q 59 7, 58 14 L 56 26 L 53 38
+        Q 58 34, 64 32 Q 72 30, 76 38 Q 78 46, 72 52 L 60 62
+        Q 52 70, 46 78 Q 38 86, 25 80 Z
+      " fill="#58D68D"/>
+    </g>
+  </g>
+  
+  <!-- Globe outline on top -->
+  <circle cx="50" cy="50" r="40" fill="none" stroke="#2874A6" stroke-width="2.5" filter="url(#crayonTexture3)"/>
+</svg>

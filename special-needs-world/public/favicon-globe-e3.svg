@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <filter id="crayonG3" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="3" result="noise" seed="120"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.2" xChannelSelector="R" yChannelSelector="G"/>
+      <feGaussianBlur stdDeviation="0.15"/>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="100" height="100" fill="#FFF8E1"/>
+  <circle cx="50" cy="50" r="48" fill="#FFFEF8" stroke="#D4B8D4" stroke-width="2"/>
+  
+  <!-- Globe - Europe/Africa centered -->
+  <g filter="url(#crayonG3)">
+    <!-- Ocean -->
+    <circle cx="50" cy="50" r="42" fill="#4BA3D9"/>
+    
+    <!-- ICELAND -->
+    <path d="M18 22 Q22 18, 26 20 Q28 24, 26 28 Q22 30, 18 28 Q16 26, 18 22" fill="#5CB85C"/>
+    
+    <!-- SCANDINAVIA - Norway, Sweden, Finland -->
+    <path d="
+      M44 14 Q48 10, 54 12
+      Q58 16, 58 24 Q56 32, 52 36
+      Q48 38, 46 34 Q44 28, 44 22
+      Q42 18, 44 14
+    " fill="#5CB85C"/>
+    <!-- Denmark -->
+    <path d="M44 38 Q48 36, 50 40 Q50 44, 46 44 Q44 42, 44 38" fill="#5CB85C"/>
+    
+    <!-- UK - Great Britain shape -->
+    <path d="
+      M28 34 Q32 30, 36 32
+      Q38 36, 38 42 Q36 48, 32 50
+      Q28 50, 26 46 Q26 40, 28 34
+    " fill="#5CB85C"/>
+    <!-- Scotland highlands indent -->
+    <path d="M30 36 Q32 34, 34 36 Q34 38, 32 40 Q30 40, 30 38 Q28 38, 30 36" fill="#4BA3D9"/>
+    
+    <!-- IRELAND -->
+    <path d="M20 40 Q24 36, 26 40 Q28 46, 26 50 Q22 52, 20 48 Q18 44, 20 40" fill="#5CB85C"/>
+    
+    <!-- WESTERN EUROPE - France -->
+    <path d="
+      M36 46 Q44 42, 50 46
+      Q54 52, 52 60 Q48 64, 42 64
+      Q36 62, 34 56 Q34 50, 36 46
+    " fill="#5CB85C"/>
+    <!-- Brittany peninsula -->
+    <path d="M32 54 Q36 52, 38 56 Q38 60, 34 60 Q32 58, 32 54" fill="#5CB85C"/>
+    
+    <!-- IBERIAN PENINSULA - Spain & Portugal -->
+    <path d="
+      M30 62 Q38 58, 46 62
+      Q52 68, 50 76 Q46 82, 38 82
+      Q30 80, 28 74 Q28 68, 30 62
+    " fill="#5CB85C"/>
+    
+    <!-- ITALY - Boot shape -->
+    <path d="
+      M54 54 Q58 52, 62 56
+      Q64 62, 62 70 Q60 76, 58 74
+      Q56 70, 58 66 Q56 64, 54 66
+      Q52 64, 54 60 Q52 58, 54 54
+    " fill="#5CB85C"/>
+    <!-- Sicily -->
+    <ellipse cx="58" cy="78" rx="4" ry="3" fill="#5CB85C" transform="rotate(-20 58 78)"/>
+    <!-- Sardinia -->
+    <ellipse cx="50" cy="72" rx="3" ry="4" fill="#5CB85C"/>
+    
+    <!-- GREECE & Balkans -->
+    <path d="M66 56 Q72 52, 76 58 Q78 66, 74 72 Q70 74, 68 70 Q66 64, 66 56" fill="#5CB85C"/>
+    
+    <!-- AFRICA - Highly detailed -->
+    <!-- North Africa -->
+    <path d="
+      M26 82 Q36 78, 52 80
+      Q68 82, 80 88
+      Q84 92, 82 98
+    " fill="#5CB85C"/>
+    
+    <!-- Full Africa -->
+    <path d="
+      M26 82
+      Q38 78, 56 80
+      Q74 84, 82 94
+      Q86 106, 80 118
+      Q72 126, 60 126
+      Q48 124, 42 116
+      Q38 108, 36 98
+      Q32 90, 28 86
+      Q26 84, 26 82
+    " fill="#5CB85C"/>
+    <!-- West Africa bulge -->
+    <path d="M24 88 Q30 84, 38 88 Q44 94, 42 102 Q36 106, 30 102 Q24 96, 24 88" fill="#5CB85C"/>
+    <!-- Gulf of Guinea indent -->
+    <path d="M42 98 Q48 94, 54 98 Q56 104, 52 108 Q46 106, 42 100 Q40 98, 42 98" fill="#4BA3D9"/>
+    <!-- Horn of Africa -->
+    <path d="M82 92 Q90 88, 94 96 Q94 104, 88 108 Q86 104, 84 98 Q82 94, 82 92" fill="#5CB85C"/>
+    
+    <!-- MADAGASCAR -->
+    <path d="M88 108 Q94 104, 96 114 Q96 126, 90 130 Q86 128, 86 120 Q86 112, 88 108" fill="#5CB85C"/>
+    
+    <!-- MIDDLE EAST - Arabian Peninsula -->
+    <path d="
+      M78 70 Q86 66, 92 74
+      Q96 84, 92 92 Q86 94, 82 90
+      Q78 84, 78 78 Q76 74, 78 70
+    " fill="#5CB85C"/>
+    
+    <!-- RUSSIA edge visible -->
+    <path d="M68 24 Q78 18, 90 24 Q96 32, 94 42 Q88 46, 82 42 Q76 38, 72 32 Q68 28, 68 24" fill="#5CB85C"/>
+    
+    <!-- Globe highlight -->
+    <ellipse cx="32" cy="30" rx="12" ry="8" fill="white" opacity="0.15"/>
+    
+    <!-- Globe outline -->
+    <circle cx="50" cy="50" r="42" fill="none" stroke="#1A5276" stroke-width="2"/>
+  </g>
+</svg>

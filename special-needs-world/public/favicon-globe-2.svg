@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <!-- Crayon texture effect -->
+    <filter id="crayonGlobe2" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.038" numOctaves="4" result="noise" seed="35"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.5" xChannelSelector="R" yChannelSelector="G"/>
+      <feGaussianBlur stdDeviation="0.22"/>
+    </filter>
+  </defs>
+  
+  <!-- Warm paper background -->
+  <rect width="100" height="100" fill="#FFF8E1"/>
+  <circle cx="50" cy="50" r="48" fill="#FFFBF0" stroke="#D4A574" stroke-width="2"/>
+  
+  <!-- Globe - Americas centered -->
+  <g filter="url(#crayonGlobe2)">
+    <!-- Ocean - slightly warmer blue -->
+    <circle cx="50" cy="50" r="42" fill="#4BACD9"/>
+    
+    <!-- Alaska -->
+    <path d="M 14 26 Q 18 22, 24 24 Q 28 26, 26 30 Q 22 34, 18 32 Q 14 30, 14 26" fill="#6BBF59"/>
+    
+    <!-- Canada -->
+    <path d="
+      M 26 24
+      Q 32 20, 42 22
+      Q 52 24, 58 28
+      Q 54 32, 48 34
+      Q 42 36, 38 34
+      Q 34 36, 30 34
+      Q 26 32, 26 28
+      Q 26 24, 26 24
+      Z
+    " fill="#6BBF59"/>
+    
+    <!-- USA -->
+    <path d="
+      M 24 36
+      Q 30 34, 38 36
+      Q 46 38, 50 42
+      Q 48 46, 42 48
+      Q 36 50, 30 48
+      Q 24 46, 22 42
+      Q 22 38, 24 36
+      Z
+    " fill="#6BBF59"/>
+    
+    <!-- Mexico -->
+    <path d="M 28 50 Q 34 48, 38 52 Q 40 58, 36 62 Q 30 64, 28 60 Q 26 56, 28 50" fill="#6BBF59"/>
+    
+    <!-- Central America -->
+    <path d="M 36 64 Q 40 62, 42 66 Q 44 72, 40 74 Q 36 74, 36 70 Q 34 68, 36 64" fill="#6BBF59"/>
+    
+    <!-- South America - full view -->
+    <path d="
+      M 42 74
+      Q 48 72, 54 76
+      Q 60 82, 58 90
+      Q 54 94, 48 94
+      Q 42 92, 40 86
+      Q 38 80, 42 74
+      Z
+    " fill="#6BBF59"/>
+    
+    <!-- Caribbean islands -->
+    <ellipse cx="48" cy="54" rx="2" ry="1.5" fill="#6BBF59"/>
+    <ellipse cx="52" cy="56" rx="2.5" ry="1.5" fill="#6BBF59"/>
+    <ellipse cx="56" cy="54" rx="2" ry="1" fill="#6BBF59"/>
+    
+    <!-- Western Europe (edge of globe) -->
+    <path d="M 78 32 Q 84 30, 88 36 Q 90 42, 86 46 Q 82 44, 80 40 Q 78 36, 78 32" fill="#6BBF59"/>
+    
+    <!-- Western Africa (edge of globe) -->
+    <path d="M 82 50 Q 88 48, 90 56 Q 92 66, 88 72 Q 84 70, 82 64 Q 80 58, 82 50" fill="#6BBF59"/>
+    
+    <!-- Globe highlight -->
+    <ellipse cx="34" cy="34" rx="12" ry="9" fill="white" opacity="0.18"/>
+    
+    <!-- Globe outline -->
+    <circle cx="50" cy="50" r="42" fill="none" stroke="#2B6B8E" stroke-width="2.5"/>
+  </g>
+</svg>
