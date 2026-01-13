@@ -165,6 +165,113 @@ const localRecipes = [
       { step_number: 6, instruction: 'Enjoy your sundae!', action: 'Eat!', emoji: '😋' },
     ],
   },
+  {
+    id: 9, slug: 'cheese-and-crackers', name: 'Cheese & Crackers', description: 'Easy cheesy snack!',
+    emoji: '🧀', image_emoji: '🧀', category_id: 'snack', difficulty: 'easy', prep_time: 3, cook_time: 0, total_time: 3, servings: 1,
+    ingredients: [
+      { name: 'Cheese slices', emoji: '🧀', amount: '3-4 slices' },
+      { name: 'Crackers', emoji: '🍘', amount: '8-10' },
+    ],
+    steps: [
+      { step_number: 1, instruction: 'Get a plate', action: 'Get plate', emoji: '🍽️' },
+      { step_number: 2, instruction: 'Put crackers on plate', action: 'Add crackers', emoji: '🍘' },
+      { step_number: 3, instruction: 'Cut cheese into small pieces', action: 'Cut cheese', emoji: '🧀' },
+      { step_number: 4, instruction: 'Put cheese on crackers', action: 'Add cheese', emoji: '🧀' },
+      { step_number: 5, instruction: 'Enjoy your snack!', action: 'Eat!', emoji: '😋' },
+    ],
+  },
+  {
+    id: 10, slug: 'fruit-cup', name: 'Rainbow Fruit Cup', description: 'Fresh and colorful!',
+    emoji: '🍇', image_emoji: '🍇', category_id: 'snack', difficulty: 'easy', prep_time: 5, cook_time: 0, total_time: 5, servings: 1,
+    ingredients: [
+      { name: 'Grapes', emoji: '🍇', amount: 'handful' },
+      { name: 'Strawberries', emoji: '🍓', amount: '3-4' },
+      { name: 'Apple slices', emoji: '🍎', amount: '1/2 apple' },
+      { name: 'Orange segments', emoji: '🍊', amount: '1/2 orange' },
+    ],
+    steps: [
+      { step_number: 1, instruction: 'Wash all the fruit', action: 'Wash', emoji: '🚿' },
+      { step_number: 2, instruction: 'Get a cup or bowl', action: 'Get cup', emoji: '🥤' },
+      { step_number: 3, instruction: 'Add grapes', action: 'Add grapes', emoji: '🍇' },
+      { step_number: 4, instruction: 'Cut strawberries in half', action: 'Cut', emoji: '🍓' },
+      { step_number: 5, instruction: 'Add all the fruit', action: 'Add fruit', emoji: '🍎' },
+      { step_number: 6, instruction: 'Mix gently', action: 'Mix', emoji: '🥄' },
+      { step_number: 7, instruction: 'Enjoy your fruit!', action: 'Eat!', emoji: '😋' },
+    ],
+  },
+  {
+    id: 11, slug: 'ants-on-a-log', name: 'Ants on a Log', description: 'A crunchy fun snack!',
+    emoji: '🐜', image_emoji: '🥬', category_id: 'snack', difficulty: 'easy', prep_time: 5, cook_time: 0, total_time: 5, servings: 1,
+    ingredients: [
+      { name: 'Celery stalks', emoji: '🥬', amount: '3' },
+      { name: 'Peanut Butter', emoji: '🥜', amount: '3 tbsp' },
+      { name: 'Raisins', emoji: '🍇', amount: 'handful' },
+    ],
+    steps: [
+      { step_number: 1, instruction: 'Wash the celery', action: 'Wash', emoji: '🚿' },
+      { step_number: 2, instruction: 'Cut celery into sticks', action: 'Cut', emoji: '🔪' },
+      { step_number: 3, instruction: 'Spread peanut butter in celery', action: 'Spread', emoji: '🥜' },
+      { step_number: 4, instruction: 'Put raisins on top (the ants!)', action: 'Add ants', emoji: '🐜' },
+      { step_number: 5, instruction: 'Line them up on a plate', action: 'Arrange', emoji: '🍽️' },
+      { step_number: 6, instruction: 'Enjoy your logs with ants!', action: 'Eat!', emoji: '😋' },
+    ],
+  },
+  {
+    id: 12, slug: 'mini-pizzas', name: 'Mini English Muffin Pizzas', description: 'Make your own pizza!',
+    emoji: '🍕', image_emoji: '🍕', category_id: 'lunch', difficulty: 'easy', prep_time: 5, cook_time: 8, total_time: 13, servings: 2,
+    ingredients: [
+      { name: 'English muffin', emoji: '🥯', amount: '1 (2 halves)' },
+      { name: 'Pizza sauce', emoji: '🍅', amount: '2 tbsp' },
+      { name: 'Shredded cheese', emoji: '🧀', amount: '1/4 cup' },
+      { name: 'Toppings (pepperoni)', emoji: '🔴', amount: 'a few' },
+    ],
+    steps: [
+      { step_number: 1, instruction: 'Split English muffin in half', action: 'Split', emoji: '🥯' },
+      { step_number: 2, instruction: 'Put halves on baking sheet', action: 'Place', emoji: '📋' },
+      { step_number: 3, instruction: 'Spread pizza sauce on each half', action: 'Add sauce', emoji: '🍅' },
+      { step_number: 4, instruction: 'Sprinkle cheese on top', action: 'Add cheese', emoji: '🧀' },
+      { step_number: 5, instruction: 'Add your favorite toppings', action: 'Add toppings', emoji: '🔴' },
+      { step_number: 6, instruction: 'Bake at 375°F for 8 minutes', action: 'Bake', emoji: '🔥', requires_adult: true },
+      { step_number: 7, instruction: 'Let cool for 2 minutes', action: 'Cool', emoji: '⏰' },
+      { step_number: 8, instruction: 'Enjoy your mini pizzas!', action: 'Eat!', emoji: '😋' },
+    ],
+  },
+  {
+    id: 13, slug: 'nachos', name: 'Easy Cheesy Nachos', description: 'Crunchy chips with melty cheese!',
+    emoji: '🫔', image_emoji: '🧀', category_id: 'snack', difficulty: 'easy', prep_time: 3, cook_time: 2, total_time: 5, servings: 1,
+    ingredients: [
+      { name: 'Tortilla chips', emoji: '🫔', amount: 'a handful' },
+      { name: 'Shredded cheese', emoji: '🧀', amount: '1/4 cup' },
+      { name: 'Salsa (optional)', emoji: '🍅', amount: '2 tbsp' },
+    ],
+    steps: [
+      { step_number: 1, instruction: 'Get a microwave-safe plate', action: 'Get plate', emoji: '🍽️' },
+      { step_number: 2, instruction: 'Spread chips on the plate', action: 'Add chips', emoji: '🫔' },
+      { step_number: 3, instruction: 'Sprinkle cheese on top of chips', action: 'Add cheese', emoji: '🧀' },
+      { step_number: 4, instruction: 'Microwave for 30-45 seconds', action: 'Microwave', emoji: '📻' },
+      { step_number: 5, instruction: 'Check if cheese is melted', action: 'Check', emoji: '👀' },
+      { step_number: 6, instruction: 'Add salsa if you want', action: 'Add salsa', emoji: '🍅' },
+      { step_number: 7, instruction: 'Enjoy your nachos!', action: 'Eat!', emoji: '😋' },
+    ],
+  },
+  {
+    id: 14, slug: 'mac-cheese-cup', name: 'Mac & Cheese Cup', description: 'Creamy pasta in minutes!',
+    emoji: '🧀', image_emoji: '🍝', category_id: 'lunch', difficulty: 'easy', prep_time: 1, cook_time: 4, total_time: 5, servings: 1,
+    ingredients: [
+      { name: 'Mac & cheese cup', emoji: '🥤', amount: '1 cup' },
+      { name: 'Water', emoji: '💧', amount: 'to the line' },
+    ],
+    steps: [
+      { step_number: 1, instruction: 'Remove the lid from the cup', action: 'Open', emoji: '📦' },
+      { step_number: 2, instruction: 'Take out the cheese packet', action: 'Remove packet', emoji: '🧀' },
+      { step_number: 3, instruction: 'Add water to the fill line', action: 'Add water', emoji: '💧' },
+      { step_number: 4, instruction: 'Microwave for 3½ minutes', action: 'Microwave', emoji: '📻' },
+      { step_number: 5, instruction: 'Careful! It will be hot!', action: 'Be careful', emoji: '⚠️', requires_adult: true },
+      { step_number: 6, instruction: 'Stir in the cheese powder', action: 'Add cheese', emoji: '🧀' },
+      { step_number: 7, instruction: 'Mix until creamy', action: 'Stir', emoji: '🥄' },
+      { step_number: 8, instruction: 'Let cool and enjoy!', action: 'Eat!', emoji: '😋' },
+    ],
+  },
 ];
 
 const localCategories = [

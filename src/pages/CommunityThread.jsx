@@ -147,6 +147,15 @@ const CommunityThread = () => {
 
       if (error) throw error;
 
+      // Update thread reply_count and last_activity_at
+      await supabase
+        .from('community_threads')
+        .update({ 
+          reply_count: (thread?.reply_count || 0) + 1,
+          last_activity_at: new Date().toISOString()
+        })
+        .eq('id', threadId);
+
       setReplyContent('');
       loadThread(); // Reload to show new reply
     } catch (error) {
@@ -168,6 +177,15 @@ const CommunityThread = () => {
         .eq('id', replyId);
 
       if (error) throw error;
+
+      // Update thread reply_count
+      await supabase
+        .from('community_threads')
+        .update({ 
+          reply_count: Math.max((thread?.reply_count || 1) - 1, 0)
+        })
+        .eq('id', threadId);
+
       loadThread();
     } catch (error) {
       console.error('Error deleting reply:', error);

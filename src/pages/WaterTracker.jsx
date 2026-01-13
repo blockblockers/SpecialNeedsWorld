@@ -3,8 +3,9 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Minus, RotateCcw, Droplets, Trophy } from 'lucide-react';
+import { ArrowLeft, Plus, Minus, RotateCcw, Droplets, Trophy, BarChart3 } from 'lucide-react';
 import LocalOnlyNotice from '../components/LocalOnlyNotice';
+import TrackerHistory from '../components/TrackerHistory';
 
 const STORAGE_KEY = 'snw_water';
 
@@ -25,6 +26,7 @@ const WaterTracker = () => {
   const [goal, setGoal] = useState(DEFAULT_GOAL);
   const [history, setHistory] = useState({});
   const [showGoalEdit, setShowGoalEdit] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -116,6 +118,13 @@ const WaterTracker = () => {
             </h1>
           </div>
           <button
+            onClick={() => setShowHistory(true)}
+            className="p-2 bg-white border-3 border-blue-400 rounded-full hover:bg-blue-50"
+            title="View history"
+          >
+            <BarChart3 size={18} className="text-blue-500" />
+          </button>
+          <button
             onClick={resetToday}
             className="p-2 bg-white border-3 border-gray-300 rounded-full hover:border-gray-400"
             title="Reset today"
@@ -124,6 +133,18 @@ const WaterTracker = () => {
           </button>
         </div>
       </header>
+
+      {/* History Modal */}
+      {showHistory && (
+        <TrackerHistory
+          data={history}
+          goal={goal}
+          color="#4A9FD4"
+          label="Cups"
+          formatValue={(v) => `${v}`}
+          onClose={() => setShowHistory(false)}
+        />
+      )}
 
       <main className="max-w-md mx-auto px-4 py-6">
         {/* Privacy Notice */}

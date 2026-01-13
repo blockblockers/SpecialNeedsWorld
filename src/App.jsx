@@ -18,7 +18,7 @@ import MatchingGame from './pages/MatchingGame';
 import EmotionMatch from './pages/EmotionMatch';
 import BubblePop from './pages/BubblePop';
 import ColorSort from './pages/ColorSort';
-import SoundMatch from './pages/SoundMatch';
+import ShapeMatch from './pages/ShapeMatch';
 import SimplePuzzles from './pages/SimplePuzzles';
 import PatternSequence from './pages/PatternSequence';
 import Services from './pages/Services';
@@ -38,6 +38,7 @@ import SoundBoard from './pages/SoundBoard';
 import Counter from './pages/Counter';
 import DailyRoutines from './pages/DailyRoutines';
 import MoveExercise from './pages/MoveExercise';
+import OTExercises from './pages/OTExercises';
 import HealthyChoices from './pages/HealthyChoices';
 import Community from './pages/Community';
 import CommunityProfileSetup from './pages/CommunityProfileSetup';
@@ -516,6 +517,14 @@ function App() {
             } 
           />
           <Route 
+            path="/health/ot" 
+            element={
+              <ProtectedRoute>
+                <OTExercises />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
             path="/health/choices" 
             element={
               <ProtectedRoute>
@@ -638,10 +647,10 @@ function App() {
             } 
           />
           <Route 
-            path="/games/sounds" 
+            path="/games/shapes" 
             element={
               <ProtectedRoute>
-                <SoundMatch />
+                <ShapeMatch />
               </ProtectedRoute>
             } 
           />

@@ -130,9 +130,16 @@ const Settings = () => {
 
   // Start editing name
   const startEditingName = () => {
-    setTempName(displayName);
+    setTempName(displayName || '');
     setIsEditingName(true);
   };
+
+  // Initialize tempName when displayName loads
+  useEffect(() => {
+    if (isEditingName && !tempName && displayName) {
+      setTempName(displayName);
+    }
+  }, [displayName, isEditingName, tempName]);
 
   // Handle global toggle
   const handleGlobalToggle = async () => {
@@ -254,7 +261,7 @@ const Settings = () => {
                 </div>
               )}
               <p className="font-crayon text-xs text-gray-400 mt-2">
-                This name is shown in the app. Your Google account name is not used.
+                This name is shown in the app.
               </p>
             </div>
 
@@ -281,7 +288,7 @@ const Settings = () => {
             {user && !isGuest && (
               <div className="p-3 bg-blue-50 rounded-xl border-2 border-blue-200">
                 <p className="font-crayon text-sm text-blue-600">
-                  ✓ Signed in with Google
+                  ✓ Signed in{user.app_metadata?.provider === 'google' ? ' with Google' : ' with Email'}
                 </p>
                 <p className="font-crayon text-xs text-blue-400 mt-1">
                   {user.email}

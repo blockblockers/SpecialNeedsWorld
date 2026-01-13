@@ -1,20 +1,21 @@
 // SleepTracker.jsx - Track sleep patterns
 // Simple logging of bedtime and wake time
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Moon, Sun, Clock, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Moon, Sun, Clock, Trash2, ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
 import LocalOnlyNotice from '../components/LocalOnlyNotice';
+import TrackerHistory from '../components/TrackerHistory';
 
 const STORAGE_KEY = 'snw_sleep';
 
 // Sleep quality emojis
 const SLEEP_QUALITY = [
-  { id: 'great', emoji: '😴', label: 'Great sleep!', color: 'bg-green-100 border-green-400' },
-  { id: 'good', emoji: '🙂', label: 'Good sleep', color: 'bg-blue-100 border-blue-400' },
-  { id: 'okay', emoji: '😐', label: 'Okay sleep', color: 'bg-yellow-100 border-yellow-400' },
-  { id: 'poor', emoji: '😟', label: 'Poor sleep', color: 'bg-orange-100 border-orange-400' },
-  { id: 'bad', emoji: '😫', label: 'Bad sleep', color: 'bg-red-100 border-red-400' },
+  { id: 'great', emoji: '😴', label: 'Great sleep!', color: 'bg-green-100 border-green-400', value: 5 },
+  { id: 'good', emoji: '🙂', label: 'Good sleep', color: 'bg-blue-100 border-blue-400', value: 4 },
+  { id: 'okay', emoji: '😐', label: 'Okay sleep', color: 'bg-yellow-100 border-yellow-400', value: 3 },
+  { id: 'poor', emoji: '😟', label: 'Poor sleep', color: 'bg-orange-100 border-orange-400', value: 2 },
+  { id: 'bad', emoji: '😫', label: 'Bad sleep', color: 'bg-red-100 border-red-400', value: 1 },
 ];
 
 const SleepTracker = () => {
@@ -26,6 +27,24 @@ const SleepTracker = () => {
     waketime: '',
     quality: '',
   });
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Convert entries to hours for graph display
+  const historyData = useMemo(() => {
+    const data = {};
+    Object.entries(entries).forEach(([date, entry]) => {
+      if (entry.bedtime && entry.waketime) {
+        const [bedHour, bedMin] = entry.bedtime.split(':').map(Number);
+        const [wakeHour, wakeMin] = entry.waketime.split(':').map(Number);
+        let bedMinutes = bedHour * 60 + bedMin;
+        let wakeMinutes = wakeHour * 60 + wakeMin;
+        if (wakeMinutes < bedMinutes) wakeMinutes += 24 * 60;
+        const hours = (wakeMinutes - bedMinutes) / 60;
+        data[date] = Math.round(hours * 10) / 10;
+      }
+    });
+    return data;
+  }, [entries]);
 
   // Load entries
   useEffect(() => {
@@ -193,8 +212,27 @@ const SleepTracker = () => {
               😴 Sleep Tracker
             </h1>
           </div>
+          <button
+            onClick={() => setShowHistory(true)}
+            className="p-2 bg-white border-3 border-purple-400 rounded-full hover:bg-purple-50"
+            title="View history"
+          >
+            <BarChart3 size={18} className="text-purple-500" />
+          </button>
         </div>
       </header>
+
+      {/* History Modal */}
+      {showHistory && (
+        <TrackerHistory
+          data={historyData}
+          goal={8}
+          color="#8E6BBF"
+          label="Hours"
+          formatValue={(v) => `${v}h`}
+          onClose={() => setShowHistory(false)}
+        />
+      )}
 
       <main className="max-w-md mx-auto px-4 py-6">
         {/* Privacy Notice */}

@@ -1,7 +1,7 @@
 // HealthyChoices.jsx - Track healthy decisions throughout the day
 // Positive reinforcement for making good choices
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -10,9 +10,11 @@ import {
   Sparkles,
   ChevronLeft,
   ChevronRight,
-  RotateCcw
+  RotateCcw,
+  BarChart3
 } from 'lucide-react';
 import LocalOnlyNotice from '../components/LocalOnlyNotice';
+import TrackerHistory from '../components/TrackerHistory';
 
 const STORAGE_KEY = 'snw_healthy_choices';
 
@@ -121,6 +123,18 @@ const HealthyChoices = () => {
   const [allData, setAllData] = useState({});
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationLevel, setCelebrationLevel] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Convert allData to points for graph display
+  const historyData = useMemo(() => {
+    const data = {};
+    Object.entries(allData).forEach(([date, choicesArray]) => {
+      if (Array.isArray(choicesArray)) {
+        data[date] = choicesArray.reduce((sum, c) => sum + (c.points || 1), 0);
+      }
+    });
+    return data;
+  }, [allData]);
 
   // Load data
   useEffect(() => {
@@ -266,6 +280,13 @@ const HealthyChoices = () => {
               ✨ Healthy Choices
             </h1>
           </div>
+          <button
+            onClick={() => setShowHistory(true)}
+            className="p-2 bg-white border-3 border-green-400 rounded-full hover:bg-green-50"
+            title="View history"
+          >
+            <BarChart3 size={18} className="text-green-500" />
+          </button>
           {isToday && choices.length > 0 && (
             <button
               onClick={resetDay}
@@ -277,6 +298,18 @@ const HealthyChoices = () => {
           )}
         </div>
       </header>
+
+      {/* History Modal */}
+      {showHistory && (
+        <TrackerHistory
+          data={historyData}
+          goal={15}
+          color="#5CB85C"
+          label="Points"
+          formatValue={(v) => `${v}pts`}
+          onClose={() => setShowHistory(false)}
+        />
+      )}
 
       <main className="max-w-2xl mx-auto px-4 py-6">
         {/* Privacy Notice */}

@@ -7,7 +7,6 @@ import {
   Smile,
   Circle,
   Shapes,
-  Music,
   Disc
 } from 'lucide-react';
 
@@ -58,14 +57,14 @@ const games = [
     ready: true,
   },
   {
-    id: 'sounds',
-    name: 'Sound Match',
-    description: 'Match the sounds!',
-    icon: Music,
+    id: 'shapes',
+    name: 'Shape Match',
+    description: 'Match shapes to holes!',
+    icon: Shapes,
     color: 'bg-[#8E6BBF]',
     borderColor: 'border-purple-500',
-    path: '/games/sounds',
-    emoji: '🎵',
+    path: '/games/shapes',
+    emoji: '🔷',
     ready: true,
   },
   {

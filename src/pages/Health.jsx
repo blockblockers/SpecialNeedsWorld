@@ -10,7 +10,8 @@ import {
   Smile,
   Moon,
   Activity,
-  Apple
+  Apple,
+  Dumbbell
 } from 'lucide-react';
 
 // Health app categories
@@ -68,6 +69,17 @@ const healthApps = [
     borderColor: 'border-red-500',
     path: '/health/exercise',
     emoji: '🏃',
+    ready: true,
+  },
+  {
+    id: 'ot-exercises',
+    name: 'OT Exercises',
+    description: 'Stretches & therapy',
+    icon: Dumbbell,
+    color: 'bg-[#20B2AA]',
+    borderColor: 'border-teal-500',
+    path: '/health/ot',
+    emoji: '🧘',
     ready: true,
   },
   {
