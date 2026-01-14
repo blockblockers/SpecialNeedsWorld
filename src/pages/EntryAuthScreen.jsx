@@ -267,10 +267,13 @@ const EntryAuthScreen = () => {
           className="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl shadow-crayon-lg mb-4" />
         
         {/* Title */}
-        <h1 className="text-2xl sm:text-3xl font-display rainbow-text crayon-text">Special Needs</h1>
-        <h2 className="text-3xl sm:text-4xl font-display text-[#4A9FD4] crayon-text mb-2">World</h2>
+        <h1 className="text-3xl sm:text-4xl font-display rainbow-text crayon-text mb-1">ATLAS</h1>
+        <h2 className="text-2xl sm:text-3xl font-display text-[#4A9FD4] crayon-text mb-2">assist</h2>
         <p className="text-xs sm:text-sm font-crayon text-gray-600 max-w-xs text-center mb-4 leading-relaxed">
-          Assistive Tools for Learning, Access & Support - Tools for individuals with neurodiverse abilities.
+          Assistive Tools for Learning, Access &amp; Support
+        </p>
+        <p className="text-xs font-crayon text-[#8E6BBF] max-w-xs text-center mb-4">
+          Tools for individuals with neurodiverse abilities
         </p>
         
         {/* Auth Card */}

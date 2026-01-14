@@ -332,7 +332,7 @@ const Knowledge = () => {
           <div className="space-y-6">
             <div className="text-center">
               <h2 className="font-display text-2xl text-gray-800 mb-2">
-                Special Needs Resources
+                Disability Resources
               </h2>
               <p className="font-crayon text-gray-600">
                 Federal laws and state-specific information about services, rights, and programs

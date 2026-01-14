@@ -244,10 +244,19 @@ const AppHub = () => {
       {/* Main Content - App Grid */}
       <main className="relative z-10 px-4 pb-8">
         <div className="max-w-4xl mx-auto">
-          {/* Tagline */}
-          <p className="text-center text-gray-700 font-display text-lg sm:text-xl mb-6 max-w-lg mx-auto leading-relaxed crayon-text">
-            Assistive Tools for Learning, Access & Support - Tools for individuals with neurodiverse abilities.
-          </p>
+          {/* Title and Tagline */}
+          <div className="text-center mb-6">
+            <h2 className="font-display mb-1">
+              <span className="text-2xl sm:text-3xl rainbow-text crayon-text">ATLAS</span>
+              <span className="text-xl sm:text-2xl text-[#4A9FD4] crayon-text">assist</span>
+            </h2>
+            <p className="text-gray-600 font-crayon text-sm sm:text-base max-w-md mx-auto">
+              Assistive Tools for Learning, Access &amp; Support
+            </p>
+            <p className="text-[#8E6BBF] font-crayon text-xs sm:text-sm mt-1">
+              Tools for individuals with neurodiverse abilities
+            </p>
+          </div>
           
           {/* App Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
