@@ -1,5 +1,6 @@
 // HealthyChoices.jsx - Track healthy decisions throughout the day
 // Positive reinforcement for making good choices
+// Now with schedule integration for habit reminders!
 
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -11,10 +12,13 @@ import {
   ChevronLeft,
   ChevronRight,
   RotateCcw,
-  BarChart3
+  BarChart3,
+  CalendarPlus
 } from 'lucide-react';
 import LocalOnlyNotice from '../components/LocalOnlyNotice';
 import TrackerHistory from '../components/TrackerHistory';
+import AddToScheduleModal from '../components/AddToScheduleModal';
+import { addActivityToSchedule, ACTIVITY_SOURCES } from '../services/scheduleIntegration';
 
 const STORAGE_KEY = 'snw_healthy_choices';
 
@@ -124,6 +128,10 @@ const HealthyChoices = () => {
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationLevel, setCelebrationLevel] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
+  
+  // Schedule integration state
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [choiceToSchedule, setChoiceToSchedule] = useState(null);
 
   // Convert allData to points for graph display
   const historyData = useMemo(() => {
@@ -156,6 +164,37 @@ const HealthyChoices = () => {
     setAllData(newAllData);
     setChoices(newChoices);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newAllData));
+  };
+
+  // Schedule reminder handler
+  const handleAddToSchedule = async ({ date, time, notify }) => {
+    if (!choiceToSchedule) return;
+    
+    const result = addActivityToSchedule({
+      date,
+      name: choiceToSchedule.name,
+      time,
+      emoji: choiceToSchedule.emoji,
+      color: '#5CB85C',
+      source: ACTIVITY_SOURCES.DAILY_ROUTINE,
+      notify,
+      metadata: { type: 'healthyChoice', choiceId: choiceToSchedule.id },
+    });
+    
+    if (result.success) {
+      setShowScheduleModal(false);
+      setChoiceToSchedule(null);
+      alert(`"${choiceToSchedule.name}" reminder added to your Visual Schedule!`);
+    } else {
+      alert('Failed to add to schedule. Please try again.');
+    }
+  };
+
+  // Open schedule modal for a choice
+  const openScheduleModal = (choice, e) => {
+    e.stopPropagation(); // Don't toggle the choice
+    setChoiceToSchedule(choice);
+    setShowScheduleModal(true);
   };
 
   // Toggle choice
@@ -400,32 +439,44 @@ const HealthyChoices = () => {
                 {category.choices.map(choice => {
                   const logged = isLogged(choice.id);
                   return (
-                    <button
-                      key={choice.id}
-                      onClick={() => isToday && toggleChoice(choice)}
-                      disabled={!isToday}
-                      className={`p-3 rounded-xl border-2 flex items-center gap-2 transition-all
-                                 ${logged 
-                                   ? 'bg-green-100 border-green-400' 
-                                   : 'bg-gray-50 border-gray-200 hover:border-green-300'
-                                 }
-                                 ${!isToday ? 'opacity-60' : 'active:scale-95'}`}
-                    >
-                      <span className="text-2xl">{choice.emoji}</span>
-                      <div className="flex-1 text-left">
-                        <span className={`font-crayon text-sm block ${logged ? 'text-green-700' : 'text-gray-600'}`}>
-                          {choice.name}
-                        </span>
-                        <span className="font-crayon text-xs text-gray-400">
-                          +{choice.points} {choice.points === 1 ? 'pt' : 'pts'}
-                        </span>
-                      </div>
-                      {logged && (
-                        <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                          <Star size={14} className="text-white" fill="currentColor" />
+                    <div key={choice.id} className="relative group">
+                      <button
+                        onClick={() => isToday && toggleChoice(choice)}
+                        disabled={!isToday}
+                        className={`w-full p-3 rounded-xl border-2 flex items-center gap-2 transition-all
+                                   ${logged 
+                                     ? 'bg-green-100 border-green-400' 
+                                     : 'bg-gray-50 border-gray-200 hover:border-green-300'
+                                   }
+                                   ${!isToday ? 'opacity-60' : 'active:scale-95'}`}
+                      >
+                        <span className="text-2xl">{choice.emoji}</span>
+                        <div className="flex-1 text-left">
+                          <span className={`font-crayon text-sm block ${logged ? 'text-green-700' : 'text-gray-600'}`}>
+                            {choice.name}
+                          </span>
+                          <span className="font-crayon text-xs text-gray-400">
+                            +{choice.points} {choice.points === 1 ? 'pt' : 'pts'}
+                          </span>
                         </div>
-                      )}
-                    </button>
+                        {logged && (
+                          <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                            <Star size={14} className="text-white" fill="currentColor" />
+                          </div>
+                        )}
+                      </button>
+                      {/* Schedule button - appears on hover */}
+                      <button
+                        onClick={(e) => openScheduleModal(choice, e)}
+                        className="absolute -top-1 -right-1 w-6 h-6 bg-[#5CB85C] rounded-full 
+                                   flex items-center justify-center shadow-md
+                                   opacity-0 group-hover:opacity-100 transition-opacity
+                                   hover:bg-green-600"
+                        title="Schedule reminder"
+                      >
+                        <CalendarPlus size={12} className="text-white" />
+                      </button>
+                    </div>
                   );
                 })}
               </div>
@@ -443,10 +494,30 @@ const HealthyChoices = () => {
             <li>• Every healthy choice earns points!</li>
             <li>• Harder choices are worth more points</li>
             <li>• Level up by making lots of good choices</li>
-            <li>• You can tap to unselect if needed</li>
+            <li>• Hover/tap the 📅 to schedule reminders</li>
           </ul>
         </div>
       </main>
+
+      {/* Add to Schedule Modal */}
+      {choiceToSchedule && (
+        <AddToScheduleModal
+          isOpen={showScheduleModal}
+          onClose={() => {
+            setShowScheduleModal(false);
+            setChoiceToSchedule(null);
+          }}
+          onAdd={handleAddToSchedule}
+          title="Schedule Reminder"
+          itemName={choiceToSchedule.name}
+          itemEmoji={choiceToSchedule.emoji}
+          itemColor="#5CB85C"
+          defaultTime="09:00"
+          showTimeSelection={true}
+          showNotifyOption={true}
+          confirmButtonText="Add Reminder"
+        />
+      )}
     </div>
   );
 };

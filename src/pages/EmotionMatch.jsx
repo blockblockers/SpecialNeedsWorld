@@ -1,23 +1,33 @@
 // EmotionMatch.jsx - Match faces to emotions game
+// Uses ARASAAC pictograms for emotion representation
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, RotateCcw, Trophy, Star, Volume2 } from 'lucide-react';
+import { getPictogramUrl, ARASAAC_ATTRIBUTION } from '../services/arasaac';
 
-// Emotions with faces and colors
+// Emotions with ARASAAC pictogram IDs and colors
 const EMOTIONS = [
-  { id: 'happy', face: '😊', word: 'Happy', color: '#F8D14A', description: 'feeling good and joyful' },
-  { id: 'sad', face: '😢', word: 'Sad', color: '#4A9FD4', description: 'feeling unhappy or down' },
-  { id: 'angry', face: '😠', word: 'Angry', color: '#E63B2E', description: 'feeling mad or upset' },
-  { id: 'scared', face: '😨', word: 'Scared', color: '#8E6BBF', description: 'feeling afraid or worried' },
-  { id: 'surprised', face: '😲', word: 'Surprised', color: '#F5A623', description: 'feeling amazed or shocked' },
-  { id: 'tired', face: '😴', word: 'Tired', color: '#6B7280', description: 'feeling sleepy or worn out' },
-  { id: 'excited', face: '🤩', word: 'Excited', color: '#E86B9A', description: 'feeling very happy and eager' },
-  { id: 'calm', face: '😌', word: 'Calm', color: '#5CB85C', description: 'feeling peaceful and relaxed' },
-  { id: 'confused', face: '😕', word: 'Confused', color: '#9CA3AF', description: 'not sure what is happening' },
-  { id: 'silly', face: '🤪', word: 'Silly', color: '#EC4899', description: 'feeling playful and funny' },
-  { id: 'proud', face: '🥳', word: 'Proud', color: '#10B981', description: 'feeling good about yourself' },
-  { id: 'loved', face: '🥰', word: 'Loved', color: '#F472B6', description: 'feeling cared for and special' },
+  { id: 'happy', arasaacId: 26684, word: 'Happy', color: '#F8D14A', description: 'feeling good and joyful' },
+  { id: 'sad', arasaacId: 11321, word: 'Sad', color: '#4A9FD4', description: 'feeling unhappy or down' },
+  { id: 'angry', arasaacId: 11318, word: 'Angry', color: '#E63B2E', description: 'feeling mad or upset' },
+  { id: 'scared', arasaacId: 6459, word: 'Scared', color: '#8E6BBF', description: 'feeling afraid or worried' },
+  { id: 'surprised', arasaacId: 11326, word: 'Surprised', color: '#F5A623', description: 'feeling amazed or shocked' },
+  { id: 'tired', arasaacId: 11950, word: 'Tired', color: '#6B7280', description: 'feeling sleepy or worn out' },
+  { id: 'excited', arasaacId: 11319, word: 'Excited', color: '#E86B9A', description: 'feeling very happy and eager' },
+  { id: 'calm', arasaacId: 28753, word: 'Calm', color: '#5CB85C', description: 'feeling peaceful and relaxed' },
+  { id: 'confused', arasaacId: 11322, word: 'Confused', color: '#9CA3AF', description: 'not sure what is happening' },
+  { id: 'silly', arasaacId: 11330, word: 'Silly', color: '#EC4899', description: 'feeling playful and funny' },
+  { id: 'proud', arasaacId: 11327, word: 'Proud', color: '#10B981', description: 'feeling good about yourself' },
+  { id: 'loved', arasaacId: 26790, word: 'Loved', color: '#F472B6', description: 'feeling cared for and special' },
 ];
+
+// Preload emotion images
+const preloadImages = () => {
+  EMOTIONS.forEach(emotion => {
+    const img = new Image();
+    img.src = getPictogramUrl(emotion.arasaacId);
+  });
+};
 
 // Game modes
 const MODES = {
@@ -81,6 +91,11 @@ const EmotionMatch = () => {
     setQuestionsAnswered([]);
     setGameComplete(false);
     setGameStarted(true);
+  }, []);
+
+  // Preload images on mount
+  useEffect(() => {
+    preloadImages();
   }, []);
 
   // Initialize first question when game starts
@@ -148,7 +163,12 @@ const EmotionMatch = () => {
             </button>
             <div className="flex-1">
               <h1 className="text-lg sm:text-xl font-display text-[#F5A623] crayon-text flex items-center gap-2">
-                😊 Emotion Match
+                <img 
+                  src={getPictogramUrl(26684)} 
+                  alt="Happy" 
+                  className="w-7 h-7 object-contain"
+                />
+                Emotion Match
               </h1>
             </div>
           </div>
@@ -157,7 +177,7 @@ const EmotionMatch = () => {
         <main className="max-w-md mx-auto px-4 py-8">
           <div className="bg-white rounded-3xl border-4 border-[#F5A623] p-6 shadow-crayon">
             <h2 className="text-2xl font-display text-center text-[#F5A623] mb-2">
-              Learn Emotions! 💕
+              Learn Emotions!
             </h2>
             <p className="text-center text-gray-600 font-crayon mb-6">
               Match faces with feeling words
@@ -175,7 +195,10 @@ const EmotionMatch = () => {
                       : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
                     }`}
                 >
-                  <span className="text-3xl block mb-1">😊 → ?</span>
+                  <span className="flex items-center justify-center gap-1 mb-1">
+                    <img src={getPictogramUrl(26684)} alt="face" className="w-8 h-8" />
+                    <span className="text-xl">→ ?</span>
+                  </span>
                   <span className="text-sm">See Face</span>
                   <span className="block text-xs">Find Word</span>
                 </button>
@@ -187,7 +210,10 @@ const EmotionMatch = () => {
                       : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
                     }`}
                 >
-                  <span className="text-3xl block mb-1">? → Happy</span>
+                  <span className="flex items-center justify-center gap-1 mb-1">
+                    <span className="text-xl">? →</span>
+                    <span className="font-display text-sm">Happy</span>
+                  </span>
                   <span className="text-sm">See Word</span>
                   <span className="block text-xs">Find Face</span>
                 </button>

@@ -86,9 +86,9 @@ const SETTINGS_KEY = 'snw_notification_settings';
 const defaultSettings = {
   globalEnabled: true,
   apps: {
-    visualSchedule: { enabled: true, reminderMinutes: [5], repeatInterval: 5 },
-    nutrition: { enabled: true, reminderMinutes: [5] },
-    health: { enabled: true, reminderMinutes: [5] },
+    visualSchedule: { enabled: true, reminderMinutes: [0, 5], repeatInterval: 5 },
+    nutrition: { enabled: true, reminderMinutes: [0, 5] },
+    health: { enabled: true, reminderMinutes: [0, 5] },
     pointToTalk: { enabled: false },
   },
 };
@@ -360,19 +360,28 @@ export const stopRecurringReminder = (activityId) => {
 
 export const scheduleActivityNotifications = (dateStr, activities, options = {}) => {
   const settings = getNotificationSettings();
-  if (!settings.globalEnabled) return;
+  if (!settings.globalEnabled) {
+    console.log('Notifications disabled globally');
+    return;
+  }
   
   const appSettings = settings.apps.visualSchedule;
-  if (!appSettings?.enabled) return;
+  if (!appSettings?.enabled) {
+    console.log('Visual Schedule notifications disabled');
+    return;
+  }
   
   // Cancel existing notifications for this date
   const notifications = getStoredNotifications();
   const filtered = notifications.filter(n => !n.id.startsWith(`activity_${dateStr}`));
   saveNotifications(filtered);
   
-  const reminderMinutes = appSettings.reminderMinutes || [5];
+  // Default: notify at time (0) and 5 minutes before
+  const reminderMinutes = appSettings.reminderMinutes || [0, 5];
   const repeatInterval = appSettings.repeatInterval || 5;
   const repeatUntilComplete = options.repeatUntilComplete !== false;
+  
+  let scheduledCount = 0;
   
   activities.forEach((activity, index) => {
     if (activity.time && activity.notify !== false && !activity.completed) {
@@ -380,32 +389,41 @@ export const scheduleActivityNotifications = (dateStr, activities, options = {})
       const [hours, minutes] = activity.time.split(':').map(Number);
       
       const activityTime = new Date(year, month - 1, day, hours, minutes);
+      const now = new Date();
       
       // Schedule reminders at each interval
       reminderMinutes.forEach((minsBefore) => {
         const reminderTime = new Date(activityTime.getTime() - minsBefore * 60 * 1000);
         
-        if (reminderTime > new Date()) {
+        // Only schedule if in the future
+        if (reminderTime > now) {
           const activityId = `${dateStr}_${index}`;
+          const notificationId = `activity_${activityId}_${minsBefore}`;
           
           // Get encouraging message
           const encouragingMsg = getRandomEncouragingMessage(activity.name);
           
+          const notificationTitle = encouragingMsg.title;
+          const notificationBody = minsBefore > 0 
+            ? `${activity.name} in ${minsBefore} minutes!`
+            : encouragingMsg.body;
+          
           scheduleNotification(
-            `activity_${activityId}_${minsBefore}`,
-            encouragingMsg.title,
-            minsBefore > 0 
-              ? `${activity.name} in ${minsBefore} minutes! ${encouragingMsg.body}`
-              : encouragingMsg.body,
+            notificationId,
+            notificationTitle,
+            notificationBody,
             reminderTime,
             {
               appId: 'visualSchedule',
               activityId,
-              activityName: activity.name, // Store for repeat messages
+              activityName: activity.name,
               recurring: repeatUntilComplete && minsBefore === 0,
               repeatInterval,
             }
           );
+          
+          scheduledCount++;
+          console.log(`Scheduled notification "${activity.name}" for ${reminderTime.toLocaleTimeString()} (${minsBefore}min before)`);
           
           // Start recurring reminder tracking
           if (repeatUntilComplete && minsBefore === 0) {
@@ -415,6 +433,8 @@ export const scheduleActivityNotifications = (dateStr, activities, options = {})
       });
     }
   });
+  
+  console.log(`Scheduled ${scheduledCount} notifications for ${dateStr}`);
 };
 
 // Mark activity complete and stop reminders
@@ -488,9 +508,37 @@ export const sendTestNotification = async (title, body) => {
 // ============================================
 
 export const initNotifications = () => {
-  if (!isNotificationSupported()) return;
+  if (!isNotificationSupported()) {
+    console.log('Notifications not supported');
+    return;
+  }
+  
+  console.log('Initializing notifications...');
+  
+  // Check for any notifications that are already due
   checkPendingNotifications();
+  
+  // Re-schedule timers for upcoming notifications
+  const notifications = getStoredNotifications();
+  const now = Date.now();
+  
+  notifications.forEach(notification => {
+    if (!notification.shown && notification.scheduledTime > now) {
+      const delay = notification.scheduledTime - now;
+      // Only schedule if within 24 hours
+      if (delay < 24 * 60 * 60 * 1000) {
+        setTimeout(() => {
+          showNotification(notification.id);
+        }, delay);
+        console.log(`Re-scheduled notification ${notification.id} for ${new Date(notification.scheduledTime).toLocaleTimeString()}`);
+      }
+    }
+  });
+  
+  // Check every minute for due notifications
   setInterval(checkPendingNotifications, 60 * 1000);
+  
+  console.log('Notification system initialized');
 };
 
 export default {

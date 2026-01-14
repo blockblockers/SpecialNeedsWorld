@@ -504,6 +504,30 @@ const PointToTalk = () => {
               💬 Point to Talk
             </h1>
           </div>
+          
+          {/* Symbol Style Toggle - Prominent button */}
+          <button
+            onClick={() => setUseArasaac(!useArasaac)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full border-2 font-crayon text-sm transition-all
+              ${useArasaac 
+                ? 'bg-[#4A9FD4]/10 border-[#4A9FD4] text-[#4A9FD4]' 
+                : 'bg-[#F5A623]/10 border-[#F5A623] text-[#F5A623]'
+              }`}
+            title={useArasaac ? 'Using ARASAAC symbols - tap to switch to emoji' : 'Using emoji - tap to switch to ARASAAC symbols'}
+          >
+            {useArasaac ? (
+              <>
+                <Image size={16} />
+                <span className="hidden sm:inline">Symbols</span>
+              </>
+            ) : (
+              <>
+                <Smile size={16} />
+                <span className="hidden sm:inline">Emoji</span>
+              </>
+            )}
+          </button>
+          
           <button
             onClick={() => setShowSettings(true)}
             className="p-2 bg-white border-2 border-gray-200 rounded-full hover:border-[#4A9FD4] transition-colors"

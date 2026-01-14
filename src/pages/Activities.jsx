@@ -28,6 +28,16 @@ const activityApps = [
     ready: true,
   },
   {
+    id: 'choice-board',
+    name: 'Choice Board',
+    description: 'Make choices with pictures and add to schedule',
+    icon: Star,
+    color: '#F5A623',
+    emoji: '⭐',
+    path: '/activities/choice-board',
+    ready: true,
+  },
+  {
     id: 'social-stories',
     name: 'Social Stories',
     description: 'Create visual stories to help understand situations',

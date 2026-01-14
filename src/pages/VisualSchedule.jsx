@@ -1,23 +1,23 @@
-// VisualSchedule.jsx - Visual Schedule Builder for ATLASassist
-// A visual scheduling tool using icons/pictures to help with daily routines
+// VisualSchedule.jsx - Redesigned Visual Schedule for ATLASassist
 // Features:
-// - Pre-built schedule templates
-// - Drag-and-drop schedule builder
-// - Icon library with common activities
-// - Custom image upload support
-// - Completed task tracking
-// - Calendar integration with recurring schedules
-// - Push notifications with repeat until complete
-// - Individual notification settings per task (sound, vibration)
+// - Calendar at top, always visible
+// - Day's activities shown below
+// - Add activities with times
+// - Templates as a separate modal
+// - Save to date, with recurrence options
+// - Copy days/weeks to other periods
+// - Proper notifications
+// - Cloud sync across devices!
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
   Plus, 
   Check, 
   X, 
-  GripVertical,
+  ChevronLeft,
+  ChevronRight,
   Sun,
   Moon,
   Utensils,
@@ -40,394 +40,429 @@ import {
   Trash2,
   Edit3,
   Save,
-  RotateCcw,
-  Image,
-  Sparkles,
-  Star,
-  Camera,
-  Upload,
+  Copy,
   Calendar,
   Bell,
-  BellRing,
-  Volume2,
-  VolumeX,
-  Vibrate,
-  Settings,
-  Sunrise,
-  Sunset,
-  CloudSun
+  BellOff,
+  LayoutTemplate,
+  Star,
+  GripVertical,
+  Cloud,
+  CloudOff,
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
 import { useAuth } from '../App';
-import { imageStorage, compressImage } from '../services/storage';
-import ScheduleCalendarWrapper from '../components/ScheduleCalendarWrapper';
-import ActivityIconEditor from '../components/ActivityIconEditor';
-import { formatTime, formatDate, getToday } from '../services/calendar';
-import { markActivityComplete } from '../services/notifications';
+import { 
+  formatDate, 
+  formatDisplayDate, 
+  formatTime,
+  getToday,
+  isToday,
+  addDays,
+  getMonthDays,
+  saveScheduleToDate,
+  getScheduleForDate,
+  getAllSchedules,
+} from '../services/calendar';
+import { 
+  requestPermission, 
+  getPermissionStatus,
+  scheduleActivityNotifications,
+  sendTestNotification,
+  getNotificationSettings
+} from '../services/notifications';
+import {
+  saveSchedule as saveScheduleWithSync,
+  getSchedule as getScheduleWithSync,
+  fullSync,
+  getSyncStatus,
+} from '../services/calendarSync';
 
 // ============================================
-// TIME & NOTIFICATION CONFIGURATION
+// ACTIVITY ICONS & TEMPLATES
 // ============================================
 
-// Quick time presets for easier selection
-const TIME_PRESETS = [
-  { label: '🌅 Early Morning', times: ['5:00', '5:30', '6:00', '6:30'] },
-  { label: '☀️ Morning', times: ['7:00', '7:30', '8:00', '8:30', '9:00', '9:30'] },
-  { label: '🌤️ Late Morning', times: ['10:00', '10:30', '11:00', '11:30'] },
-  { label: '🍽️ Midday', times: ['12:00', '12:30', '13:00', '13:30'] },
-  { label: '☀️ Afternoon', times: ['14:00', '14:30', '15:00', '15:30', '16:00', '16:30'] },
-  { label: '🌆 Evening', times: ['17:00', '17:30', '18:00', '18:30', '19:00', '19:30'] },
-  { label: '🌙 Night', times: ['20:00', '20:30', '21:00', '21:30', '22:00', '22:30'] },
-];
-
-// Sound effect options
-const SOUND_OPTIONS = [
-  { id: 'chime', name: 'Gentle Chime', emoji: '🔔', frequency: 523.25, duration: 300 },
-  { id: 'bell', name: 'Bell', emoji: '🛎️', frequency: 659.25, duration: 400 },
-  { id: 'xylophone', name: 'Xylophone', emoji: '🎵', frequency: 784, duration: 250 },
-  { id: 'soft', name: 'Soft Tone', emoji: '🎶', frequency: 392, duration: 500 },
-  { id: 'alert', name: 'Alert', emoji: '⚡', frequency: 880, duration: 200 },
-  { id: 'melody', name: 'Melody', emoji: '🎼', frequency: 440, duration: 600 },
-  { id: 'none', name: 'No Sound', emoji: '🔇', frequency: 0, duration: 0 },
-];
-
-// Vibration pattern options (in milliseconds)
-const VIBRATION_OPTIONS = [
-  { id: 'short', name: 'Short Buzz', emoji: '📳', pattern: [200] },
-  { id: 'double', name: 'Double Buzz', emoji: '📳📳', pattern: [200, 100, 200] },
-  { id: 'long', name: 'Long Buzz', emoji: '📶', pattern: [500] },
-  { id: 'pulse', name: 'Pulse', emoji: '💓', pattern: [100, 50, 100, 50, 100] },
-  { id: 'gentle', name: 'Gentle', emoji: '🌊', pattern: [100, 200, 100] },
-  { id: 'urgent', name: 'Urgent', emoji: '🚨', pattern: [300, 100, 300, 100, 300] },
-  { id: 'none', name: 'No Vibration', emoji: '📴', pattern: [] },
-];
-
-// Helper to format time for display
-const formatTimeDisplay = (time) => {
-  if (!time) return '';
-  const [hours, minutes] = time.split(':');
-  const hour = parseInt(hours, 10);
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  const hour12 = hour % 12 || 12;
-  return `${hour12}:${minutes} ${ampm}`;
-};
-
-// Play a preview sound
-let audioContext = null;
-const playPreviewSound = (frequency, duration) => {
-  if (!frequency) return;
-  try {
-    if (!audioContext) {
-      audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    oscillator.frequency.value = frequency;
-    oscillator.type = 'sine';
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + duration / 1000);
-  } catch (e) {
-    console.log('Audio preview not available');
-  }
-};
-
-// Trigger vibration preview
-const playPreviewVibration = (pattern) => {
-  if (pattern.length === 0) return;
-  if ('vibrate' in navigator) {
-    navigator.vibrate(pattern);
-  }
-};
-
-// Pre-defined activity icons with their metadata
 const activityIcons = [
-  { id: 'wake-up', name: 'Wake Up', icon: Sun, color: '#FCE94F', category: 'morning' },
-  { id: 'breakfast', name: 'Breakfast', icon: Coffee, color: '#F37736', category: 'meals' },
-  { id: 'lunch', name: 'Lunch', icon: Utensils, color: '#7BC043', category: 'meals' },
-  { id: 'dinner', name: 'Dinner', icon: Utensils, color: '#0392CF', category: 'meals' },
-  { id: 'snack', name: 'Snack', icon: Apple, color: '#EE4035', category: 'meals' },
-  { id: 'get-dressed', name: 'Get Dressed', icon: Shirt, color: '#9B59B6', category: 'self-care' },
-  { id: 'brush-teeth', name: 'Brush Teeth', icon: Sparkles, color: '#0392CF', category: 'self-care' },
-  { id: 'bath', name: 'Bath/Shower', icon: Bath, color: '#0392CF', category: 'self-care' },
-  { id: 'medicine', name: 'Medicine', icon: Pill, color: '#E91E8C', category: 'health' },
-  { id: 'school', name: 'School', icon: School, color: '#F37736', category: 'activities' },
-  { id: 'homework', name: 'Homework', icon: BookOpen, color: '#9B59B6', category: 'activities' },
-  { id: 'reading', name: 'Reading', icon: BookOpen, color: '#7BC043', category: 'activities' },
-  { id: 'tv-time', name: 'TV Time', icon: Tv, color: '#0392CF', category: 'leisure' },
-  { id: 'play-time', name: 'Play Time', icon: Star, color: '#FCE94F', category: 'leisure' },
-  { id: 'music', name: 'Music', icon: Music, color: '#E91E8C', category: 'leisure' },
-  { id: 'art', name: 'Art/Craft', icon: Palette, color: '#9B59B6', category: 'leisure' },
-  { id: 'car-ride', name: 'Car Ride', icon: Car, color: '#8B4513', category: 'travel' },
-  { id: 'go-home', name: 'Go Home', icon: Home, color: '#7BC043', category: 'travel' },
-  { id: 'shopping', name: 'Shopping', icon: ShoppingBag, color: '#E91E8C', category: 'activities' },
-  { id: 'family-time', name: 'Family Time', icon: Users, color: '#EE4035', category: 'social' },
-  { id: 'bedtime', name: 'Bedtime', icon: Moon, color: '#9B59B6', category: 'evening' },
-  { id: 'sleep', name: 'Sleep', icon: Bed, color: '#0392CF', category: 'evening' },
+  { id: 'wake-up', name: 'Wake Up', icon: Sun, color: '#FCE94F', emoji: '🌅' },
+  { id: 'breakfast', name: 'Breakfast', icon: Coffee, color: '#F37736', emoji: '🥣' },
+  { id: 'lunch', name: 'Lunch', icon: Utensils, color: '#7BC043', emoji: '🥗' },
+  { id: 'dinner', name: 'Dinner', icon: Utensils, color: '#0392CF', emoji: '🍽️' },
+  { id: 'snack', name: 'Snack', icon: Apple, color: '#EE4035', emoji: '🍎' },
+  { id: 'get-dressed', name: 'Get Dressed', icon: Shirt, color: '#9B59B6', emoji: '👕' },
+  { id: 'brush-teeth', name: 'Brush Teeth', icon: Star, color: '#0392CF', emoji: '🦷' },
+  { id: 'bath', name: 'Bath/Shower', icon: Bath, color: '#0392CF', emoji: '🛁' },
+  { id: 'medicine', name: 'Medicine', icon: Pill, color: '#E91E8C', emoji: '💊' },
+  { id: 'school', name: 'School', icon: School, color: '#F37736', emoji: '🏫' },
+  { id: 'homework', name: 'Homework', icon: BookOpen, color: '#9B59B6', emoji: '📚' },
+  { id: 'reading', name: 'Reading', icon: BookOpen, color: '#7BC043', emoji: '📖' },
+  { id: 'tv-time', name: 'TV Time', icon: Tv, color: '#0392CF', emoji: '📺' },
+  { id: 'play-time', name: 'Play Time', icon: Star, color: '#FCE94F', emoji: '🎮' },
+  { id: 'music', name: 'Music', icon: Music, color: '#E91E8C', emoji: '🎵' },
+  { id: 'art', name: 'Art/Craft', icon: Palette, color: '#9B59B6', emoji: '🎨' },
+  { id: 'car-ride', name: 'Car Ride', icon: Car, color: '#8B4513', emoji: '🚗' },
+  { id: 'go-home', name: 'Go Home', icon: Home, color: '#7BC043', emoji: '🏠' },
+  { id: 'shopping', name: 'Shopping', icon: ShoppingBag, color: '#E91E8C', emoji: '🛒' },
+  { id: 'family-time', name: 'Family Time', icon: Users, color: '#EE4035', emoji: '👨‍👩‍👧' },
+  { id: 'therapy', name: 'Therapy', icon: Users, color: '#4A9FD4', emoji: '🗣️' },
+  { id: 'exercise', name: 'Exercise', icon: Star, color: '#5CB85C', emoji: '🏃' },
+  { id: 'quiet-time', name: 'Quiet Time', icon: Moon, color: '#8E6BBF', emoji: '🧘' },
+  { id: 'bedtime', name: 'Bedtime', icon: Moon, color: '#9B59B6', emoji: '🌙' },
+  { id: 'sleep', name: 'Sleep', icon: Bed, color: '#0392CF', emoji: '😴' },
 ];
 
-// Schedule templates
 const scheduleTemplates = [
   {
     id: 'school-day',
     name: 'School Day',
     emoji: '🏫',
-    description: 'A typical school day schedule',
-    items: ['wake-up', 'get-dressed', 'breakfast', 'brush-teeth', 'school', 'lunch', 'school', 'go-home', 'snack', 'homework', 'play-time', 'dinner', 'bath', 'bedtime'],
+    items: [
+      { activityId: 'wake-up', time: '07:00' },
+      { activityId: 'get-dressed', time: '07:15' },
+      { activityId: 'breakfast', time: '07:30' },
+      { activityId: 'brush-teeth', time: '07:50' },
+      { activityId: 'school', time: '08:00' },
+      { activityId: 'lunch', time: '12:00' },
+      { activityId: 'go-home', time: '15:00' },
+      { activityId: 'snack', time: '15:30' },
+      { activityId: 'homework', time: '16:00' },
+      { activityId: 'play-time', time: '17:00' },
+      { activityId: 'dinner', time: '18:00' },
+      { activityId: 'bath', time: '19:00' },
+      { activityId: 'bedtime', time: '20:00' },
+    ],
   },
   {
     id: 'weekend',
     name: 'Weekend',
     emoji: '🎉',
-    description: 'A relaxed weekend schedule',
-    items: ['wake-up', 'breakfast', 'get-dressed', 'play-time', 'snack', 'lunch', 'art', 'tv-time', 'snack', 'family-time', 'dinner', 'bath', 'bedtime'],
+    items: [
+      { activityId: 'wake-up', time: '08:00' },
+      { activityId: 'breakfast', time: '08:30' },
+      { activityId: 'get-dressed', time: '09:00' },
+      { activityId: 'play-time', time: '09:30' },
+      { activityId: 'snack', time: '10:30' },
+      { activityId: 'family-time', time: '11:00' },
+      { activityId: 'lunch', time: '12:30' },
+      { activityId: 'quiet-time', time: '13:30' },
+      { activityId: 'art', time: '14:30' },
+      { activityId: 'snack', time: '16:00' },
+      { activityId: 'tv-time', time: '16:30' },
+      { activityId: 'dinner', time: '18:00' },
+      { activityId: 'bath', time: '19:30' },
+      { activityId: 'bedtime', time: '20:30' },
+    ],
   },
   {
-    id: 'morning-routine',
-    name: 'Morning Routine',
+    id: 'morning',
+    name: 'Morning Only',
     emoji: '🌅',
-    description: 'Focus on morning activities',
-    items: ['wake-up', 'get-dressed', 'brush-teeth', 'breakfast', 'medicine'],
+    items: [
+      { activityId: 'wake-up', time: '07:00' },
+      { activityId: 'get-dressed', time: '07:15' },
+      { activityId: 'brush-teeth', time: '07:30' },
+      { activityId: 'breakfast', time: '07:45' },
+      { activityId: 'medicine', time: '08:00' },
+    ],
   },
   {
-    id: 'bedtime-routine',
-    name: 'Bedtime Routine',
+    id: 'evening',
+    name: 'Evening Only',
     emoji: '🌙',
-    description: 'Wind down for sleep',
-    items: ['bath', 'get-dressed', 'brush-teeth', 'reading', 'bedtime', 'sleep'],
-  },
-  {
-    id: 'blank',
-    name: 'Start Fresh',
-    emoji: '✨',
-    description: 'Create your own schedule',
-    items: [],
+    items: [
+      { activityId: 'dinner', time: '18:00' },
+      { activityId: 'bath', time: '19:00' },
+      { activityId: 'brush-teeth', time: '19:30' },
+      { activityId: 'reading', time: '19:45' },
+      { activityId: 'bedtime', time: '20:00' },
+    ],
   },
 ];
 
 // ============================================
-// TIME & NOTIFICATION SETTINGS MODAL
+// MINI MONTH CALENDAR COMPONENT
 // ============================================
 
-const TimeNotificationModal = ({ item, onSave, onClose }) => {
-  const [time, setTime] = useState(item.time || '');
-  const [notify, setNotify] = useState(item.notify !== false);
-  const [sound, setSound] = useState(item.sound || 'chime');
-  const [vibration, setVibration] = useState(item.vibration || 'short');
-  const [showCustomTime, setShowCustomTime] = useState(false);
-
-  const handleSave = () => {
-    onSave({ time: time || null, notify, sound, vibration });
+const MiniMonthCalendar = ({ selectedDate, onSelectDate, datesWithSchedules }) => {
+  const [viewDate, setViewDate] = useState(new Date(selectedDate));
+  
+  const days = getMonthDays(viewDate.getFullYear(), viewDate.getMonth());
+  const monthName = viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  
+  const prevMonth = () => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1));
+  const nextMonth = () => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1));
+  const goToToday = () => {
+    const today = getToday();
+    setViewDate(today);
+    onSelectDate(today);
   };
-
-  const selectPresetTime = (t) => {
-    setTime(t);
-    setShowCustomTime(false);
-  };
-
-  const clearTime = () => {
-    setTime('');
-    setShowCustomTime(false);
-  };
-
+  
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div 
-        className="bg-[#FFFEF5] w-full max-w-md max-h-[90vh] rounded-3xl overflow-hidden
-                   border-4 border-[#4A9FD4] shadow-crayon-lg"
-      >
-        {/* Header */}
-        <div className="bg-[#4A9FD4] text-white p-4 flex items-center justify-between">
-          <h3 className="font-display text-xl flex items-center gap-2">
-            <Clock size={24} />
-            {item.name}
-          </h3>
-          <button 
-            onClick={onClose}
-            className="p-1 hover:bg-white/20 rounded-full transition-colors"
+    <div className="bg-white rounded-2xl border-4 border-[#4A9FD4] shadow-crayon overflow-hidden">
+      {/* Month Header */}
+      <div className="bg-[#4A9FD4] text-white p-3 flex items-center justify-between">
+        <button onClick={prevMonth} className="p-2 hover:bg-white/20 rounded-full">
+          <ChevronLeft size={20} />
+        </button>
+        <div className="text-center">
+          <h3 className="font-display text-lg">{monthName}</h3>
+        </div>
+        <button onClick={nextMonth} className="p-2 hover:bg-white/20 rounded-full">
+          <ChevronRight size={20} />
+        </button>
+      </div>
+      
+      {/* Day Headers */}
+      <div className="grid grid-cols-7 bg-gray-50 border-b">
+        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
+          <div key={i} className="p-2 text-center text-xs font-bold text-gray-500">
+            {day}
+          </div>
+        ))}
+      </div>
+      
+      {/* Calendar Grid */}
+      <div className="grid grid-cols-7 p-1">
+        {days.map((day, i) => {
+          const dateStr = formatDate(day.date);
+          const hasSchedule = datesWithSchedules.includes(dateStr);
+          const isSelected = formatDate(selectedDate) === dateStr;
+          
+          return (
+            <button
+              key={i}
+              onClick={() => onSelectDate(day.date)}
+              className={`
+                aspect-square p-1 m-0.5 rounded-lg text-sm font-crayon relative
+                transition-all hover:scale-105
+                ${!day.isCurrentMonth ? 'text-gray-300' : ''}
+                ${day.isToday ? 'ring-2 ring-[#F5A623]' : ''}
+                ${isSelected ? 'bg-[#4A9FD4] text-white' : day.isCurrentMonth ? 'hover:bg-gray-100' : ''}
+              `}
+            >
+              {day.date.getDate()}
+              {hasSchedule && !isSelected && (
+                <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[#5CB85C] rounded-full" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+      
+      {/* Today Button */}
+      {!isToday(selectedDate) && (
+        <div className="p-2 border-t">
+          <button
+            onClick={goToToday}
+            className="w-full py-2 bg-[#F5A623] text-white rounded-lg font-crayon text-sm"
           >
+            Go to Today
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ============================================
+// ACTIVITY ITEM COMPONENT
+// ============================================
+
+const ActivityItem = ({ activity, onToggleComplete, onEdit, onDelete, onDragStart, onDragOver, onDragEnd, isDragging }) => {
+  const iconData = activityIcons.find(i => i.id === activity.activityId) || {};
+  
+  return (
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragEnd={onDragEnd}
+      className={`
+        flex items-center gap-3 p-3 bg-white rounded-xl border-3 
+        transition-all ${isDragging ? 'opacity-50 scale-95' : ''}
+        ${activity.completed ? 'border-[#5CB85C] bg-green-50' : 'border-gray-200'}
+      `}
+    >
+      {/* Drag Handle */}
+      <div className="cursor-grab text-gray-300 hover:text-gray-500">
+        <GripVertical size={18} />
+      </div>
+      
+      {/* Complete Checkbox */}
+      <button
+        onClick={onToggleComplete}
+        className={`
+          w-8 h-8 rounded-full border-3 flex items-center justify-center flex-shrink-0
+          transition-all
+          ${activity.completed 
+            ? 'bg-[#5CB85C] border-[#5CB85C] text-white' 
+            : 'border-gray-300 hover:border-[#5CB85C]'}
+        `}
+      >
+        {activity.completed && <Check size={16} />}
+      </button>
+      
+      {/* Icon */}
+      <div 
+        className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-xl"
+        style={{ backgroundColor: `${iconData.color}30` }}
+      >
+        {iconData.emoji || '⭐'}
+      </div>
+      
+      {/* Activity Info */}
+      <div className="flex-1 min-w-0">
+        <p className={`font-display truncate ${activity.completed ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+          {activity.name || iconData.name}
+        </p>
+        {activity.time && (
+          <p className="text-xs font-crayon text-gray-500 flex items-center gap-1">
+            <Clock size={12} />
+            {formatTime(activity.time)}
+            {activity.notify && <Bell size={10} className="text-[#F5A623]" />}
+          </p>
+        )}
+      </div>
+      
+      {/* Actions */}
+      <div className="flex gap-1">
+        <button
+          onClick={onEdit}
+          className="p-2 text-gray-400 hover:text-[#4A9FD4] hover:bg-gray-100 rounded-lg"
+        >
+          <Edit3 size={16} />
+        </button>
+        <button
+          onClick={onDelete}
+          className="p-2 text-gray-400 hover:text-[#E63B2E] hover:bg-gray-100 rounded-lg"
+        >
+          <Trash2 size={16} />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ============================================
+// ADD/EDIT ACTIVITY MODAL
+// ============================================
+
+const ActivityModal = ({ activity, onSave, onClose }) => {
+  const [selectedActivity, setSelectedActivity] = useState(activity?.activityId || null);
+  const [time, setTime] = useState(activity?.time || '');
+  const [notify, setNotify] = useState(activity?.notify !== false);
+  const [customName, setCustomName] = useState(activity?.customName || '');
+  
+  const handleSave = () => {
+    if (!selectedActivity) return;
+    const iconData = activityIcons.find(i => i.id === selectedActivity);
+    onSave({
+      ...activity,
+      activityId: selectedActivity,
+      name: customName || iconData?.name || 'Activity',
+      time,
+      notify,
+      customName,
+    });
+  };
+  
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-[#FFFEF5] w-full max-w-md rounded-2xl border-4 border-[#8E6BBF] shadow-crayon-lg max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="bg-[#8E6BBF] text-white p-4 flex items-center justify-between">
+          <h3 className="font-display text-xl">
+            {activity ? 'Edit Activity' : 'Add Activity'}
+          </h3>
+          <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
             <X size={24} />
           </button>
         </div>
-
-        <div className="p-4 overflow-y-auto max-h-[calc(90vh-140px)]">
-          {/* Time Selection */}
-          <div className="mb-6">
-            <h4 className="font-display text-gray-700 mb-3 flex items-center gap-2">
-              <Clock size={18} className="text-[#4A9FD4]" />
-              Set Time
-            </h4>
-            
-            {/* Current time display */}
-            {time && (
-              <div className="flex items-center justify-between mb-3 p-3 bg-[#4A9FD4]/10 rounded-xl">
-                <span className="font-display text-xl text-[#4A9FD4]">
-                  {formatTimeDisplay(time)}
-                </span>
+        
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Activity Selection */}
+          <div>
+            <label className="font-crayon text-gray-600 text-sm mb-2 block">Choose Activity</label>
+            <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto p-1">
+              {activityIcons.map((icon) => (
                 <button
-                  onClick={clearTime}
-                  className="text-gray-400 hover:text-red-500 p-1"
+                  key={icon.id}
+                  onClick={() => setSelectedActivity(icon.id)}
+                  className={`
+                    p-2 rounded-xl border-2 flex flex-col items-center gap-1 transition-all
+                    ${selectedActivity === icon.id 
+                      ? 'border-[#8E6BBF] bg-purple-50' 
+                      : 'border-transparent hover:border-gray-200'}
+                  `}
                 >
-                  <X size={18} />
+                  <span className="text-2xl">{icon.emoji}</span>
+                  <span className="text-xs font-crayon text-gray-600 truncate w-full text-center">
+                    {icon.name}
+                  </span>
                 </button>
-              </div>
-            )}
-
-            {/* Quick time presets */}
-            <div className="space-y-3">
-              {TIME_PRESETS.map((preset) => (
-                <div key={preset.label}>
-                  <p className="font-crayon text-xs text-gray-500 mb-1">{preset.label}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {preset.times.map((t) => (
-                      <button
-                        key={t}
-                        onClick={() => selectPresetTime(t)}
-                        className={`px-3 py-1.5 rounded-lg font-crayon text-sm transition-all
-                          ${time === t 
-                            ? 'bg-[#4A9FD4] text-white' 
-                            : 'bg-white border-2 border-gray-200 hover:border-[#4A9FD4] text-gray-600'
-                          }`}
-                      >
-                        {formatTimeDisplay(t)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
               ))}
             </div>
-
-            {/* Custom time option */}
-            <div className="mt-4">
-              {showCustomTime ? (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="time"
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                    className="flex-1 px-3 py-2 border-3 border-[#4A9FD4] rounded-xl font-crayon text-lg focus:outline-none"
-                    autoFocus
-                  />
-                  <button
-                    onClick={() => setShowCustomTime(false)}
-                    className="px-3 py-2 bg-gray-200 rounded-xl font-crayon text-gray-600"
-                  >
-                    Done
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setShowCustomTime(true)}
-                  className="w-full py-2 border-2 border-dashed border-gray-300 rounded-xl font-crayon text-gray-500 hover:border-[#4A9FD4] hover:text-[#4A9FD4] transition-all"
-                >
-                  ⌨️ Enter custom time
-                </button>
-              )}
-            </div>
           </div>
-
+          
+          {/* Custom Name */}
+          <div>
+            <label className="font-crayon text-gray-600 text-sm mb-2 block">Custom Name (optional)</label>
+            <input
+              type="text"
+              value={customName}
+              onChange={(e) => setCustomName(e.target.value)}
+              placeholder={activityIcons.find(i => i.id === selectedActivity)?.name || 'Activity name'}
+              className="w-full px-4 py-3 border-3 border-gray-200 rounded-xl font-crayon
+                       focus:border-[#8E6BBF] focus:outline-none"
+            />
+          </div>
+          
+          {/* Time */}
+          <div>
+            <label className="font-crayon text-gray-600 text-sm mb-2 block">Time</label>
+            <input
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              className="w-full px-4 py-3 border-3 border-gray-200 rounded-xl font-crayon text-lg
+                       focus:border-[#8E6BBF] focus:outline-none"
+            />
+          </div>
+          
           {/* Notification Toggle */}
-          <div className="mb-6">
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+            <div className="flex items-center gap-3">
+              {notify ? <Bell className="text-[#F5A623]" size={20} /> : <BellOff className="text-gray-400" size={20} />}
+              <span className="font-crayon">Send reminder</span>
+            </div>
             <button
               onClick={() => setNotify(!notify)}
-              className={`w-full p-4 rounded-xl border-3 flex items-center justify-between transition-all
-                ${notify 
-                  ? 'bg-[#F5A623]/10 border-[#F5A623]' 
-                  : 'bg-gray-100 border-gray-200'
-                }`}
+              className={`w-12 h-7 rounded-full transition-all relative ${
+                notify ? 'bg-[#F5A623]' : 'bg-gray-300'
+              }`}
             >
-              <div className="flex items-center gap-3">
-                {notify ? <BellRing size={24} className="text-[#F5A623]" /> : <Bell size={24} className="text-gray-400" />}
-                <div className="text-left">
-                  <p className="font-display text-gray-800">Notifications</p>
-                  <p className="font-crayon text-xs text-gray-500">
-                    {notify ? 'Remind me at this time' : 'No reminder'}
-                  </p>
-                </div>
-              </div>
-              <div className={`w-12 h-7 rounded-full p-1 transition-all ${notify ? 'bg-[#F5A623]' : 'bg-gray-300'}`}>
-                <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${notify ? 'translate-x-5' : 'translate-x-0'}`} />
-              </div>
+              <div className={`w-5 h-5 bg-white rounded-full shadow absolute top-1 transition-all ${
+                notify ? 'right-1' : 'left-1'
+              }`} />
             </button>
           </div>
-
-          {/* Sound Selection */}
-          {notify && (
-            <div className="mb-6">
-              <h4 className="font-display text-gray-700 mb-3 flex items-center gap-2">
-                <Volume2 size={18} className="text-[#F5A623]" />
-                Notification Sound
-              </h4>
-              <div className="grid grid-cols-2 gap-2">
-                {SOUND_OPTIONS.map((option) => (
-                  <button
-                    key={option.id}
-                    onClick={() => {
-                      setSound(option.id);
-                      playPreviewSound(option.frequency, option.duration);
-                    }}
-                    className={`p-3 rounded-xl border-3 flex items-center gap-2 transition-all
-                      ${sound === option.id 
-                        ? 'bg-[#F5A623]/10 border-[#F5A623]' 
-                        : 'bg-white border-gray-200 hover:border-[#F5A623]'
-                      }`}
-                  >
-                    <span className="text-xl">{option.emoji}</span>
-                    <span className="font-crayon text-sm text-gray-700">{option.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Vibration Selection */}
-          {notify && (
-            <div className="mb-6">
-              <h4 className="font-display text-gray-700 mb-3 flex items-center gap-2">
-                <Vibrate size={18} className="text-[#8E6BBF]" />
-                Vibration Pattern
-              </h4>
-              <div className="grid grid-cols-2 gap-2">
-                {VIBRATION_OPTIONS.map((option) => (
-                  <button
-                    key={option.id}
-                    onClick={() => {
-                      setVibration(option.id);
-                      playPreviewVibration(option.pattern);
-                    }}
-                    className={`p-3 rounded-xl border-3 flex items-center gap-2 transition-all
-                      ${vibration === option.id 
-                        ? 'bg-[#8E6BBF]/10 border-[#8E6BBF]' 
-                        : 'bg-white border-gray-200 hover:border-[#8E6BBF]'
-                      }`}
-                  >
-                    <span className="text-xl">{option.emoji}</span>
-                    <span className="font-crayon text-sm text-gray-700">{option.name}</span>
-                  </button>
-                ))}
-              </div>
-              <p className="font-crayon text-xs text-gray-400 mt-2 text-center">
-                Tap an option to preview the vibration
-              </p>
-            </div>
-          )}
         </div>
-
+        
         {/* Footer */}
-        <div className="p-4 border-t-3 border-gray-200 flex gap-3">
+        <div className="p-4 border-t flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 py-3 bg-gray-200 rounded-xl font-crayon text-gray-600 hover:bg-gray-300 transition-all"
+            className="flex-1 py-3 border-3 border-gray-300 rounded-xl font-crayon text-gray-600"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="flex-1 py-3 bg-[#5CB85C] text-white rounded-xl font-display hover:bg-green-600 transition-all flex items-center justify-center gap-2"
+            disabled={!selectedActivity}
+            className="flex-1 py-3 bg-[#5CB85C] text-white rounded-xl font-crayon
+                     disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            <Check size={20} />
+            <Save size={18} />
             Save
           </button>
         </div>
@@ -436,788 +471,472 @@ const TimeNotificationModal = ({ item, onSave, onClose }) => {
   );
 };
 
-const VisualSchedule = () => {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const fileInputRef = useRef(null);
-  
-  // State
-  const [scheduleItems, setScheduleItems] = useState([]);
-  const [scheduleName, setScheduleName] = useState('My Schedule');
-  const [showIconPicker, setShowIconPicker] = useState(false);
-  const [editingIndex, setEditingIndex] = useState(null);
-  const [draggedIndex, setDraggedIndex] = useState(null);
-  const [customImages, setCustomImages] = useState([]);
-  const [isUploading, setIsUploading] = useState(false);
-  const [showCustomImageModal, setShowCustomImageModal] = useState(false);
-  const [newImageName, setNewImageName] = useState('');
-  const [newImageData, setNewImageData] = useState(null);
-  const [editingActivity, setEditingActivity] = useState(null); // For custom icon editor
-  const [currentDateStr, setCurrentDateStr] = useState(formatDate(getToday())); // Track current date for notifications
-  const [showTimeNotifyModal, setShowTimeNotifyModal] = useState(null); // Index of item being edited, or null
+// ============================================
+// TEMPLATES MODAL
+// ============================================
 
-  // Load custom images from storage (schedule is loaded by ScheduleCalendarWrapper)
-  useEffect(() => {
-    const loadData = async () => {
-      // Load custom images from IndexedDB
-      if (user?.id) {
-        try {
-          const images = await imageStorage.getUserImages(user.id);
-          setCustomImages(images);
-        } catch (e) {
-          console.error('Failed to load custom images:', e);
-        }
-      }
-    };
-    
-    loadData();
-  }, [user?.id]);
-
-  // Save schedule to localStorage
-  const saveSchedule = () => {
-    localStorage.setItem(`snw_schedule_${user?.id}`, JSON.stringify({
-      name: scheduleName,
-      items: scheduleItems,
-    }));
-  };
-
-  // Select a template
-  const selectTemplate = (template) => {
-    const items = template.items.map((iconId, index) => {
-      const iconData = activityIcons.find(i => i.id === iconId);
-      return {
-        id: `${iconId}-${Date.now()}-${index}`,
-        activityId: iconId,
-        name: iconData?.name || 'Activity',
-        icon: iconData?.icon || Star,
-        color: iconData?.color || '#9B59B6',
-        completed: false,
-        customImage: null,
-      };
-    });
-    setScheduleItems(items);
-    setScheduleName(template.name === 'Start Fresh' ? 'My Schedule' : template.name);
-  };
-
-  // Add activity to schedule
-  const addActivity = (activity, time = null) => {
-    const newItem = {
-      id: `${activity.id}-${Date.now()}`,
-      activityId: activity.id,
-      name: activity.name,
-      icon: activity.icon,
-      color: activity.color,
-      completed: false,
-      customImage: null,
-      time: time, // HH:MM format
-      notify: true, // Enable notifications by default
-      sound: 'chime', // Default sound
-      vibration: 'short', // Default vibration
-    };
-    
-    if (editingIndex !== null) {
-      const newItems = [...scheduleItems];
-      newItems.splice(editingIndex + 1, 0, newItem);
-      setScheduleItems(newItems);
-      setEditingIndex(null);
-    } else {
-      setScheduleItems([...scheduleItems, newItem]);
-    }
-    setShowIconPicker(false);
-  };
-
-  // Update activity time
-  const updateActivityTime = (index, time) => {
-    const newItems = [...scheduleItems];
-    newItems[index] = { ...newItems[index], time };
-    setScheduleItems(newItems);
-  };
-
-  // Update activity notification settings
-  const updateActivityNotification = (index, settings) => {
-    const newItems = [...scheduleItems];
-    newItems[index] = { ...newItems[index], ...settings };
-    setScheduleItems(newItems);
-  };
-
-  // Toggle activity notification
-  const toggleActivityNotify = (index) => {
-    const newItems = [...scheduleItems];
-    newItems[index] = { ...newItems[index], notify: !newItems[index].notify };
-    setScheduleItems(newItems);
-  };
-
-  // Remove activity from schedule
-  const removeActivity = (index) => {
-    setScheduleItems(scheduleItems.filter((_, i) => i !== index));
-  };
-
-  // Toggle activity completion
-  const toggleComplete = (index) => {
-    const newItems = [...scheduleItems];
-    newItems[index].completed = !newItems[index].completed;
-    setScheduleItems(newItems);
-    
-    // If marking complete, stop any recurring reminders
-    if (newItems[index].completed) {
-      markActivityComplete(currentDateStr, index);
-    }
-  };
-
-  // Save custom icon for an activity
-  const saveActivityCustomIcon = (index, { customImage, customName }) => {
-    const newItems = [...scheduleItems];
-    if (customImage !== undefined) {
-      newItems[index].customImage = customImage;
-    }
-    if (customName) {
-      newItems[index].name = customName;
-    }
-    setScheduleItems(newItems);
-  };
-
-  // Long press handler for editing activity
-  const handleActivityLongPress = (index) => {
-    setEditingActivity({ ...scheduleItems[index], index });
-  };
-
-  // Reset all completions
-  const resetCompletions = () => {
-    setScheduleItems(scheduleItems.map(item => ({ ...item, completed: false })));
-  };
-
-  // Handle file selection for custom image
-  const handleFileSelect = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    
-    // Check file type
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
-      return;
-    }
-    
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Image must be less than 5MB');
-      return;
-    }
-    
-    try {
-      setIsUploading(true);
-      // Compress and convert to base64
-      const compressed = await compressImage(file, 300, 0.8);
-      setNewImageData(compressed);
-      setNewImageName(file.name.replace(/\.[^/.]+$/, '') || 'Custom Activity');
-      setShowCustomImageModal(true);
-    } catch (e) {
-      console.error('Failed to process image:', e);
-      alert('Failed to process image. Please try again.');
-    } finally {
-      setIsUploading(false);
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
-
-  // Save custom image and add to schedule
-  const saveCustomImage = async () => {
-    if (!newImageData || !newImageName.trim()) return;
-    
-    try {
-      setIsUploading(true);
-      const activityId = `custom-${Date.now()}`;
-      
-      // Save to IndexedDB
-      const savedImage = await imageStorage.saveCustomImage(
-        user.id,
-        activityId,
-        newImageData,
-        newImageName.trim()
-      );
-      
-      // Add to local state
-      setCustomImages(prev => [...prev, savedImage]);
-      
-      // Add to schedule
-      const newItem = {
-        id: `${activityId}-${Date.now()}`,
-        activityId: activityId,
-        name: newImageName.trim(),
-        icon: null,
-        color: '#87CEEB',
-        completed: false,
-        customImage: newImageData,
-      };
-      
-      if (editingIndex !== null) {
-        const newItems = [...scheduleItems];
-        newItems.splice(editingIndex + 1, 0, newItem);
-        setScheduleItems(newItems);
-        setEditingIndex(null);
-      } else {
-        setScheduleItems([...scheduleItems, newItem]);
-      }
-      
-      // Reset modal state
-      setShowCustomImageModal(false);
-      setShowIconPicker(false);
-      setNewImageData(null);
-      setNewImageName('');
-      
-    } catch (e) {
-      console.error('Failed to save custom image:', e);
-      alert('Failed to save image. Please try again.');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  // Add existing custom image to schedule
-  const addCustomImageToSchedule = (customImage) => {
-    const newItem = {
-      id: `${customImage.activityId}-${Date.now()}`,
-      activityId: customImage.activityId,
-      name: customImage.name,
-      icon: null,
-      color: '#87CEEB',
-      completed: false,
-      customImage: customImage.imageData,
-    };
-    
-    if (editingIndex !== null) {
-      const newItems = [...scheduleItems];
-      newItems.splice(editingIndex + 1, 0, newItem);
-      setScheduleItems(newItems);
-      setEditingIndex(null);
-    } else {
-      setScheduleItems([...scheduleItems, newItem]);
-    }
-    setShowIconPicker(false);
-  };
-
-  // Delete a custom image
-  const deleteCustomImage = async (imageId) => {
-    if (!confirm('Delete this custom image?')) return;
-    
-    try {
-      await imageStorage.deleteImage(imageId);
-      setCustomImages(prev => prev.filter(img => img.id !== imageId));
-    } catch (e) {
-      console.error('Failed to delete image:', e);
-    }
-  };
-
-  // Drag and drop handlers
-  const handleDragStart = (index) => {
-    setDraggedIndex(index);
-  };
-
-  const handleDragOver = (e, index) => {
-    e.preventDefault();
-    if (draggedIndex === null || draggedIndex === index) return;
-    
-    const newItems = [...scheduleItems];
-    const draggedItem = newItems[draggedIndex];
-    newItems.splice(draggedIndex, 1);
-    newItems.splice(index, 0, draggedItem);
-    setScheduleItems(newItems);
-    setDraggedIndex(index);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
-  };
-
-  // Render template selection view - now shows below date picker
-  const renderTemplates = () => (
-    <div className="space-y-4">
-      <div className="text-center">
-        <h2 className="text-xl font-display text-gray-800 mb-1">
-          No schedule for this date
-        </h2>
-        <p className="font-crayon text-gray-500 text-sm">
-          Choose a template or start fresh
-        </p>
+const TemplatesModal = ({ onSelectTemplate, onClose }) => (
+  <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div className="bg-[#FFFEF5] w-full max-w-md rounded-2xl border-4 border-[#F5A623] shadow-crayon-lg">
+      <div className="bg-[#F5A623] text-white p-4 flex items-center justify-between">
+        <h3 className="font-display text-xl flex items-center gap-2">
+          <LayoutTemplate size={24} />
+          Schedule Templates
+        </h3>
+        <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
+          <X size={24} />
+        </button>
       </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        {scheduleTemplates.map((template, index) => (
+      
+      <div className="p-4 space-y-3">
+        <p className="font-crayon text-gray-600 text-sm text-center mb-4">
+          Choose a template to pre-fill today's schedule
+        </p>
+        
+        {scheduleTemplates.map((template) => (
           <button
             key={template.id}
-            onClick={() => selectTemplate(template)}
-            className={`
-              p-4 bg-white border-3 rounded-xl text-left
-              shadow-sm hover:shadow-md
-              transition-all hover:-translate-y-0.5
-              ${index % 4 === 0 ? 'border-[#E63B2E]' : ''}
-              ${index % 4 === 1 ? 'border-[#5CB85C]' : ''}
-              ${index % 4 === 2 ? 'border-[#4A9FD4]' : ''}
-              ${index % 4 === 3 ? 'border-[#8E6BBF]' : ''}
-            `}
+            onClick={() => onSelectTemplate(template)}
+            className="w-full p-4 bg-white border-3 border-gray-200 rounded-xl text-left
+                     hover:border-[#F5A623] transition-all flex items-center gap-4"
           >
-            <div className="text-2xl mb-2">{template.emoji}</div>
-            <h3 className="text-sm font-display text-gray-800">{template.name}</h3>
-            <p className="font-crayon text-gray-400 text-xs mt-1">
-              {template.items.length} activities
-            </p>
+            <span className="text-3xl">{template.emoji}</span>
+            <div>
+              <h4 className="font-display text-gray-800">{template.name}</h4>
+              <p className="text-xs font-crayon text-gray-500">
+                {template.items.length} activities
+              </p>
+            </div>
           </button>
         ))}
       </div>
     </div>
-  );
+  </div>
+);
 
-  // Render schedule builder view
-  const renderBuilder = () => (
-    <div className="space-y-6">
-      {/* Schedule Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-3">
-          <input
-            type="text"
-            value={scheduleName}
-            onChange={(e) => setScheduleName(e.target.value)}
-            className="text-xl sm:text-2xl font-display text-crayon-blue bg-transparent 
-                       border-b-4 border-dashed border-crayon-blue focus:outline-none
-                       focus:border-crayon-purple transition-colors px-2"
-            placeholder="Schedule Name"
-          />
-          <span className="text-2xl">📋</span>
+// ============================================
+// COPY SCHEDULE MODAL
+// ============================================
+
+const CopyModal = ({ sourceDate, activities, onClose, onCopy }) => {
+  const [copyType, setCopyType] = useState('days');
+  const [selectedDays, setSelectedDays] = useState([]);
+  const [weeksAhead, setWeeksAhead] = useState(1);
+  
+  const toggleDay = (dayOffset) => {
+    setSelectedDays(prev => 
+      prev.includes(dayOffset) 
+        ? prev.filter(d => d !== dayOffset)
+        : [...prev, dayOffset]
+    );
+  };
+  
+  const handleCopy = () => {
+    let targetDates = [];
+    
+    if (copyType === 'days') {
+      targetDates = selectedDays.map(offset => formatDate(addDays(sourceDate, offset)));
+    } else if (copyType === 'week') {
+      for (let w = 1; w <= weeksAhead; w++) {
+        targetDates.push(formatDate(addDays(sourceDate, w * 7)));
+      }
+    }
+    
+    onCopy(targetDates);
+  };
+  
+  const nextWeekDays = [];
+  for (let i = 1; i <= 14; i++) {
+    const date = addDays(sourceDate, i);
+    nextWeekDays.push({
+      offset: i,
+      date,
+      label: date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+    });
+  }
+  
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-[#FFFEF5] w-full max-w-md rounded-2xl border-4 border-[#8E6BBF] shadow-crayon-lg">
+        <div className="bg-[#8E6BBF] text-white p-4 flex items-center justify-between">
+          <h3 className="font-display text-xl flex items-center gap-2">
+            <Copy size={24} />
+            Copy Schedule
+          </h3>
+          <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
+            <X size={24} />
+          </button>
         </div>
         
-        <div className="flex items-center gap-2">
-          <button
-            onClick={resetCompletions}
-            className="flex items-center gap-1 px-4 py-2.5 bg-white border-4 border-crayon-orange 
-                       rounded-full font-crayon text-sm text-gray-600 hover:bg-crayon-orange 
-                       hover:text-white transition-all shadow-sm"
-            title="Reset all"
-          >
-            <RotateCcw size={16} />
-            <span className="hidden sm:inline">Reset</span>
-          </button>
-          <button
-            onClick={() => { saveSchedule(); }}
-            className="flex items-center gap-1 px-3 py-2 bg-crayon-green text-white
-                       rounded-full font-crayon text-sm hover:bg-green-600 
-                       transition-all shadow-crayon"
-          >
-            <Save size={16} />
-            <span className="hidden sm:inline">Save</span>
-          </button>
-          <button
-            onClick={() => setCurrentView('templates')}
-            className="flex items-center gap-1 px-4 py-2.5 bg-white border-4 border-gray-300 
-                       rounded-full font-crayon text-sm text-gray-600 hover:border-crayon-blue 
-                       transition-all shadow-sm"
-          >
-            <Edit3 size={16} />
-            <span className="hidden sm:inline">Templates</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Progress Bar */}
-      {scheduleItems.length > 0 && (
-        <div className="bg-white p-4 rounded-2xl border-4 border-crayon-yellow shadow-crayon">
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-crayon text-gray-600">Today's Progress</span>
-            <span className="font-display text-crayon-green">
-              {scheduleItems.filter(i => i.completed).length} / {scheduleItems.length}
-            </span>
-          </div>
-          <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-crayon-green to-crayon-blue transition-all duration-500"
-              style={{ 
-                width: `${(scheduleItems.filter(i => i.completed).length / scheduleItems.length) * 100}%` 
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Schedule Items */}
-      <div className="space-y-3">
-        {scheduleItems.length === 0 ? (
-          <div 
-            className="text-center py-12 bg-white border-4 border-dashed border-gray-300 rounded-2xl"
-            style={{ borderRadius: '255px 15px 225px 15px/15px 225px 15px 255px' }}
-          >
-            <Sparkles size={48} className="mx-auto text-crayon-purple mb-4" />
-            <p className="font-crayon text-gray-500 text-lg mb-4">
-              Your schedule is empty!
-            </p>
+        <div className="p-4 space-y-4">
+          <p className="font-crayon text-gray-600 text-sm">
+            Copy {activities.length} activities to other days
+          </p>
+          
+          {/* Copy Type Selection */}
+          <div className="flex gap-2">
             <button
-              onClick={() => setShowIconPicker(true)}
-              className="px-6 py-3 bg-crayon-green text-white rounded-full font-crayon
-                         shadow-crayon hover:shadow-crayon-lg hover:-translate-y-1 transition-all"
+              onClick={() => setCopyType('days')}
+              className={`flex-1 py-2 rounded-lg font-crayon text-sm border-2 ${
+                copyType === 'days' ? 'bg-[#8E6BBF] text-white border-[#8E6BBF]' : 'border-gray-200'
+              }`}
             >
-              <Plus size={20} className="inline mr-2" />
-              Add First Activity
+              Pick Days
+            </button>
+            <button
+              onClick={() => setCopyType('week')}
+              className={`flex-1 py-2 rounded-lg font-crayon text-sm border-2 ${
+                copyType === 'week' ? 'bg-[#8E6BBF] text-white border-[#8E6BBF]' : 'border-gray-200'
+              }`}
+            >
+              Weekly Repeat
             </button>
           </div>
-        ) : (
-          scheduleItems.map((item, index) => {
-            const IconComponent = item.icon;
-            return (
-              <div
-                key={item.id}
-                draggable
-                onDragStart={() => handleDragStart(index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDragEnd={handleDragEnd}
-                className={`
-                  flex items-center gap-3 p-4 bg-white rounded-2xl border-4 
-                  shadow-crayon transition-all cursor-grab active:cursor-grabbing
-                  ${item.completed ? 'opacity-60 border-gray-300' : 'border-gray-200'}
-                  ${draggedIndex === index ? 'scale-105 shadow-crayon-lg' : ''}
-                  hover:border-crayon-blue
-                `}
-                style={{ borderRadius: '15px 225px 15px 255px/255px 15px 225px 15px' }}
-              >
-                {/* Drag Handle */}
-                <div className="text-gray-300 hover:text-gray-500 cursor-grab">
-                  <GripVertical size={20} />
-                </div>
-
-                {/* Activity Icon */}
-                <div className="relative">
+          
+          {copyType === 'days' && (
+            <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+              {nextWeekDays.map((day) => (
+                <button
+                  key={day.offset}
+                  onClick={() => toggleDay(day.offset)}
+                  className={`p-2 rounded-lg text-sm font-crayon border-2 ${
+                    selectedDays.includes(day.offset)
+                      ? 'bg-[#5CB85C] text-white border-[#5CB85C]'
+                      : 'border-gray-200 hover:border-[#8E6BBF]'
+                  }`}
+                >
+                  {day.label}
+                </button>
+              ))}
+            </div>
+          )}
+          
+          {copyType === 'week' && (
+            <div className="space-y-2">
+              <label className="font-crayon text-gray-600 text-sm">Repeat for how many weeks?</label>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4].map((w) => (
                   <button
-                    onClick={() => toggleComplete(index)}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      handleActivityLongPress(index);
-                    }}
-                    className={`
-                      w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center
-                      transition-all transform hover:scale-105
-                      ${item.completed ? 'bg-gray-200' : ''}
-                    `}
-                    style={{ 
-                      backgroundColor: item.completed ? undefined : item.color,
-                      borderRadius: '255px 15px 225px 15px/15px 225px 15px 255px'
-                    }}
+                    key={w}
+                    onClick={() => setWeeksAhead(w)}
+                    className={`flex-1 py-3 rounded-lg font-display text-lg border-2 ${
+                      weeksAhead === w ? 'bg-[#8E6BBF] text-white border-[#8E6BBF]' : 'border-gray-200'
+                    }`}
                   >
-                    {item.completed ? (
-                      <Check size={32} className="text-crayon-green" strokeWidth={4} />
-                    ) : item.customImage ? (
-                      <img 
-                        src={item.customImage} 
-                        alt={item.name}
-                        className="w-full h-full object-cover rounded-xl"
-                      />
-                    ) : IconComponent ? (
-                      <IconComponent size={32} className="text-white" />
-                    ) : (
-                      <Star size={32} className="text-white" />
-                    )}
+                    {w}
                   </button>
-                  {/* Edit button overlay */}
-                  <button
-                    onClick={() => handleActivityLongPress(index)}
-                    className="absolute -bottom-1 -right-1 w-6 h-6 bg-white border-2 border-[#4A9FD4] rounded-full flex items-center justify-center shadow-sm hover:bg-[#4A9FD4] hover:text-white transition-colors"
-                    title="Customize icon"
-                  >
-                    <Camera size={12} />
-                  </button>
-                </div>
-
-                {/* Activity Name & Time/Notification */}
-                <div className="flex-1 min-w-0">
-                  <h3 className={`
-                    font-display text-lg sm:text-xl
-                    ${item.completed ? 'line-through text-gray-400' : 'text-gray-800'}
-                  `}>
-                    {item.name}
-                  </h3>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    {/* Time & Notification Button */}
-                    <button
-                      onClick={() => setShowTimeNotifyModal(index)}
-                      className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-sm font-crayon transition-all
-                        ${item.time 
-                          ? 'bg-[#4A9FD4]/10 text-[#4A9FD4] hover:bg-[#4A9FD4]/20' 
-                          : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                        }`}
-                    >
-                      <Clock size={14} />
-                      {item.time ? formatTimeDisplay(item.time) : 'Set time'}
-                    </button>
-                    
-                    {/* Notification indicators */}
-                    {item.time && item.notify && (
-                      <div className="flex items-center gap-1">
-                        <span className={`p-1 rounded ${item.sound !== 'none' ? 'text-[#F5A623]' : 'text-gray-300'}`} title={`Sound: ${SOUND_OPTIONS.find(s => s.id === item.sound)?.name || 'Chime'}`}>
-                          {item.sound !== 'none' ? <Volume2 size={12} /> : <VolumeX size={12} />}
-                        </span>
-                        <span className={`p-1 rounded ${item.vibration !== 'none' ? 'text-[#8E6BBF]' : 'text-gray-300'}`} title={`Vibration: ${VIBRATION_OPTIONS.find(v => v.id === item.vibration)?.name || 'Short'}`}>
-                          <Vibrate size={12} />
-                        </span>
-                      </div>
-                    )}
-                    
-                    {!item.time && (
-                      <span className="font-crayon text-xs text-gray-400">
-                        Tap icon to {item.completed ? 'undo' : 'complete'}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      setEditingIndex(index);
-                      setShowIconPicker(true);
-                    }}
-                    className="p-2 text-gray-400 hover:text-crayon-blue transition-colors"
-                    title="Add activity after this"
-                  >
-                    <Plus size={20} />
-                  </button>
-                  <button
-                    onClick={() => removeActivity(index)}
-                    className="p-2 text-gray-400 hover:text-crayon-red transition-colors"
-                    title="Remove activity"
-                  >
-                    <Trash2 size={20} />
-                  </button>
-                </div>
+                ))}
               </div>
-            );
-          })
-        )}
-      </div>
-
-      {/* Time & Notification Settings Modal */}
-      {showTimeNotifyModal !== null && scheduleItems[showTimeNotifyModal] && (
-        <TimeNotificationModal
-          item={scheduleItems[showTimeNotifyModal]}
-          onSave={(settings) => {
-            updateActivityNotification(showTimeNotifyModal, settings);
-            setShowTimeNotifyModal(null);
-          }}
-          onClose={() => setShowTimeNotifyModal(null)}
-        />
-      )}
-
-      {/* Add Activity Button */}
-      {scheduleItems.length > 0 && (
-        <button
-          onClick={() => {
-            setEditingIndex(null);
-            setShowIconPicker(true);
-          }}
-          className="w-full py-4 border-4 border-dashed border-crayon-green text-crayon-green
-                     rounded-2xl font-crayon text-lg hover:bg-crayon-green hover:text-white
-                     transition-all flex items-center justify-center gap-2"
-          style={{ borderRadius: '255px 15px 225px 15px/15px 225px 15px 255px' }}
-        >
-          <Plus size={24} />
-          Add Activity
-        </button>
-      )}
-
-      {/* Icon Picker Modal */}
-      {showIconPicker && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div 
-            className="bg-crayon-paper w-full max-w-lg max-h-[80vh] rounded-3xl p-6 overflow-y-auto
-                       border-4 border-crayon-purple shadow-crayon-lg"
-            style={{ borderRadius: '30px 70px 30px 70px / 70px 30px 70px 30px' }}
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-display text-crayon-purple">Pick an Activity</h3>
-              <button
-                onClick={() => {
-                  setShowIconPicker(false);
-                  setEditingIndex(null);
-                }}
-                className="p-2 hover:bg-gray-200 rounded-full transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-              {activityIcons.map((activity) => {
-                const IconComponent = activity.icon;
-                return (
-                  <button
-                    key={activity.id}
-                    onClick={() => addActivity(activity)}
-                    className="flex flex-col items-center p-3 bg-white rounded-xl border-3 
-                               border-gray-200 hover:border-crayon-purple hover:-translate-y-1
-                               transition-all shadow-sm hover:shadow-crayon"
-                  >
-                    <div 
-                      className="w-12 h-12 rounded-xl flex items-center justify-center mb-2"
-                      style={{ backgroundColor: activity.color }}
-                    >
-                      <IconComponent size={24} className="text-white" />
-                    </div>
-                    <span className="font-crayon text-xs text-gray-600 text-center leading-tight">
-                      {activity.name}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Custom Images Section */}
-            <div className="mt-6 pt-6 border-t-4 border-dashed border-gray-300">
-              <h4 className="font-display text-lg text-gray-700 mb-4 flex items-center gap-2">
-                <Camera size={20} />
-                Custom Pictures
-              </h4>
-              
-              {/* Existing Custom Images */}
-              {customImages.length > 0 && (
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-4">
-                  {customImages.map((img) => (
-                    <div key={img.id} className="relative group">
-                      <button
-                        onClick={() => addCustomImageToSchedule(img)}
-                        className="w-full flex flex-col items-center p-2 bg-white rounded-xl border-3 
-                                   border-gray-200 hover:border-[#87CEEB] hover:-translate-y-1
-                                   transition-all shadow-sm hover:shadow-crayon"
-                      >
-                        <div className="w-12 h-12 rounded-xl overflow-hidden mb-2 bg-[#87CEEB]">
-                          <img 
-                            src={img.imageData} 
-                            alt={img.name}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <span className="font-crayon text-xs text-gray-600 text-center leading-tight truncate w-full">
-                          {img.name}
-                        </span>
-                      </button>
-                      {/* Delete button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteCustomImage(img.id);
-                        }}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-[#E63B2E] text-white rounded-full
-                                   opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              
-              {/* Upload New Image Button */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="w-full py-4 border-3 border-[#87CEEB] rounded-xl font-crayon text-[#4A9FD4]
-                           hover:bg-[#87CEEB] hover:text-white transition-all
-                           flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {isUploading ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <Upload size={24} />
-                    Upload Picture from Device
-                  </>
-                )}
-              </button>
-              
-              <p className="text-xs text-gray-500 text-center mt-2 font-crayon">
-                Take a photo or choose from your gallery
+              <p className="text-xs text-gray-500 font-crayon text-center">
+                Will copy to the same day for {weeksAhead} week{weeksAhead > 1 ? 's' : ''}
               </p>
             </div>
-          </div>
+          )}
         </div>
-      )}
-
-      {/* Custom Image Name Modal */}
-      {showCustomImageModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div 
-            className="bg-[#FFFEF5] w-full max-w-sm rounded-3xl p-6 border-4 border-[#87CEEB] shadow-crayon-lg"
-            style={{ borderRadius: '30px 70px 30px 70px / 70px 30px 70px 30px' }}
+        
+        <div className="p-4 border-t flex gap-3">
+          <button onClick={onClose} className="flex-1 py-3 border-3 border-gray-300 rounded-xl font-crayon text-gray-600">
+            Cancel
+          </button>
+          <button
+            onClick={handleCopy}
+            disabled={(copyType === 'days' && selectedDays.length === 0)}
+            className="flex-1 py-3 bg-[#5CB85C] text-white rounded-xl font-crayon
+                     disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            <h3 className="text-xl font-display text-[#4A9FD4] mb-4 text-center">Name This Activity</h3>
-            
-            {/* Preview Image */}
-            {newImageData && (
-              <div className="flex justify-center mb-4">
-                <div className="w-24 h-24 rounded-xl overflow-hidden border-3 border-[#87CEEB] shadow-sm">
-                  <img 
-                    src={newImageData} 
-                    alt="Preview"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </div>
-            )}
-            
-            {/* Name Input */}
-            <input
-              type="text"
-              value={newImageName}
-              onChange={(e) => setNewImageName(e.target.value)}
-              placeholder="e.g., Go to therapy"
-              className="w-full px-4 py-3 border-3 border-gray-300 rounded-xl font-crayon text-lg
-                        focus:border-[#87CEEB] focus:outline-none transition-colors mb-4"
-              autoFocus
-            />
-            
-            {/* Action Buttons */}
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowCustomImageModal(false);
-                  setNewImageData(null);
-                  setNewImageName('');
-                }}
-                className="flex-1 py-3 border-3 border-gray-300 rounded-xl font-crayon text-gray-600
-                          hover:bg-gray-100 transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveCustomImage}
-                disabled={!newImageName.trim() || isUploading}
-                className="flex-1 py-3 bg-[#5CB85C] border-3 border-green-600 rounded-xl font-crayon text-white
-                          hover:bg-green-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed
-                          flex items-center justify-center gap-2"
-              >
-                {isUploading ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <Check size={20} />
-                    Add
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
+            <Copy size={18} />
+            Copy ({copyType === 'days' ? selectedDays.length : weeksAhead} {copyType === 'days' ? 'days' : 'weeks'})
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
+};
 
+// ============================================
+// MAIN COMPONENT
+// ============================================
+
+const VisualSchedule = () => {
+  const navigate = useNavigate();
+  const { user, isGuest } = useAuth();
+  
+  // State
+  const [selectedDate, setSelectedDate] = useState(getToday());
+  const [activities, setActivities] = useState([]);
+  const [datesWithSchedules, setDatesWithSchedules] = useState([]);
+  const [showActivityModal, setShowActivityModal] = useState(false);
+  const [editingActivity, setEditingActivity] = useState(null);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [showCopyModal, setShowCopyModal] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState(null);
+  
+  // Sync state
+  const [syncing, setSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState(null);
+  const [dataSource, setDataSource] = useState('local'); // 'local' or 'cloud'
+  
+  const dateStr = formatDate(selectedDate);
+  const canSync = user && !isGuest;
+  
+  // Initial sync on mount for authenticated users
+  useEffect(() => {
+    if (canSync) {
+      handleSync();
+    }
+    // Load last sync time
+    const status = getSyncStatus();
+    if (status.lastSync) {
+      setLastSync(new Date(status.lastSync));
+    }
+  }, [user?.id]);
+  
+  // Load schedule for selected date (with cloud support)
+  useEffect(() => {
+    const loadSchedule = async () => {
+      if (canSync) {
+        // Try to load from cloud first
+        const schedule = await getScheduleWithSync(user.id, dateStr);
+        if (schedule && schedule.activities) {
+          setActivities(schedule.activities);
+          setDataSource(schedule.source || 'cloud');
+        } else {
+          setActivities([]);
+          setDataSource('local');
+        }
+      } else {
+        // Guest mode - local only
+        const schedule = getScheduleForDate(dateStr);
+        if (schedule && schedule.activities) {
+          setActivities(schedule.activities);
+        } else {
+          setActivities([]);
+        }
+        setDataSource('local');
+      }
+      setHasUnsavedChanges(false);
+    };
+    
+    loadSchedule();
+  }, [dateStr, canSync, user?.id]);
+  
+  // Load dates with schedules
+  useEffect(() => {
+    const all = getAllSchedules();
+    setDatesWithSchedules(Object.keys(all));
+  }, [activities]);
+  
+  // Check notification permission
+  useEffect(() => {
+    const settings = getNotificationSettings();
+    setNotificationsEnabled(getPermissionStatus() === 'granted' && settings.globalEnabled);
+  }, []);
+  
+  // Manual sync handler
+  const handleSync = async () => {
+    if (!canSync || syncing) return;
+    
+    setSyncing(true);
+    try {
+      const result = await fullSync(user.id);
+      setLastSync(new Date());
+      console.log('Sync complete:', result);
+      
+      // Reload current date's schedule after sync
+      const schedule = await getScheduleWithSync(user.id, dateStr);
+      if (schedule && schedule.activities) {
+        setActivities(schedule.activities);
+        setDataSource(schedule.source || 'cloud');
+      }
+      
+      // Update dates with schedules
+      const all = getAllSchedules();
+      setDatesWithSchedules(Object.keys(all));
+    } catch (error) {
+      console.error('Sync error:', error);
+    } finally {
+      setSyncing(false);
+    }
+  };
+  
+  // Save schedule (with cloud sync for authenticated users)
+  const saveSchedule = useCallback(async () => {
+    const schedule = {
+      id: Date.now(),
+      name: `Schedule for ${formatDisplayDate(selectedDate)}`,
+      activities: activities,
+      date: dateStr,
+      updatedAt: new Date().toISOString(),
+    };
+    
+    if (canSync) {
+      // Save to both local and cloud
+      const result = await saveScheduleWithSync(user.id, dateStr, schedule);
+      if (result.cloud) {
+        setDataSource('cloud');
+      }
+    } else {
+      // Guest mode - local only
+      saveScheduleToDate(dateStr, schedule);
+    }
+    
+    setHasUnsavedChanges(false);
+    
+    // Schedule notifications
+    if (notificationsEnabled) {
+      scheduleActivityNotifications(dateStr, activities, { repeatUntilComplete: true });
+      console.log('Scheduled notifications for', dateStr, 'with', activities.length, 'activities');
+    }
+    
+    // Update dates with schedules
+    setDatesWithSchedules(prev => 
+      prev.includes(dateStr) ? prev : [...prev, dateStr]
+    );
+  }, [activities, dateStr, selectedDate, notificationsEnabled, canSync, user?.id]);
+  
+  // Auto-save when activities change
+  useEffect(() => {
+    if (hasUnsavedChanges && activities.length > 0) {
+      const timer = setTimeout(saveSchedule, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [hasUnsavedChanges, activities, saveSchedule]);
+  
+  // Add activity
+  const handleAddActivity = (activityData) => {
+    const newActivity = {
+      id: Date.now(),
+      ...activityData,
+      completed: false,
+    };
+    
+    // Insert in time order
+    const newActivities = [...activities, newActivity].sort((a, b) => {
+      if (!a.time) return 1;
+      if (!b.time) return -1;
+      return a.time.localeCompare(b.time);
+    });
+    
+    setActivities(newActivities);
+    setHasUnsavedChanges(true);
+    setShowActivityModal(false);
+    setEditingActivity(null);
+  };
+  
+  // Edit activity
+  const handleEditActivity = (activityData) => {
+    const newActivities = activities.map(a => 
+      a.id === activityData.id ? { ...a, ...activityData } : a
+    ).sort((a, b) => {
+      if (!a.time) return 1;
+      if (!b.time) return -1;
+      return a.time.localeCompare(b.time);
+    });
+    
+    setActivities(newActivities);
+    setHasUnsavedChanges(true);
+    setShowActivityModal(false);
+    setEditingActivity(null);
+  };
+  
+  // Delete activity
+  const handleDeleteActivity = (id) => {
+    if (!confirm('Delete this activity?')) return;
+    setActivities(prev => prev.filter(a => a.id !== id));
+    setHasUnsavedChanges(true);
+  };
+  
+  // Toggle complete
+  const handleToggleComplete = (id) => {
+    setActivities(prev => prev.map(a => 
+      a.id === id ? { ...a, completed: !a.completed } : a
+    ));
+    setHasUnsavedChanges(true);
+  };
+  
+  // Apply template
+  const handleApplyTemplate = (template) => {
+    const newActivities = template.items.map((item, i) => {
+      const iconData = activityIcons.find(icon => icon.id === item.activityId);
+      return {
+        id: Date.now() + i,
+        activityId: item.activityId,
+        name: iconData?.name || 'Activity',
+        time: item.time,
+        notify: true,
+        completed: false,
+      };
+    });
+    
+    setActivities(newActivities);
+    setHasUnsavedChanges(true);
+    setShowTemplates(false);
+  };
+  
+  // Copy schedule
+  const handleCopySchedule = (targetDates) => {
+    const sourceSchedule = {
+      activities: activities.map(a => ({ ...a, id: Date.now() + Math.random(), completed: false })),
+    };
+    
+    targetDates.forEach(targetDate => {
+      saveScheduleToDate(targetDate, {
+        ...sourceSchedule,
+        id: Date.now(),
+        name: `Schedule for ${targetDate}`,
+        date: targetDate,
+        updatedAt: new Date().toISOString(),
+      });
+      
+      // Schedule notifications for copied dates too
+      if (notificationsEnabled) {
+        scheduleActivityNotifications(targetDate, sourceSchedule.activities, { repeatUntilComplete: true });
+      }
+    });
+    
+    setDatesWithSchedules(prev => [...new Set([...prev, ...targetDates])]);
+    setShowCopyModal(false);
+    alert(`Copied to ${targetDates.length} date(s)!`);
+  };
+  
+  // Clear day
+  const handleClearDay = () => {
+    if (!confirm('Clear all activities for this day?')) return;
+    setActivities([]);
+    setHasUnsavedChanges(true);
+  };
+  
+  // Enable notifications
+  const handleEnableNotifications = async () => {
+    const permission = await requestPermission();
+    if (permission === 'granted') {
+      setNotificationsEnabled(true);
+      await sendTestNotification('📅 Notifications Enabled!', 'You\'ll now receive reminders for your scheduled activities.');
+    }
+  };
+  
+  // Drag handlers
+  const handleDragStart = (index) => setDraggedIndex(index);
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    
+    const newActivities = [...activities];
+    const draggedItem = newActivities[draggedIndex];
+    newActivities.splice(draggedIndex, 1);
+    newActivities.splice(index, 0, draggedItem);
+    setActivities(newActivities);
+    setDraggedIndex(index);
+    setHasUnsavedChanges(true);
+  };
+  const handleDragEnd = () => setDraggedIndex(null);
+  
+  // Completion stats
+  const completedCount = activities.filter(a => a.completed).length;
+  const totalCount = activities.length;
+  
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
@@ -1225,48 +944,215 @@ const VisualSchedule = () => {
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/hub')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#E63B2E] 
-                       rounded-xl font-display font-bold text-[#E63B2E] hover:bg-[#E63B2E] 
-                       hover:text-white transition-all shadow-md"
+            className="flex items-center gap-2 px-3 py-2 bg-white border-3 border-[#E63B2E] 
+                     rounded-xl font-display text-[#E63B2E] hover:bg-[#E63B2E] 
+                     hover:text-white transition-all text-sm"
           >
             <ArrowLeft size={16} />
             Back
           </button>
-          <img 
-            src="/logo.jpeg" 
-            alt="ATLASassist" 
-            className="w-10 h-10 rounded-lg shadow-sm"
-          />
           <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-display text-[#E63B2E] crayon-text flex items-center gap-2">
+            <h1 className="text-lg font-display text-[#E63B2E] flex items-center gap-2">
               <Calendar size={20} />
               Visual Schedule
             </h1>
           </div>
+          
+          {/* Sync Status */}
+          <div className="flex items-center gap-2">
+            {hasUnsavedChanges && (
+              <span className="text-xs font-crayon text-[#F5A623] animate-pulse">Saving...</span>
+            )}
+            
+            {canSync ? (
+              <button
+                onClick={handleSync}
+                disabled={syncing}
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-crayon transition-all
+                  ${syncing ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600 hover:bg-green-200'}`}
+                title={lastSync ? `Last synced: ${lastSync.toLocaleTimeString()}` : 'Tap to sync'}
+              >
+                {syncing ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Cloud size={14} />
+                )}
+                <span className="hidden sm:inline">
+                  {syncing ? 'Syncing...' : dataSource === 'cloud' ? 'Synced' : 'Sync'}
+                </span>
+              </button>
+            ) : (
+              <div 
+                className="flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-lg text-xs font-crayon text-gray-500"
+                title="Sign in to sync across devices"
+              >
+                <CloudOff size={14} />
+                <span className="hidden sm:inline">Local</span>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
-      {/* Main Content - Calendar is always shown first */}
-      <main className="max-w-2xl mx-auto px-4 py-6">
-        <ScheduleCalendarWrapper
-          scheduleItems={scheduleItems}
-          setScheduleItems={setScheduleItems}
-          scheduleName={scheduleName}
-          setScheduleName={setScheduleName}
-          onSave={saveSchedule}
-          onDateChange={(dateStr) => setCurrentDateStr(dateStr)}
-        >
-          {/* Show templates if no items, otherwise show builder */}
-          {scheduleItems.length === 0 ? renderTemplates() : renderBuilder()}
-        </ScheduleCalendarWrapper>
+      {/* Main Content */}
+      <main className="max-w-2xl mx-auto px-4 py-4 space-y-4">
+        {/* Calendar */}
+        <MiniMonthCalendar
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
+          datesWithSchedules={datesWithSchedules}
+        />
+        
+        {/* Selected Date Header */}
+        <div className="bg-white rounded-xl border-3 border-gray-200 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-display text-xl text-gray-800">
+                {formatDisplayDate(selectedDate)}
+              </h2>
+              {totalCount > 0 && (
+                <p className="font-crayon text-sm text-gray-500">
+                  {completedCount} of {totalCount} completed
+                </p>
+              )}
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+              {!notificationsEnabled && (
+                <button
+                  onClick={handleEnableNotifications}
+                  className="p-2 bg-[#F5A623] text-white rounded-lg"
+                  title="Enable notifications"
+                >
+                  <BellOff size={18} />
+                </button>
+              )}
+              
+              <button
+                onClick={() => setShowTemplates(true)}
+                className="p-2 bg-[#4A9FD4] text-white rounded-lg"
+                title="Use template"
+              >
+                <LayoutTemplate size={18} />
+              </button>
+              
+              {activities.length > 0 && (
+                <button
+                  onClick={() => setShowCopyModal(true)}
+                  className="p-2 bg-[#8E6BBF] text-white rounded-lg"
+                  title="Copy to other days"
+                >
+                  <Copy size={18} />
+                </button>
+              )}
+            </div>
+          </div>
+          
+          {/* Progress Bar */}
+          {totalCount > 0 && (
+            <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-[#5CB85C] transition-all"
+                style={{ width: `${(completedCount / totalCount) * 100}%` }}
+              />
+            </div>
+          )}
+        </div>
+        
+        {/* Activities List */}
+        <div className="space-y-2">
+          {activities.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-xl border-3 border-dashed border-gray-200">
+              <div className="text-5xl mb-4">📅</div>
+              <p className="font-display text-gray-600 mb-2">No activities scheduled</p>
+              <p className="font-crayon text-gray-400 text-sm mb-4">
+                Add activities or use a template to get started
+              </p>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={() => setShowActivityModal(true)}
+                  className="px-4 py-2 bg-[#5CB85C] text-white rounded-xl font-crayon flex items-center gap-2"
+                >
+                  <Plus size={18} />
+                  Add Activity
+                </button>
+                <button
+                  onClick={() => setShowTemplates(true)}
+                  className="px-4 py-2 bg-[#F5A623] text-white rounded-xl font-crayon flex items-center gap-2"
+                >
+                  <LayoutTemplate size={18} />
+                  Use Template
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {activities.map((activity, index) => (
+                <ActivityItem
+                  key={activity.id}
+                  activity={activity}
+                  onToggleComplete={() => handleToggleComplete(activity.id)}
+                  onEdit={() => {
+                    setEditingActivity(activity);
+                    setShowActivityModal(true);
+                  }}
+                  onDelete={() => handleDeleteActivity(activity.id)}
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragEnd={handleDragEnd}
+                  isDragging={draggedIndex === index}
+                />
+              ))}
+              
+              {/* Add More Button */}
+              <button
+                onClick={() => setShowActivityModal(true)}
+                className="w-full py-4 border-3 border-dashed border-gray-300 rounded-xl
+                         font-crayon text-gray-500 hover:border-[#5CB85C] hover:text-[#5CB85C]
+                         transition-all flex items-center justify-center gap-2"
+              >
+                <Plus size={20} />
+                Add Activity
+              </button>
+              
+              {/* Clear Day */}
+              <button
+                onClick={handleClearDay}
+                className="w-full py-2 text-sm font-crayon text-gray-400 hover:text-[#E63B2E]"
+              >
+                Clear all activities
+              </button>
+            </>
+          )}
+        </div>
       </main>
-      
-      {/* Activity Icon Editor Modal */}
-      {editingActivity && (
-        <ActivityIconEditor
+
+      {/* Modals */}
+      {showActivityModal && (
+        <ActivityModal
           activity={editingActivity}
-          onSave={(updates) => saveActivityCustomIcon(editingActivity.index, updates)}
-          onClose={() => setEditingActivity(null)}
+          onSave={editingActivity ? handleEditActivity : handleAddActivity}
+          onClose={() => {
+            setShowActivityModal(false);
+            setEditingActivity(null);
+          }}
+        />
+      )}
+      
+      {showTemplates && (
+        <TemplatesModal
+          onSelectTemplate={handleApplyTemplate}
+          onClose={() => setShowTemplates(false)}
+        />
+      )}
+      
+      {showCopyModal && (
+        <CopyModal
+          sourceDate={selectedDate}
+          activities={activities}
+          onClose={() => setShowCopyModal(false)}
+          onCopy={handleCopySchedule}
         />
       )}
     </div>

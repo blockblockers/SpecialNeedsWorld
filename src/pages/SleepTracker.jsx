@@ -1,11 +1,14 @@
 // SleepTracker.jsx - Track sleep patterns
 // Simple logging of bedtime and wake time
+// Now with schedule integration for reminders!
 
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Moon, Sun, Clock, Trash2, ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Moon, Sun, Clock, Trash2, ChevronLeft, ChevronRight, BarChart3, CalendarPlus } from 'lucide-react';
 import LocalOnlyNotice from '../components/LocalOnlyNotice';
 import TrackerHistory from '../components/TrackerHistory';
+import AddToScheduleModal from '../components/AddToScheduleModal';
+import { addActivityToSchedule, ACTIVITY_SOURCES } from '../services/scheduleIntegration';
 
 const STORAGE_KEY = 'snw_sleep';
 
@@ -28,6 +31,16 @@ const SleepTracker = () => {
     quality: '',
   });
   const [showHistory, setShowHistory] = useState(false);
+  
+  // Schedule integration state
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [reminderType, setReminderType] = useState('bedtime'); // 'bedtime' or 'waketime'
+
+  // Sleep reminder presets
+  const SLEEP_REMINDERS = {
+    bedtime: { emoji: '🌙', name: 'Bedtime Routine', defaultTime: '20:00', color: '#8E6BBF' },
+    waketime: { emoji: '🌅', name: 'Wake Up Time', defaultTime: '07:00', color: '#F5A623' },
+  };
 
   // Convert entries to hours for graph display
   const historyData = useMemo(() => {
@@ -100,6 +113,35 @@ const SleepTracker = () => {
       saveEntries(newEntries);
       setFormData({ bedtime: '', waketime: '', quality: '' });
     }
+  };
+
+  // Schedule reminder handler
+  const handleAddToSchedule = async ({ date, time, notify }) => {
+    const reminder = SLEEP_REMINDERS[reminderType];
+    
+    const result = addActivityToSchedule({
+      date,
+      name: reminder.name,
+      time,
+      emoji: reminder.emoji,
+      color: reminder.color,
+      source: ACTIVITY_SOURCES.DAILY_ROUTINE,
+      notify,
+      metadata: { type: 'sleep', reminderType },
+    });
+    
+    if (result.success) {
+      setShowScheduleModal(false);
+      alert(`"${reminder.name}" added to your Visual Schedule!`);
+    } else {
+      alert('Failed to add to schedule. Please try again.');
+    }
+  };
+
+  // Open schedule modal
+  const openScheduleModal = (type) => {
+    setReminderType(type);
+    setShowScheduleModal(true);
   };
 
   // Calculate sleep duration
@@ -269,10 +311,21 @@ const SleepTracker = () => {
         <div className="bg-white rounded-3xl border-4 border-[#8E6BBF] p-6 mb-6 shadow-crayon">
           {/* Bedtime */}
           <div className="mb-6">
-            <label className="flex items-center gap-2 font-crayon text-gray-700 mb-2">
-              <Moon className="text-indigo-500" size={20} />
-              Bedtime
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="flex items-center gap-2 font-crayon text-gray-700">
+                <Moon className="text-indigo-500" size={20} />
+                Bedtime
+              </label>
+              <button
+                onClick={() => openScheduleModal('bedtime')}
+                className="flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-600 rounded-lg 
+                         font-crayon text-xs hover:bg-indigo-200 transition-colors"
+                title="Schedule bedtime reminder"
+              >
+                <CalendarPlus size={14} />
+                Schedule
+              </button>
+            </div>
             <input
               type="time"
               value={formData.bedtime}
@@ -284,10 +337,21 @@ const SleepTracker = () => {
 
           {/* Wake time */}
           <div className="mb-6">
-            <label className="flex items-center gap-2 font-crayon text-gray-700 mb-2">
-              <Sun className="text-yellow-500" size={20} />
-              Wake Time
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="flex items-center gap-2 font-crayon text-gray-700">
+                <Sun className="text-yellow-500" size={20} />
+                Wake Time
+              </label>
+              <button
+                onClick={() => openScheduleModal('waketime')}
+                className="flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded-lg 
+                         font-crayon text-xs hover:bg-yellow-200 transition-colors"
+                title="Schedule wake up reminder"
+              >
+                <CalendarPlus size={14} />
+                Schedule
+              </button>
+            </div>
             <input
               type="time"
               value={formData.waketime}
@@ -382,6 +446,21 @@ const SleepTracker = () => {
           </p>
         </div>
       </main>
+
+      {/* Add to Schedule Modal */}
+      <AddToScheduleModal
+        isOpen={showScheduleModal}
+        onClose={() => setShowScheduleModal(false)}
+        onAdd={handleAddToSchedule}
+        title={`Schedule ${SLEEP_REMINDERS[reminderType]?.name}`}
+        itemName={SLEEP_REMINDERS[reminderType]?.name}
+        itemEmoji={SLEEP_REMINDERS[reminderType]?.emoji}
+        itemColor={SLEEP_REMINDERS[reminderType]?.color}
+        defaultTime={formData[reminderType] || SLEEP_REMINDERS[reminderType]?.defaultTime}
+        showTimeSelection={true}
+        showNotifyOption={true}
+        confirmButtonText="Add Reminder"
+      />
     </div>
   );
 };

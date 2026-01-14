@@ -1,5 +1,6 @@
 // MoveExercise.jsx - Track physical activity and exercise
 // Encourages movement with fun activities and progress tracking
+// Now integrates with Visual Schedule!
 
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -14,10 +15,13 @@ import {
   Star,
   ChevronLeft,
   ChevronRight,
-  BarChart3
+  BarChart3,
+  CalendarPlus
 } from 'lucide-react';
 import LocalOnlyNotice from '../components/LocalOnlyNotice';
 import TrackerHistory from '../components/TrackerHistory';
+import AddToScheduleModal from '../components/AddToScheduleModal';
+import { addExerciseToSchedule } from '../services/scheduleIntegration';
 
 const STORAGE_KEY = 'snw_exercise';
 
@@ -97,6 +101,10 @@ const MoveExercise = () => {
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [weekData, setWeekData] = useState({});
   const [showHistory, setShowHistory] = useState(false);
+  
+  // Schedule integration state
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [activityToSchedule, setActivityToSchedule] = useState(null);
 
   // Convert weekData to minutes for graph display
   const historyData = useMemo(() => {
@@ -178,6 +186,32 @@ const MoveExercise = () => {
   // Delete activity
   const deleteActivity = (id) => {
     saveData(activities.filter(a => a.id !== id));
+  };
+
+  // Schedule activity handler
+  const handleAddToSchedule = async ({ date, time, notify }) => {
+    if (!activityToSchedule) return;
+    
+    const result = addExerciseToSchedule(
+      activityToSchedule.name,
+      time,
+      activityToSchedule.minutes || 15,
+      date
+    );
+    
+    if (result.success) {
+      setShowScheduleModal(false);
+      setActivityToSchedule(null);
+      alert(`"${activityToSchedule.name}" scheduled for your Visual Schedule!`);
+    } else {
+      alert('Failed to add to schedule. Please try again.');
+    }
+  };
+
+  // Open schedule modal for activity
+  const openScheduleModal = (activity) => {
+    setActivityToSchedule(activity);
+    setShowScheduleModal(true);
   };
 
   // Calculate total minutes
@@ -385,18 +419,33 @@ const MoveExercise = () => {
               </div>
               <div className="bg-white p-3 grid grid-cols-3 gap-2">
                 {category.activities.map(activity => (
-                  <button
-                    key={activity.id}
-                    onClick={() => isToday && logActivity(activity)}
-                    disabled={!isToday}
-                    className={`p-3 rounded-xl border-2 border-gray-200 flex flex-col items-center
-                               transition-all hover:border-green-400 hover:bg-green-50
-                               active:scale-95 disabled:opacity-50 disabled:hover:border-gray-200`}
-                  >
-                    <span className="text-3xl mb-1">{activity.emoji}</span>
-                    <span className="font-crayon text-xs text-gray-600 text-center">{activity.name}</span>
-                    <span className="font-crayon text-xs text-gray-400">{activity.minutes} min</span>
-                  </button>
+                  <div key={activity.id} className="relative group">
+                    <button
+                      onClick={() => isToday && logActivity(activity)}
+                      disabled={!isToday}
+                      className={`w-full p-3 rounded-xl border-2 border-gray-200 flex flex-col items-center
+                                 transition-all hover:border-green-400 hover:bg-green-50
+                                 active:scale-95 disabled:opacity-50 disabled:hover:border-gray-200`}
+                    >
+                      <span className="text-3xl mb-1">{activity.emoji}</span>
+                      <span className="font-crayon text-xs text-gray-600 text-center">{activity.name}</span>
+                      <span className="font-crayon text-xs text-gray-400">{activity.minutes} min</span>
+                    </button>
+                    {/* Schedule button - appears on hover/tap */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openScheduleModal(activity);
+                      }}
+                      className="absolute -top-1 -right-1 w-7 h-7 bg-[#5CB85C] rounded-full 
+                                 flex items-center justify-center shadow-md
+                                 opacity-0 group-hover:opacity-100 transition-opacity
+                                 hover:bg-green-600"
+                      title="Schedule this exercise"
+                    >
+                      <CalendarPlus size={14} className="text-white" />
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -492,6 +541,26 @@ const MoveExercise = () => {
           </ul>
         </div>
       </main>
+
+      {/* Add to Schedule Modal */}
+      {activityToSchedule && (
+        <AddToScheduleModal
+          isOpen={showScheduleModal}
+          onClose={() => {
+            setShowScheduleModal(false);
+            setActivityToSchedule(null);
+          }}
+          onAdd={handleAddToSchedule}
+          title="Schedule Exercise"
+          itemName={activityToSchedule.name}
+          itemEmoji={activityToSchedule.emoji}
+          itemColor="#5CB85C"
+          defaultTime="09:00"
+          showTimeSelection={true}
+          showNotifyOption={true}
+          confirmButtonText={`Schedule ${activityToSchedule.minutes} min`}
+        />
+      )}
     </div>
   );
 };

@@ -41,12 +41,14 @@ import DailyRoutines from './pages/DailyRoutines';
 import MoveExercise from './pages/MoveExercise';
 import OTExercises from './pages/OTExercises';
 import HealthyChoices from './pages/HealthyChoices';
+import ChoiceBoard from './pages/ChoiceBoard';
 import Community from './pages/Community';
 import CommunityProfileSetup from './pages/CommunityProfileSetup';
 import CommunityNewThread from './pages/CommunityNewThread';
 import CommunityThread from './pages/CommunityThread';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { supabase, isSupabaseConfigured } from './services/supabase';
+import { initNotifications } from './services/notifications';
 
 // Create Auth Context for managing authentication state
 export const AuthContext = createContext(null);
@@ -118,6 +120,9 @@ const AuthProvider = ({ children }) => {
         }
         setLoading(false);
       }
+      
+      // Initialize notification system
+      initNotifications();
     };
 
     initAuth();
@@ -710,6 +715,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <SensoryBreaks />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/activities/choice-board" 
+            element={
+              <ProtectedRoute>
+                <ChoiceBoard />
               </ProtectedRoute>
             } 
           />

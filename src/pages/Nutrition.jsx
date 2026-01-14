@@ -1,10 +1,13 @@
 // Nutrition.jsx - Visual recipes for cooking
 // Fetches recipes from Supabase database with local fallback
+// Now integrates with Visual Schedule for meal planning!
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Utensils, Apple, Clock, Users, ChevronRight, Check, Home, Search, Loader, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Utensils, Apple, Clock, Users, ChevronRight, Check, Home, Search, Loader, AlertCircle, CalendarPlus } from 'lucide-react';
 import { getRecipes, getCategories, getRecipeById } from '../services/recipes';
+import AddToScheduleModal from '../components/AddToScheduleModal';
+import { addMealToSchedule } from '../services/scheduleIntegration';
 
 // Recipe Card
 const RecipeCard = ({ recipe, onClick }) => (
@@ -25,7 +28,7 @@ const RecipeCard = ({ recipe, onClick }) => (
 );
 
 // Recipe Detail View
-const RecipeDetail = ({ recipe, onBack }) => {
+const RecipeDetail = ({ recipe, onBack, onSchedule }) => {
   const [completedSteps, setCompletedSteps] = useState([]);
   const toggleStep = (index) => setCompletedSteps(prev => prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]);
   const steps = recipe.steps || [];
@@ -42,6 +45,14 @@ const RecipeDetail = ({ recipe, onBack }) => {
           <div className="flex-1">
             <h1 className="text-lg font-display text-gray-800 truncate flex items-center gap-2">{recipe.emoji} {recipe.name}</h1>
           </div>
+          <button 
+            onClick={onSchedule}
+            className="flex items-center gap-2 px-3 py-2.5 bg-[#5CB85C] text-white rounded-xl font-crayon hover:bg-green-600 transition-all shadow-md"
+            title="Add to meal schedule"
+          >
+            <CalendarPlus size={18} />
+            <span className="hidden sm:inline">Schedule</span>
+          </button>
         </div>
       </header>
 
@@ -110,6 +121,10 @@ const Nutrition = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [counts, setCounts] = useState({});
+  
+  // Schedule integration state
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [selectedMealType, setSelectedMealType] = useState('lunch');
 
   useEffect(() => { loadData(); }, []);
   useEffect(() => { loadRecipes(); }, [selectedCategory, searchQuery]);
@@ -149,7 +164,74 @@ const Nutrition = () => {
     }
   };
 
-  if (selectedRecipe) return <RecipeDetail recipe={selectedRecipe} onBack={() => setSelectedRecipe(null)} />;
+  // Schedule meal handler
+  const handleAddToSchedule = async ({ date, time, notify }) => {
+    if (!selectedRecipe) return;
+    
+    const result = addMealToSchedule(
+      selectedMealType,
+      selectedRecipe.name,
+      time,
+      date
+    );
+    
+    if (result.success) {
+      setShowScheduleModal(false);
+      alert(`"${selectedRecipe.name}" added to ${selectedMealType} on your Visual Schedule!`);
+    } else {
+      alert('Failed to add to schedule. Please try again.');
+    }
+  };
+
+  if (selectedRecipe) return (
+    <>
+      <RecipeDetail 
+        recipe={selectedRecipe} 
+        onBack={() => setSelectedRecipe(null)} 
+        onSchedule={() => setShowScheduleModal(true)}
+      />
+      
+      {/* Schedule Meal Modal */}
+      <AddToScheduleModal
+        isOpen={showScheduleModal}
+        onClose={() => setShowScheduleModal(false)}
+        onAdd={handleAddToSchedule}
+        title="Schedule This Meal"
+        itemName={selectedRecipe.name}
+        itemEmoji={selectedRecipe.emoji || '🍽️'}
+        itemColor="#5CB85C"
+        defaultTime={selectedMealType === 'breakfast' ? '08:00' : selectedMealType === 'dinner' ? '18:00' : '12:00'}
+        showTimeSelection={true}
+        showNotifyOption={true}
+        confirmButtonText="Add to Meal Plan"
+        customContent={
+          <div className="mb-4">
+            <label className="font-crayon text-gray-600 text-sm mb-2 block">Meal Type</label>
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { id: 'breakfast', emoji: '🥣', label: 'Breakfast' },
+                { id: 'lunch', emoji: '🥗', label: 'Lunch' },
+                { id: 'dinner', emoji: '🍽️', label: 'Dinner' },
+                { id: 'snack', emoji: '🍎', label: 'Snack' },
+              ].map(meal => (
+                <button
+                  key={meal.id}
+                  onClick={() => setSelectedMealType(meal.id)}
+                  className={`p-2 rounded-xl border-2 flex flex-col items-center transition-all
+                    ${selectedMealType === meal.id 
+                      ? 'border-[#5CB85C] bg-green-50' 
+                      : 'border-gray-200 hover:border-gray-300'}`}
+                >
+                  <span className="text-xl">{meal.emoji}</span>
+                  <span className="font-crayon text-xs text-gray-600">{meal.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        }
+      />
+    </>
+  );
 
   return (
     <div className="min-h-screen bg-[#FFFEF5]">

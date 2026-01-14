@@ -1,5 +1,6 @@
 // SocialStories.jsx - Social Stories creator and viewer
 // Generates personalized visual stories to help understand situations
+// Now integrates with Visual Schedule!
 
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -18,7 +19,8 @@ import {
   BookMarked,
   Lightbulb,
   Cloud,
-  CloudOff
+  CloudOff,
+  CalendarPlus
 } from 'lucide-react';
 import { useAuth } from '../App';
 import {
@@ -31,12 +33,14 @@ import {
   SUGGESTED_TOPICS,
 } from '../services/socialStories';
 import { searchPictograms, getPictogramUrl } from '../services/arasaac';
+import AddToScheduleModal from '../components/AddToScheduleModal';
+import { addSocialStoryToSchedule } from '../services/scheduleIntegration';
 
 // ============================================
 // STORY VIEWER COMPONENT
 // ============================================
 
-const StoryViewer = ({ story, onClose, onSave, isSaved }) => {
+const StoryViewer = ({ story, onClose, onSave, isSaved, onSchedule }) => {
   const [currentPage, setCurrentPage] = useState(0);
   const [isFlipping, setIsFlipping] = useState(false);
   const [pictograms, setPictograms] = useState({}); // Cache pictogram IDs by keyword
@@ -141,6 +145,13 @@ const StoryViewer = ({ story, onClose, onSave, isSaved }) => {
           </button>
           
           <div className="flex items-center gap-2">
+            <button
+              onClick={onSchedule}
+              className="p-2 rounded-full bg-white text-[#8E6BBF] hover:bg-[#8E6BBF] hover:text-white transition-colors"
+              title="Schedule reading time"
+            >
+              <CalendarPlus size={20} />
+            </button>
             <button
               onClick={onSave}
               className={`p-2 rounded-full ${
@@ -305,6 +316,9 @@ const SocialStories = () => {
   const [savedStoryIds, setSavedStoryIds] = useState(new Set());
   const [error, setError] = useState(null);
   
+  // Schedule modal state
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  
   // Load popular stories on mount
   useEffect(() => {
     loadPopularStories();
@@ -368,6 +382,24 @@ const SocialStories = () => {
     }
     
     loadSavedStories();
+  };
+  
+  // Add story to schedule handler
+  const handleAddToSchedule = async ({ date, time, notify }) => {
+    if (!currentStory) return;
+    
+    const result = addSocialStoryToSchedule(
+      { id: currentStory.id, title: currentStory.topic, category: currentStory.category },
+      time,
+      date
+    );
+    
+    if (result.success) {
+      setShowScheduleModal(false);
+      alert(`"${currentStory.topic}" added to your Visual Schedule!`);
+    } else {
+      alert('Failed to add to schedule. Please try again.');
+    }
   };
   
   // Open existing story
@@ -558,6 +590,24 @@ const SocialStories = () => {
           onClose={() => setView('home')}
           onSave={handleToggleSave}
           isSaved={savedStoryIds.has(currentStory.id)}
+          onSchedule={() => setShowScheduleModal(true)}
+        />
+      )}
+      
+      {/* Add to Schedule Modal */}
+      {currentStory && (
+        <AddToScheduleModal
+          isOpen={showScheduleModal}
+          onClose={() => setShowScheduleModal(false)}
+          onAdd={handleAddToSchedule}
+          title="Schedule Story Reading"
+          itemName={currentStory.topic}
+          itemEmoji="📖"
+          itemColor="#8E6BBF"
+          defaultTime="09:00"
+          showTimeSelection={true}
+          showNotifyOption={true}
+          confirmButtonText="Add Reading Time"
         />
       )}
       
