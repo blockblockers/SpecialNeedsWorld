@@ -15,11 +15,14 @@ export default defineConfig({
         'logo.jpeg',
         'og-image.jpg',
         'pwa-192x192.png',
-        'pwa-512x512.png'
+        'pwa-512x512.png',
+        'sw-custom.js'
       ],
       manifest: false, // Using external manifest.webmanifest
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,jpg,jpeg,svg,woff2}'],
+        // Import custom service worker code
+        importScripts: ['sw-custom.js'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

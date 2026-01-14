@@ -442,7 +442,6 @@ const VisualSchedule = () => {
   const fileInputRef = useRef(null);
   
   // State
-  const [currentView, setCurrentView] = useState('templates'); // templates, builder
   const [scheduleItems, setScheduleItems] = useState([]);
   const [scheduleName, setScheduleName] = useState('My Schedule');
   const [showIconPicker, setShowIconPicker] = useState(false);
@@ -457,22 +456,9 @@ const VisualSchedule = () => {
   const [currentDateStr, setCurrentDateStr] = useState(formatDate(getToday())); // Track current date for notifications
   const [showTimeNotifyModal, setShowTimeNotifyModal] = useState(null); // Index of item being edited, or null
 
-  // Load saved schedule and custom images from storage
+  // Load custom images from storage (schedule is loaded by ScheduleCalendarWrapper)
   useEffect(() => {
     const loadData = async () => {
-      // Load schedule from localStorage
-      const savedSchedule = localStorage.getItem(`snw_schedule_${user?.id}`);
-      if (savedSchedule) {
-        try {
-          const { name, items } = JSON.parse(savedSchedule);
-          setScheduleName(name);
-          setScheduleItems(items);
-          setCurrentView('builder');
-        } catch (e) {
-          console.error('Failed to load saved schedule');
-        }
-      }
-      
       // Load custom images from IndexedDB
       if (user?.id) {
         try {
@@ -511,7 +497,6 @@ const VisualSchedule = () => {
     });
     setScheduleItems(items);
     setScheduleName(template.name === 'Start Fresh' ? 'My Schedule' : template.name);
-    setCurrentView('builder');
   };
 
   // Add activity to schedule
@@ -746,40 +731,38 @@ const VisualSchedule = () => {
     setDraggedIndex(null);
   };
 
-  // Render template selection view
+  // Render template selection view - now shows below date picker
   const renderTemplates = () => (
-    <div className="space-y-6">
-      <div className="text-center mb-8">
-        <h2 className="text-2xl sm:text-3xl font-display text-crayon-blue crayon-text mb-2">
-          Choose a Template
+    <div className="space-y-4">
+      <div className="text-center">
+        <h2 className="text-xl font-display text-gray-800 mb-1">
+          No schedule for this date
         </h2>
-        <p className="font-crayon text-gray-600">
-          Pick a schedule to start with, or create your own!
+        <p className="font-crayon text-gray-500 text-sm">
+          Choose a template or start fresh
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         {scheduleTemplates.map((template, index) => (
           <button
             key={template.id}
             onClick={() => selectTemplate(template)}
             className={`
-              p-6 bg-white border-4 rounded-2xl text-left
-              shadow-crayon hover:shadow-crayon-lg
-              transform transition-all hover:-translate-y-1
-              ${index % 4 === 0 ? 'border-crayon-red hover:rotate-1' : ''}
-              ${index % 4 === 1 ? 'border-crayon-green hover:-rotate-1' : ''}
-              ${index % 4 === 2 ? 'border-crayon-blue hover:rotate-1' : ''}
-              ${index % 4 === 3 ? 'border-crayon-purple hover:-rotate-1' : ''}
+              p-4 bg-white border-3 rounded-xl text-left
+              shadow-sm hover:shadow-md
+              transition-all hover:-translate-y-0.5
+              ${index % 4 === 0 ? 'border-[#E63B2E]' : ''}
+              ${index % 4 === 1 ? 'border-[#5CB85C]' : ''}
+              ${index % 4 === 2 ? 'border-[#4A9FD4]' : ''}
+              ${index % 4 === 3 ? 'border-[#8E6BBF]' : ''}
             `}
-            style={{ borderRadius: '255px 15px 225px 15px/15px 225px 15px 255px' }}
           >
-            <div className="text-4xl mb-3">{template.emoji}</div>
-            <h3 className="text-xl font-display text-gray-800 mb-1">{template.name}</h3>
-            <p className="font-crayon text-gray-500 text-sm">{template.description}</p>
-            <div className="mt-3 text-xs font-crayon text-gray-400">
+            <div className="text-2xl mb-2">{template.emoji}</div>
+            <h3 className="text-sm font-display text-gray-800">{template.name}</h3>
+            <p className="font-crayon text-gray-400 text-xs mt-1">
               {template.items.length} activities
-            </div>
+            </p>
           </button>
         ))}
       </div>
@@ -1263,20 +1246,19 @@ const VisualSchedule = () => {
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main Content - Calendar is always shown first */}
       <main className="max-w-2xl mx-auto px-4 py-6">
-        {currentView === 'templates' && renderTemplates()}
-        {currentView === 'builder' && (
-          <ScheduleCalendarWrapper
-            scheduleItems={scheduleItems}
-            setScheduleItems={setScheduleItems}
-            scheduleName={scheduleName}
-            setScheduleName={setScheduleName}
-            onSave={saveSchedule}
-          >
-            {renderBuilder()}
-          </ScheduleCalendarWrapper>
-        )}
+        <ScheduleCalendarWrapper
+          scheduleItems={scheduleItems}
+          setScheduleItems={setScheduleItems}
+          scheduleName={scheduleName}
+          setScheduleName={setScheduleName}
+          onSave={saveSchedule}
+          onDateChange={(dateStr) => setCurrentDateStr(dateStr)}
+        >
+          {/* Show templates if no items, otherwise show builder */}
+          {scheduleItems.length === 0 ? renderTemplates() : renderBuilder()}
+        </ScheduleCalendarWrapper>
       </main>
       
       {/* Activity Icon Editor Modal */}

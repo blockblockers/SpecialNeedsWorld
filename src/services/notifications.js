@@ -256,25 +256,36 @@ export const showNotification = async (id) => {
   if (getPermissionStatus() !== 'granted') return;
   
   try {
-    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    // Always try service worker first for mobile compatibility
+    if ('serviceWorker' in navigator) {
       const registration = await navigator.serviceWorker.ready;
+      
+      // Show notification through service worker
       await registration.showNotification(notification.title, {
         body: notification.body,
-        icon: notification.icon,
+        icon: notification.icon || '/logo.jpeg',
         badge: '/favicon-32.png',
         tag: notification.id,
         requireInteraction: true,
         vibrate: [200, 100, 200],
+        data: {
+          activityId: notification.activityId,
+          appId: notification.appId,
+        },
         actions: [
           { action: 'complete', title: '✓ Done' },
           { action: 'snooze', title: '⏰ Snooze' },
         ],
       });
+      
+      console.log('Notification shown via service worker:', notification.title);
     } else {
+      // Fallback for browsers without service worker
       new Notification(notification.title, {
         body: notification.body,
-        icon: notification.icon,
+        icon: notification.icon || '/logo.jpeg',
       });
+      console.log('Notification shown via Notification API:', notification.title);
     }
     
     notification.shown = true;
@@ -436,6 +447,43 @@ export const checkPendingNotifications = () => {
 };
 
 // ============================================
+// SEND IMMEDIATE NOTIFICATION (for testing)
+// ============================================
+
+export const sendTestNotification = async (title, body) => {
+  if (getPermissionStatus() !== 'granted') {
+    console.error('Notification permission not granted');
+    return false;
+  }
+  
+  try {
+    if ('serviceWorker' in navigator) {
+      const registration = await navigator.serviceWorker.ready;
+      await registration.showNotification(title || '🎉 Test Notification!', {
+        body: body || 'Notifications are working! You\'ll receive reminders for your scheduled activities.',
+        icon: '/logo.jpeg',
+        badge: '/favicon-32.png',
+        tag: 'test-notification-' + Date.now(),
+        requireInteraction: false,
+        vibrate: [200, 100, 200],
+      });
+      console.log('Test notification sent via service worker');
+      return true;
+    } else {
+      new Notification(title || '🎉 Test Notification!', {
+        body: body || 'Notifications are working!',
+        icon: '/logo.jpeg',
+      });
+      console.log('Test notification sent via Notification API');
+      return true;
+    }
+  } catch (error) {
+    console.error('Failed to send test notification:', error);
+    return false;
+  }
+};
+
+// ============================================
 // INITIALIZE ON APP LOAD
 // ============================================
 
@@ -458,6 +506,7 @@ export default {
   cancelAllNotifications,
   cancelNotificationsForActivity,
   showNotification,
+  sendTestNotification,
   startRecurringReminder,
   stopRecurringReminder,
   scheduleActivityNotifications,

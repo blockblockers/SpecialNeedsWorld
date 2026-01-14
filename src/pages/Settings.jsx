@@ -27,6 +27,7 @@ import {
   saveNotificationSettings,
   setGlobalNotifications,
   updateAppNotificationSetting,
+  sendTestNotification,
 } from '../services/notifications';
 import { useAuth } from '../App';
 
@@ -355,6 +356,45 @@ const Settings = () => {
                 }`} />
               </button>
             </div>
+            
+            {/* Test Notification Button */}
+            {settings.globalEnabled && permissionStatus === 'granted' && (
+              <button
+                onClick={async () => {
+                  const success = await sendTestNotification();
+                  if (!success) {
+                    alert('Notification test failed. Please make sure:\n\n1. The app is installed as a PWA (Add to Home Screen)\n2. Notifications are enabled in your device settings\n3. You\'re not in Do Not Disturb mode');
+                  }
+                }}
+                className="w-full py-3 bg-[#F5A623] text-white rounded-xl font-crayon flex items-center justify-center gap-2 hover:bg-[#E09612] transition-colors"
+              >
+                <Bell size={18} />
+                Send Test Notification
+              </button>
+            )}
+            
+            {/* Request Permission Button */}
+            {notificationsSupported && permissionStatus === 'default' && (
+              <button
+                onClick={async () => {
+                  const permission = await requestPermission();
+                  setPermissionStatus(permission);
+                }}
+                className="w-full py-3 bg-[#4A9FD4] text-white rounded-xl font-crayon flex items-center justify-center gap-2 hover:bg-[#3A8FC4] transition-colors"
+              >
+                <Bell size={18} />
+                Enable Notifications
+              </button>
+            )}
+            
+            {/* iOS Safari Warning */}
+            {/iPhone|iPad|iPod/.test(navigator.userAgent) && !window.matchMedia('(display-mode: standalone)').matches && (
+              <div className="p-3 bg-[#4A9FD4]/20 rounded-xl border-2 border-[#4A9FD4]">
+                <p className="font-crayon text-sm text-[#4A9FD4]">
+                  📱 <strong>iPhone/iPad Users:</strong> To receive notifications, please install this app by tapping the Share button and selecting "Add to Home Screen".
+                </p>
+              </div>
+            )}
             
             {/* Per-App Settings */}
             {settings.globalEnabled && (
