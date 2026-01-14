@@ -105,7 +105,7 @@ const Tools = () => {
           </button>
           <img 
             src="/logo.jpeg" 
-            alt="Special Needs World" 
+            alt="ATLASassist" 
             className="w-10 h-10 rounded-lg shadow-sm"
           />
           <div className="flex-1">

@@ -1,4 +1,4 @@
-// Activities.jsx - Activities hub for Special Needs World
+// Activities.jsx - Activities hub for ATLASassist
 // Contains creative and learning activities
 
 import { useNavigate } from 'react-router-dom';
@@ -18,11 +18,21 @@ import {
 // Activity apps
 const activityApps = [
   {
+    id: 'sensory-breaks',
+    name: 'Sensory Breaks',
+    description: 'Calming activities with timers and tracking',
+    icon: Sparkles,
+    color: '#8E6BBF',
+    emoji: '🧘',
+    path: '/activities/sensory-breaks',
+    ready: true,
+  },
+  {
     id: 'social-stories',
     name: 'Social Stories',
     description: 'Create visual stories to help understand situations',
     icon: BookOpen,
-    color: '#8E6BBF',
+    color: '#5CB85C',
     emoji: '📖',
     path: '/activities/social-stories',
     ready: true,
@@ -32,7 +42,7 @@ const activityApps = [
     name: 'Say It Right',
     description: 'Practice pronouncing words with pictures',
     icon: Mic,
-    color: '#5CB85C',
+    color: '#4A9FD4',
     emoji: '🗣️',
     path: '/activities/pronunciation',
     ready: true,
@@ -52,7 +62,7 @@ const activityApps = [
     name: 'Music & Sounds',
     description: 'Calming music and fun sounds',
     icon: Music,
-    color: '#4A9FD4',
+    color: '#87CEEB',
     emoji: '🎵',
     path: '/activities/music',
     ready: false,
@@ -108,7 +118,7 @@ const Activities = () => {
           </button>
           <img 
             src="/logo.jpeg" 
-            alt="Special Needs World" 
+            alt="ATLASassist" 
             className="w-10 h-10 rounded-lg shadow-sm"
           />
           <h1 className="text-xl sm:text-2xl font-display text-[#4A9FD4] crayon-text flex items-center gap-2">

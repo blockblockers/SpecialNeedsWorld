@@ -1,5 +1,5 @@
 // Knowledge.jsx - Knowledge Resources hub
-// Browse federal and state-specific special needs information
+// Browse federal and state-specific disability resources
 
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -315,7 +315,7 @@ const Knowledge = () => {
           </button>
           <img 
             src="/logo.jpeg" 
-            alt="Special Needs World" 
+            alt="ATLASassist" 
             className="w-10 h-10 rounded-lg shadow-sm"
           />
           <div className="flex-1 min-w-0">

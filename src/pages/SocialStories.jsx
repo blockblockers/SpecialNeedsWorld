@@ -392,7 +392,7 @@ const SocialStories = () => {
           </button>
           <img 
             src="/logo.jpeg" 
-            alt="Special Needs World" 
+            alt="ATLASassist" 
             className="w-10 h-10 rounded-lg shadow-sm"
           />
           <h1 className="text-xl sm:text-2xl font-display text-[#8E6BBF] crayon-text flex items-center gap-2">
@@ -544,7 +544,7 @@ const SocialStories = () => {
               <p className="font-crayon text-sm text-gray-600">
                 Social Stories are short, personalized stories that help explain everyday situations, 
                 events, or activities in a simple, visual way. They were developed to help individuals 
-                with autism and special needs understand what to expect and how to respond.
+                with autism and other neurodiverse conditions understand what to expect and how to respond.
               </p>
             </section>
           </div>

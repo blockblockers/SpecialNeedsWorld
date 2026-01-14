@@ -209,7 +209,7 @@ const Community = () => {
             <div>
               <h2 className="font-display text-lg text-purple-700">Welcome to Our Community!</h2>
               <p className="font-crayon text-sm text-purple-600">
-                A supportive space for parents and caregivers of children with special needs. 
+                A supportive space for parents and caregivers of neurodiverse children. 
                 Share experiences, ask questions, and find encouragement.
               </p>
             </div>

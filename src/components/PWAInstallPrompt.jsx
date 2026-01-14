@@ -225,7 +225,7 @@ const PWAInstallPrompt = () => {
           {/* Instructions */}
           <div className="p-6">
             <p className="font-crayon text-gray-600 mb-6 text-center">
-              Install Special Needs World on your {platform?.isIOS ? 'iPhone/iPad' : 'device'} for the best experience!
+              Install ATLASassist on your {platform?.isIOS ? 'iPhone/iPad' : 'device'} for the best experience!
             </p>
             
             <div className="space-y-4">
@@ -311,7 +311,7 @@ const PWAInstallPrompt = () => {
           {/* App Icon */}
           <img 
             src="/logo.jpeg" 
-            alt="Special Needs World"
+            alt="ATLASassist"
             className="w-14 h-14 rounded-xl shadow-md flex-shrink-0"
           />
           

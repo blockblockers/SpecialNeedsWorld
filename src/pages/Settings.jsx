@@ -198,7 +198,7 @@ const Settings = () => {
           </button>
           <img 
             src="/logo.jpeg" 
-            alt="Special Needs World" 
+            alt="ATLASassist" 
             className="w-10 h-10 rounded-lg shadow-sm"
           />
           <h1 className="text-lg sm:text-xl font-display text-[#8E6BBF] crayon-text flex items-center gap-2">
@@ -490,7 +490,7 @@ const Settings = () => {
         <section className="bg-white rounded-2xl border-4 border-[#87CEEB] shadow-crayon p-6">
           <h2 className="font-display text-xl text-[#4A9FD4] mb-4">About</h2>
           <div className="space-y-3 font-crayon text-sm text-gray-600">
-            <p>🌍 <strong>Special Needs World</strong></p>
+            <p>🌍 <strong>ATLASassist</strong></p>
             <p>For Finn, and for people like him.</p>
             <p className="text-xs text-gray-400">Version 1.0.0</p>
           </div>

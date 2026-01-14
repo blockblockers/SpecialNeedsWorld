@@ -1,4 +1,4 @@
-// AppHub.jsx - Main navigation hub for Special Needs World
+// AppHub.jsx - Main navigation hub for ATLASassist
 // Kid-friendly crayon theme with colorful app buttons
 
 import { useNavigate } from 'react-router-dom';
@@ -192,7 +192,7 @@ const AppHub = () => {
             <div className="relative">
               <img 
                 src="/logo.jpeg" 
-                alt="Special Needs World" 
+                alt="ATLASassist" 
                 className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl shadow-crayon"
               />
               {/* Installed indicator */}
@@ -246,7 +246,7 @@ const AppHub = () => {
         <div className="max-w-4xl mx-auto">
           {/* Tagline */}
           <p className="text-center text-gray-700 font-display text-lg sm:text-xl mb-6 max-w-lg mx-auto leading-relaxed crayon-text">
-            An ecosystem of helpful applications, tools, and services for the special needs community.
+            Assistive Tools for Learning, Access & Support - Tools for individuals with neurodiverse abilities.
           </p>
           
           {/* App Grid */}
@@ -335,7 +335,7 @@ const AppHub = () => {
             className="w-8 h-8 rounded-md"
           />
           <p className="text-gray-700 font-display text-lg crayon-text">
-            Special Needs World
+            ATLASassist
           </p>
         </div>
         <p className="text-crayon-purple font-display text-sm italic">

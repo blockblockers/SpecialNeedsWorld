@@ -9,6 +9,7 @@ import Health from './pages/Health';
 import Nutrition from './pages/Nutrition';
 import Settings from './pages/Settings';
 import Activities from './pages/Activities';
+import SensoryBreaks from './pages/SensoryBreaks';
 import SocialStories from './pages/SocialStories';
 import ColoringBook from './pages/ColoringBook';
 import PronunciationPractice from './pages/PronunciationPractice';
@@ -313,7 +314,7 @@ const ProtectedRoute = ({ children }) => {
         <div className="text-center">
           <img 
             src="/logo.jpeg" 
-            alt="Special Needs World" 
+            alt="ATLASassist" 
             className="w-20 h-20 rounded-2xl shadow-crayon mx-auto mb-4 animate-bounce-soft"
           />
           <div className="text-2xl font-display text-[#4A9FD4]">
@@ -705,6 +706,14 @@ function App() {
             } 
           />
           <Route 
+            path="/activities/sensory-breaks" 
+            element={
+              <ProtectedRoute>
+                <SensoryBreaks />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
             path="/knowledge" 
             element={
               <ProtectedRoute>
@@ -752,7 +761,7 @@ const ComingSoon = ({ title }) => {
     <div className="min-h-screen bg-[#FFFEF5] flex flex-col items-center justify-center p-6">
       <img 
         src="/logo.jpeg" 
-        alt="Special Needs World" 
+        alt="ATLASassist" 
         className="w-24 h-24 rounded-2xl shadow-crayon mb-6"
       />
       <h1 className="text-4xl font-display text-crayon-purple mb-4 crayon-text">
@@ -815,7 +824,7 @@ const ResetPassword = () => {
     <div className="min-h-screen bg-[#FFFEF5] flex flex-col items-center justify-center p-6">
       <img 
         src="/logo.jpeg" 
-        alt="Special Needs World" 
+        alt="ATLASassist" 
         className="w-24 h-24 rounded-2xl shadow-crayon mb-6"
       />
       <h1 className="text-3xl font-display text-[#4A9FD4] mb-6 crayon-text">

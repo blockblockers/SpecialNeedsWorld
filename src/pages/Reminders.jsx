@@ -168,7 +168,7 @@ const Reminders = () => {
       // Try service worker notification first (works when app is closed)
       if ('serviceWorker' in navigator) {
         const registration = await navigator.serviceWorker.ready;
-        await registration.showNotification('Special Needs World Reminder', {
+        await registration.showNotification('ATLASassist Reminder', {
           body: `${category?.emoji || '🔔'} ${reminder.title}`,
           icon: '/logo.jpeg',
           badge: '/badge-96.svg',
@@ -181,7 +181,7 @@ const Reminders = () => {
         });
       } else {
         // Fallback to basic notification
-        new Notification('Special Needs World Reminder', {
+        new Notification('ATLASassist Reminder', {
           body: `${category?.emoji || '🔔'} ${reminder.title}`,
           icon: '/logo.jpeg',
         });

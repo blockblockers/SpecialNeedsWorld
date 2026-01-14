@@ -1,4 +1,4 @@
-// EntryAuthScreen.jsx - Clean authentication screen for Special Needs World
+// EntryAuthScreen.jsx - Clean authentication screen for ATLASassist
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -263,14 +263,14 @@ const EntryAuthScreen = () => {
       {/* Main content */}
       <div className="flex-1 flex flex-col items-center justify-center p-4">
         {/* Logo */}
-        <img src="/logo.jpeg" alt="Special Needs World" 
+        <img src="/logo.jpeg" alt="ATLASassist" 
           className="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl shadow-crayon-lg mb-4" />
         
         {/* Title */}
         <h1 className="text-2xl sm:text-3xl font-display rainbow-text crayon-text">Special Needs</h1>
         <h2 className="text-3xl sm:text-4xl font-display text-[#4A9FD4] crayon-text mb-2">World</h2>
         <p className="text-xs sm:text-sm font-crayon text-gray-600 max-w-xs text-center mb-4 leading-relaxed">
-          An ecosystem of helpful applications, tools, and services for the special needs community.
+          Assistive Tools for Learning, Access & Support - Tools for individuals with neurodiverse abilities.
         </p>
         
         {/* Auth Card */}
@@ -285,7 +285,7 @@ const EntryAuthScreen = () => {
 
       {/* Footer */}
       <footer className="text-center py-4 px-4">
-        <p className="text-gray-500 font-crayon text-xs">© 2025 Special Needs World</p>
+        <p className="text-gray-500 font-crayon text-xs">© 2025 ATLASassist</p>
         <p className="text-[#8E6BBF] font-display text-sm italic">For Finn, and for people like him. 💜</p>
       </footer>
     </div>

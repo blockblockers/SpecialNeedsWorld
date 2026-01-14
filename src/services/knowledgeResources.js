@@ -1,5 +1,5 @@
 // knowledgeResources.js - Knowledge Resources service
-// Manages federal and state special needs information
+// Manages federal and state disability resources
 
 import { supabase, isSupabaseConfigured } from './supabase';
 

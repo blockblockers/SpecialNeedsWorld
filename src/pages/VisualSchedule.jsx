@@ -1,4 +1,4 @@
-// VisualSchedule.jsx - Visual Schedule Builder for Special Needs World
+// VisualSchedule.jsx - Visual Schedule Builder for ATLASassist
 // A visual scheduling tool using icons/pictures to help with daily routines
 // Features:
 // - Pre-built schedule templates
@@ -1251,7 +1251,7 @@ const VisualSchedule = () => {
           </button>
           <img 
             src="/logo.jpeg" 
-            alt="Special Needs World" 
+            alt="ATLASassist" 
             className="w-10 h-10 rounded-lg shadow-sm"
           />
           <div className="flex-1">

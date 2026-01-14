@@ -158,7 +158,7 @@ const Nutrition = () => {
           <button onClick={() => navigate('/health')} className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#5CB85C] rounded-xl font-display font-bold text-[#5CB85C] hover:bg-[#5CB85C] hover:text-white transition-all shadow-md">
             <ArrowLeft size={16} />Back
           </button>
-          <img src="/logo.jpeg" alt="Special Needs World" className="w-10 h-10 rounded-lg shadow-sm" />
+          <img src="/logo.jpeg" alt="ATLASassist" className="w-10 h-10 rounded-lg shadow-sm" />
           <h1 className="text-lg sm:text-xl font-display text-[#5CB85C] crayon-text">🍳 Recipes</h1>
         </div>
       </header>

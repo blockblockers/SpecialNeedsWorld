@@ -1,4 +1,4 @@
-// GoalTracker.jsx - Enhanced Goal & IEP Tracker for Special Needs World
+// GoalTracker.jsx - Enhanced Goal & IEP Tracker for ATLASassist
 // Privacy-focused: All data stored locally on device
 // Features:
 // - IEP Document Repository

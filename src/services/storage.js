@@ -27,7 +27,7 @@ export const getStorageMode = () => {
 // IndexedDB Implementation (Offline/Fallback)
 // ============================================
 
-const DB_NAME = 'SpecialNeedsWorldDB';
+const DB_NAME = 'ATLASassistDB';
 const DB_VERSION = 1;
 
 // Store names

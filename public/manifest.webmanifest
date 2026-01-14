@@ -1,7 +1,7 @@
 {
-  "name": "Special Needs World",
-  "short_name": "SNWorld",
-  "description": "Tools, games, and activities for parents and individuals with special needs. For Finn, and for people like him.",
+  "name": "ATLASassist: Assistive Tools for Learning, Access & Support",
+  "short_name": "ATLASassist",
+  "description": "Tools for individuals with neurodiverse abilities. For Finn, and for people like him.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#FFF8E1",

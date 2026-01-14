@@ -1,5 +1,5 @@
 // FeelingsTracker.jsx - Track daily emotions and moods
-// Simple, visual tracking for special needs individuals
+// Simple, visual tracking for neurodiverse individuals
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';

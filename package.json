@@ -1,9 +1,9 @@
 {
-  "name": "special-needs-world",
+  "name": "atlasassist",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "An ecosystem of tools, activities, and resources for parents and individuals with special needs",
+  "description": "An ecosystem of tools, activities, and resources for parents and individuals with neurodiverse abilities",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

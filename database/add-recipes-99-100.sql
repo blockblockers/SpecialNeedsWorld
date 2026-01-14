@@ -1,45 +1,66 @@
 -- ============================================
--- ADD RECIPES 99 & 100 TO REACH 100 TOTAL
--- Run this in your Supabase SQL Editor
+-- CHECK YOUR RECIPE COUNT FIRST
 -- ============================================
 
--- Recipe 99: Easy Cheesy Nachos
-INSERT INTO recipes (id, slug, name, description, emoji, image_emoji, category_id, difficulty, prep_time, cook_time, total_time, servings, is_active)
-VALUES (99, 'nachos', 'Easy Cheesy Nachos', 'Crunchy chips with melty cheese!', '🫔', '🧀', 'snack', 'easy', 3, 2, 5, 1, true);
+SELECT COUNT(*) as total_recipes FROM recipes WHERE is_active = true;
 
-INSERT INTO recipe_ingredients (recipe_id, name, emoji, amount, sort_order) VALUES
-(99, 'Tortilla chips', '🫔', 'a handful', 1),
-(99, 'Shredded cheese', '🧀', '1/4 cup', 2),
-(99, 'Salsa (optional)', '🍅', '2 tbsp', 3);
+-- If you already have 100, you're done!
+-- If you need more, run the block below with DIFFERENT recipes:
 
-INSERT INTO recipe_steps (recipe_id, step_number, instruction, action, emoji, requires_adult) VALUES
-(99, 1, 'Get a microwave-safe plate', 'Get plate', '🍽️', false),
-(99, 2, 'Spread chips on the plate', 'Add chips', '🫔', false),
-(99, 3, 'Sprinkle cheese on top of chips', 'Add cheese', '🧀', false),
-(99, 4, 'Microwave for 30-45 seconds', 'Microwave', '📻', false),
-(99, 5, 'Check if cheese is melted', 'Check', '👀', false),
-(99, 6, 'Add salsa if you want', 'Add salsa', '🍅', false),
-(99, 7, 'Enjoy your nachos!', 'Eat!', '😋', false);
+-- ============================================
+-- ADD 2 NEW UNIQUE RECIPES (if needed)
+-- ============================================
 
+DO $$
+DECLARE
+  recipe1_id INTEGER;
+  recipe2_id INTEGER;
+BEGIN
+  -- Insert Banana Bites and get ID
+  INSERT INTO recipes (slug, name, description, emoji, image_emoji, category_id, difficulty, prep_time, cook_time, servings, is_active)
+  VALUES ('frozen-banana-bites', 'Frozen Banana Bites', 'Sweet frozen treat with chocolate!', '🍌', '🍫', 'snack', 'easy', 10, 0, 4, true)
+  RETURNING id INTO recipe1_id;
+  
+  -- Banana Bites ingredients
+  INSERT INTO recipe_ingredients (recipe_id, name, emoji, amount, sort_order) VALUES
+  (recipe1_id, 'Banana', '🍌', '2', 1),
+  (recipe1_id, 'Chocolate chips', '🍫', '1/2 cup', 2),
+  (recipe1_id, 'Popsicle sticks', '🪵', '4', 3);
+  
+  -- Banana Bites steps
+  INSERT INTO recipe_steps (recipe_id, step_number, instruction, action, emoji, requires_adult) VALUES
+  (recipe1_id, 1, 'Peel the bananas', 'Peel', '🍌', false),
+  (recipe1_id, 2, 'Cut each banana in half', 'Cut', '🔪', true),
+  (recipe1_id, 3, 'Put a stick in each half', 'Add stick', '🪵', false),
+  (recipe1_id, 4, 'Melt chocolate in microwave', 'Melt', '🍫', true),
+  (recipe1_id, 5, 'Dip banana in chocolate', 'Dip', '🍌', false),
+  (recipe1_id, 6, 'Put on wax paper', 'Place', '📄', false),
+  (recipe1_id, 7, 'Freeze for 1 hour', 'Freeze', '🧊', false),
+  (recipe1_id, 8, 'Enjoy your frozen treat!', 'Eat!', '😋', false);
 
--- Recipe 100: Mac & Cheese Cup
-INSERT INTO recipes (id, slug, name, description, emoji, image_emoji, category_id, difficulty, prep_time, cook_time, total_time, servings, is_active)
-VALUES (100, 'mac-cheese-cup', 'Mac & Cheese Cup', 'Creamy pasta in minutes!', '🧀', '🍝', 'lunch', 'easy', 1, 4, 5, 1, true);
+  -- Insert Cucumber Boats and get ID
+  INSERT INTO recipes (slug, name, description, emoji, image_emoji, category_id, difficulty, prep_time, cook_time, servings, is_active)
+  VALUES ('cucumber-boats', 'Cucumber Boats', 'Crunchy veggie boats with cream cheese!', '🥒', '🚤', 'snack', 'easy', 5, 0, 2, true)
+  RETURNING id INTO recipe2_id;
+  
+  -- Cucumber Boats ingredients
+  INSERT INTO recipe_ingredients (recipe_id, name, emoji, amount, sort_order) VALUES
+  (recipe2_id, 'Cucumber', '🥒', '1 large', 1),
+  (recipe2_id, 'Cream cheese', '🧀', '2 tbsp', 2),
+  (recipe2_id, 'Cherry tomatoes', '🍅', '4', 3);
+  
+  -- Cucumber Boats steps
+  INSERT INTO recipe_steps (recipe_id, step_number, instruction, action, emoji, requires_adult) VALUES
+  (recipe2_id, 1, 'Wash the cucumber', 'Wash', '🚿', false),
+  (recipe2_id, 2, 'Cut cucumber in half lengthwise', 'Cut', '🔪', true),
+  (recipe2_id, 3, 'Scoop out seeds with spoon', 'Scoop', '🥄', false),
+  (recipe2_id, 4, 'Spread cream cheese inside', 'Spread', '🧀', false),
+  (recipe2_id, 5, 'Cut tomatoes in half', 'Cut', '🍅', true),
+  (recipe2_id, 6, 'Place tomatoes on top', 'Add', '🍅', false),
+  (recipe2_id, 7, 'Enjoy your veggie boats!', 'Eat!', '😋', false);
+  
+  RAISE NOTICE 'Created Frozen Banana Bites with ID % and Cucumber Boats with ID %', recipe1_id, recipe2_id;
+END $$;
 
-INSERT INTO recipe_ingredients (recipe_id, name, emoji, amount, sort_order) VALUES
-(100, 'Mac & cheese cup', '🥤', '1 cup', 1),
-(100, 'Water', '💧', 'to the line', 2);
-
-INSERT INTO recipe_steps (recipe_id, step_number, instruction, action, emoji, requires_adult) VALUES
-(100, 1, 'Remove the lid from the cup', 'Open', '📦', false),
-(100, 2, 'Take out the cheese packet', 'Remove packet', '🧀', false),
-(100, 3, 'Add water to the fill line', 'Add water', '💧', false),
-(100, 4, 'Microwave for 3½ minutes', 'Microwave', '📻', false),
-(100, 5, 'Careful! It will be hot!', 'Be careful', '⚠️', true),
-(100, 6, 'Stir in the cheese powder', 'Add cheese', '🧀', false),
-(100, 7, 'Mix until creamy', 'Stir', '🥄', false),
-(100, 8, 'Let cool and enjoy!', 'Eat!', '😋', false);
-
-
--- Verify we now have 100 recipes
+-- Verify final count
 SELECT COUNT(*) as total_recipes FROM recipes WHERE is_active = true;

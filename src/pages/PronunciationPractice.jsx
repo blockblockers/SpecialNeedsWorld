@@ -526,7 +526,7 @@ const PronunciationPractice = () => {
             </button>
             <img 
               src="/logo.jpeg" 
-              alt="Special Needs World" 
+              alt="ATLASassist" 
               className="w-10 h-10 rounded-lg shadow-sm"
             />
             <h1 className="text-lg sm:text-xl font-display text-[#5CB85C] crayon-text">

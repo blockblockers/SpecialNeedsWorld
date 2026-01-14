@@ -472,7 +472,7 @@ const ColoringBook = () => {
           </button>
           <img 
             src="/logo.jpeg" 
-            alt="Special Needs World" 
+            alt="ATLASassist" 
             className="w-10 h-10 rounded-lg shadow-sm"
           />
           <h1 className="text-xl sm:text-2xl font-display text-[#E63B2E] crayon-text flex items-center gap-2">
