@@ -17,7 +17,7 @@ import {
 
 const SYNC_STATUS_KEY = 'snw_calendar_sync_status';
 
-const getSyncStatus = () => {
+export const getSyncStatus = () => {
   try {
     const data = localStorage.getItem(SYNC_STATUS_KEY);
     return data ? JSON.parse(data) : { lastSync: null, pendingChanges: [] };
