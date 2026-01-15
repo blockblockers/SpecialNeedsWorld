@@ -18,7 +18,7 @@ import {
 import LocalOnlyNotice from '../components/LocalOnlyNotice';
 import TrackerHistory from '../components/TrackerHistory';
 import AddToScheduleModal from '../components/AddToScheduleModal';
-import { addActivityToSchedule, ACTIVITY_SOURCES } from '../services/scheduleIntegration';
+import { SCHEDULE_SOURCES, SOURCE_COLORS } from '../services/scheduleHelper';
 
 const STORAGE_KEY = 'snw_healthy_choices';
 
@@ -166,28 +166,12 @@ const HealthyChoices = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newAllData));
   };
 
-  // Schedule reminder handler
-  const handleAddToSchedule = async ({ date, time, notify }) => {
+  // Schedule reminder handler - Updated to work with new AddToScheduleModal
+  const handleScheduleSuccess = ({ date, time, activityId }) => {
     if (!choiceToSchedule) return;
-    
-    const result = addActivityToSchedule({
-      date,
-      name: choiceToSchedule.name,
-      time,
-      emoji: choiceToSchedule.emoji,
-      color: '#5CB85C',
-      source: ACTIVITY_SOURCES.DAILY_ROUTINE,
-      notify,
-      metadata: { type: 'healthyChoice', choiceId: choiceToSchedule.id },
-    });
-    
-    if (result.success) {
-      setShowScheduleModal(false);
-      setChoiceToSchedule(null);
-      alert(`"${choiceToSchedule.name}" reminder added to your Visual Schedule!`);
-    } else {
-      alert('Failed to add to schedule. Please try again.');
-    }
+    setShowScheduleModal(false);
+    setChoiceToSchedule(null);
+    alert(`"${choiceToSchedule.name}" reminder added to your Visual Schedule for ${date}!`);
   };
 
   // Open schedule modal for a choice
@@ -205,15 +189,16 @@ const HealthyChoices = () => {
     if (existingIndex >= 0) {
       newChoices = choices.filter(c => c.id !== choice.id);
     } else {
-      newChoices = [...choices, { ...choice, loggedAt: new Date().toISOString() }];
+      newChoices = [...choices, { id: choice.id, points: choice.points, loggedAt: new Date().toISOString() }];
       
       // Check for level up
-      const oldPoints = getTotalPoints();
-      const newPoints = oldPoints + choice.points;
-      const oldLevel = getLevel(oldPoints);
-      const newLevel = getLevel(newPoints);
+      const oldPoints = choices.reduce((sum, c) => sum + (c.points || 1), 0);
+      const newPoints = newChoices.reduce((sum, c) => sum + (c.points || 1), 0);
       
-      if (newLevel.points > oldLevel.points) {
+      const oldLevel = LEVELS.filter(l => l.points <= oldPoints).pop();
+      const newLevel = LEVELS.filter(l => l.points <= newPoints).pop();
+      
+      if (newLevel && oldLevel && newLevel.points > oldLevel.points) {
         setCelebrationLevel(newLevel);
         setShowCelebration(true);
         setTimeout(() => setShowCelebration(false), 3000);
@@ -226,41 +211,21 @@ const HealthyChoices = () => {
   // Check if choice is logged
   const isLogged = (choiceId) => choices.some(c => c.id === choiceId);
 
-  // Get total points
-  const getTotalPoints = () => {
-    return choices.reduce((sum, c) => sum + (c.points || 1), 0);
-  };
+  // Calculate total points
+  const totalPoints = choices.reduce((sum, c) => sum + (c.points || 1), 0);
 
-  // Get level based on points
-  const getLevel = (points) => {
-    for (let i = LEVELS.length - 1; i >= 0; i--) {
-      if (points >= LEVELS[i].points) {
-        return LEVELS[i];
-      }
-    }
-    return LEVELS[0];
-  };
+  // Get current level
+  const currentLevel = LEVELS.filter(l => l.points <= totalPoints).pop() || LEVELS[0];
+  const nextLevel = LEVELS.find(l => l.points > totalPoints);
 
-  // Get next level
-  const getNextLevel = () => {
-    const points = getTotalPoints();
-    for (let i = 0; i < LEVELS.length; i++) {
-      if (LEVELS[i].points > points) {
-        return LEVELS[i];
-      }
-    }
-    return null;
-  };
+  // Is today?
+  const isToday = selectedDate === new Date().toISOString().split('T')[0];
 
-  // Change date
+  // Navigate dates
   const changeDate = (delta) => {
     const date = new Date(selectedDate);
     date.setDate(date.getDate() + delta);
-    const newDate = date.toISOString().split('T')[0];
-    const today = new Date().toISOString().split('T')[0];
-    if (newDate <= today) {
-      setSelectedDate(newDate);
-    }
+    setSelectedDate(date.toISOString().split('T')[0]);
   };
 
   // Format date
@@ -268,54 +233,50 @@ const HealthyChoices = () => {
     const date = new Date(dateStr + 'T00:00:00');
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
     
     if (date.getTime() === today.getTime()) return 'Today';
+    
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
     if (date.getTime() === yesterday.getTime()) return 'Yesterday';
+    
     return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   };
 
   // Reset day
   const resetDay = () => {
-    if (!confirm('Clear all choices for today?')) return;
-    saveData([]);
+    if (confirm('Reset all choices for today?')) {
+      saveData([]);
+    }
   };
 
-  const isToday = selectedDate === new Date().toISOString().split('T')[0];
-  const totalPoints = getTotalPoints();
-  const currentLevel = getLevel(totalPoints);
-  const nextLevel = getNextLevel();
-
   return (
-    <div className="min-h-screen bg-[#FFFEF5]">
-      {/* Celebration Overlay */}
+    <div className="min-h-screen bg-gradient-to-b from-green-50 to-yellow-50">
+      {/* Level Up Celebration */}
       {showCelebration && celebrationLevel && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 text-center max-w-sm animate-bounce">
-            <Sparkles className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-3xl p-8 text-center animate-bounce-in shadow-crayon-lg">
             <span className="text-6xl block mb-4">{celebrationLevel.emoji}</span>
-            <h2 className="font-display text-2xl text-purple-600 mb-2">Level Up!</h2>
-            <p className="font-crayon text-xl text-gray-700">{celebrationLevel.name}</p>
-            <p className="font-crayon text-gray-500 mt-2">Keep making great choices!</p>
+            <h2 className="text-2xl font-display text-[#5CB85C] mb-2">Level Up!</h2>
+            <p className="font-crayon text-gray-600">You reached {celebrationLevel.name}!</p>
           </div>
         </div>
       )}
-
+      
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#5CB85C]">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b-4 border-[#5CB85C]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
-            onClick={() => navigate('/health')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#5CB85C] 
-                       rounded-xl font-display font-bold text-[#5CB85C] hover:bg-[#5CB85C] 
+            onClick={() => navigate('/activities')}
+            className="flex items-center gap-1 px-3 py-1.5 bg-white border-3 border-[#5CB85C]
+                       rounded-full font-crayon text-sm text-[#5CB85C] hover:bg-[#5CB85C]
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
             Back
           </button>
           <div className="flex-1">
-            <h1 className="text-xl font-display text-[#5CB85C] crayon-text">
+            <h1 className="text-lg sm:text-xl font-display text-[#5CB85C] crayon-text">
               ✨ Healthy Choices
             </h1>
           </div>
@@ -499,7 +460,7 @@ const HealthyChoices = () => {
         </div>
       </main>
 
-      {/* Add to Schedule Modal */}
+      {/* Add to Schedule Modal - Using new API */}
       {choiceToSchedule && (
         <AddToScheduleModal
           isOpen={showScheduleModal}
@@ -507,15 +468,20 @@ const HealthyChoices = () => {
             setShowScheduleModal(false);
             setChoiceToSchedule(null);
           }}
-          onAdd={handleAddToSchedule}
+          onSuccess={handleScheduleSuccess}
           title="Schedule Reminder"
           itemName={choiceToSchedule.name}
           itemEmoji={choiceToSchedule.emoji}
-          itemColor="#5CB85C"
+          itemColor={SOURCE_COLORS[SCHEDULE_SOURCES.HEALTHY_CHOICES]}
+          itemSource={SCHEDULE_SOURCES.HEALTHY_CHOICES}
           defaultTime="09:00"
           showTimeSelection={true}
           showNotifyOption={true}
-          confirmButtonText="Add Reminder"
+          confirmText="Add Reminder"
+          itemMetadata={{ 
+            choiceId: choiceToSchedule.id,
+            points: choiceToSchedule.points 
+          }}
         />
       )}
     </div>

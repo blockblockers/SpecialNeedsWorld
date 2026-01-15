@@ -8,7 +8,7 @@ import { ArrowLeft, Moon, Sun, Clock, Trash2, ChevronLeft, ChevronRight, BarChar
 import LocalOnlyNotice from '../components/LocalOnlyNotice';
 import TrackerHistory from '../components/TrackerHistory';
 import AddToScheduleModal from '../components/AddToScheduleModal';
-import { addActivityToSchedule, ACTIVITY_SOURCES } from '../services/scheduleIntegration';
+import { SCHEDULE_SOURCES, SOURCE_COLORS } from '../services/scheduleHelper';
 
 const STORAGE_KEY = 'snw_sleep';
 
@@ -38,7 +38,7 @@ const SleepTracker = () => {
 
   // Sleep reminder presets
   const SLEEP_REMINDERS = {
-    bedtime: { emoji: '🌙', name: 'Bedtime Routine', defaultTime: '20:00', color: '#8E6BBF' },
+    bedtime: { emoji: '🌙', name: 'Bedtime Routine', defaultTime: '20:00', color: SOURCE_COLORS[SCHEDULE_SOURCES.SLEEP_TRACKER] },
     waketime: { emoji: '🌅', name: 'Wake Up Time', defaultTime: '07:00', color: '#F5A623' },
   };
 
@@ -115,27 +115,11 @@ const SleepTracker = () => {
     }
   };
 
-  // Schedule reminder handler
-  const handleAddToSchedule = async ({ date, time, notify }) => {
+  // Schedule reminder handler - Updated to work with new AddToScheduleModal
+  const handleScheduleSuccess = ({ date, time, activityId }) => {
     const reminder = SLEEP_REMINDERS[reminderType];
-    
-    const result = addActivityToSchedule({
-      date,
-      name: reminder.name,
-      time,
-      emoji: reminder.emoji,
-      color: reminder.color,
-      source: ACTIVITY_SOURCES.DAILY_ROUTINE,
-      notify,
-      metadata: { type: 'sleep', reminderType },
-    });
-    
-    if (result.success) {
-      setShowScheduleModal(false);
-      alert(`"${reminder.name}" added to your Visual Schedule!`);
-    } else {
-      alert('Failed to add to schedule. Please try again.');
-    }
+    setShowScheduleModal(false);
+    alert(`"${reminder.name}" added to your Visual Schedule for ${date}!`);
   };
 
   // Open schedule modal
@@ -220,30 +204,29 @@ const SleepTracker = () => {
       const updated = { ...prev, [field]: value };
       // Auto-save after a short delay
       setTimeout(() => {
-        if (updated.bedtime || updated.waketime || updated.quality) {
-          const newEntries = {
-            ...entries,
-            [selectedDate]: {
-              ...updated,
-              updatedAt: new Date().toISOString(),
-            },
-          };
-          saveEntries(newEntries);
-        }
+        if (!updated.bedtime && !updated.waketime && !updated.quality) return;
+        const newEntries = {
+          ...entries,
+          [selectedDate]: {
+            ...updated,
+            updatedAt: new Date().toISOString(),
+          },
+        };
+        saveEntries(newEntries);
       }, 500);
       return updated;
     });
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-100 to-[#FFFEF5]">
+    <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-purple-50">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-sm border-b-4 border-[#8E6BBF]">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b-4 border-[#8E6BBF]">
+        <div className="max-w-md mx-auto px-4 py-3 flex items-center gap-3">
           <button
-            onClick={() => navigate('/health')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#8E6BBF] 
-                       rounded-xl font-display font-bold text-[#8E6BBF] hover:bg-[#8E6BBF] 
+            onClick={() => navigate('/activities')}
+            className="flex items-center gap-1 px-3 py-1.5 bg-white border-3 border-[#8E6BBF]
+                       rounded-full font-crayon text-sm text-[#8E6BBF] hover:bg-[#8E6BBF]
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
@@ -447,19 +430,20 @@ const SleepTracker = () => {
         </div>
       </main>
 
-      {/* Add to Schedule Modal */}
+      {/* Add to Schedule Modal - Using new API */}
       <AddToScheduleModal
         isOpen={showScheduleModal}
         onClose={() => setShowScheduleModal(false)}
-        onAdd={handleAddToSchedule}
+        onSuccess={handleScheduleSuccess}
         title={`Schedule ${SLEEP_REMINDERS[reminderType]?.name}`}
         itemName={SLEEP_REMINDERS[reminderType]?.name}
         itemEmoji={SLEEP_REMINDERS[reminderType]?.emoji}
         itemColor={SLEEP_REMINDERS[reminderType]?.color}
+        itemSource={SCHEDULE_SOURCES.SLEEP_TRACKER}
         defaultTime={formData[reminderType] || SLEEP_REMINDERS[reminderType]?.defaultTime}
         showTimeSelection={true}
         showNotifyOption={true}
-        confirmButtonText="Add Reminder"
+        confirmText="Add Reminder"
       />
     </div>
   );

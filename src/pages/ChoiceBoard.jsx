@@ -1,7 +1,8 @@
-// ChoiceBoard.jsx - Fixed version with themed toasts and red unavailable options
+// ChoiceBoard.jsx - Fixed version with themed toasts, red unavailable options, and PRESET ICONS
 // Choice Board app for Special Needs World
 // Features:
 // - Create boards with 2-6 options (photos + text)
+// - PRESET ICONS for common activities (NEW!)
 // - Mark options as unavailable (shown in RED, not gray)
 // - Confetti celebration on selection
 // - Add choices to Visual Schedule
@@ -24,10 +25,18 @@ import {
   Clock,
   CalendarPlus,
   Star,
+  Grid3X3,
 } from 'lucide-react';
 import { useAuth } from '../App';
 import { compressImage } from '../services/storage';
 import { useToast, ConfirmModal } from '../components/ThemedToast';
+import { 
+  addActivityToSchedule, 
+  SCHEDULE_SOURCES, 
+  SOURCE_COLORS,
+  formatDateDisplay,
+  formatTimeDisplay 
+} from '../services/scheduleHelper';
 
 // Storage key
 const STORAGE_KEY = 'snw_choice_boards';
@@ -41,6 +50,114 @@ const OPTION_COLORS = [
   '#8E6BBF', // Purple
   '#E86B9A', // Pink
 ];
+
+// =====================================================
+// PRESET ICONS for typical activities
+// =====================================================
+const PRESET_ICONS = {
+  activities: {
+    name: 'Activities',
+    icons: [
+      { emoji: '🎮', name: 'Video Games' },
+      { emoji: '📺', name: 'TV/Movie' },
+      { emoji: '🎨', name: 'Art/Drawing' },
+      { emoji: '📚', name: 'Reading' },
+      { emoji: '🎵', name: 'Music' },
+      { emoji: '🧩', name: 'Puzzles' },
+      { emoji: '🏃', name: 'Exercise' },
+      { emoji: '🚴', name: 'Bike Ride' },
+      { emoji: '⚽', name: 'Sports' },
+      { emoji: '🎪', name: 'Play Outside' },
+      { emoji: '🏊', name: 'Swimming' },
+      { emoji: '🎭', name: 'Pretend Play' },
+    ]
+  },
+  places: {
+    name: 'Places',
+    icons: [
+      { emoji: '🏠', name: 'Home' },
+      { emoji: '🏫', name: 'School' },
+      { emoji: '🏪', name: 'Store' },
+      { emoji: '🏥', name: 'Doctor' },
+      { emoji: '🏛️', name: 'Library' },
+      { emoji: '🎢', name: 'Park' },
+      { emoji: '🍕', name: 'Restaurant' },
+      { emoji: '🛒', name: 'Grocery Store' },
+      { emoji: '⛪', name: 'Church' },
+      { emoji: '🏖️', name: 'Beach' },
+      { emoji: '🎬', name: 'Movies' },
+      { emoji: '🍦', name: 'Ice Cream' },
+    ]
+  },
+  food: {
+    name: 'Food & Drinks',
+    icons: [
+      { emoji: '🍎', name: 'Apple' },
+      { emoji: '🍌', name: 'Banana' },
+      { emoji: '🥕', name: 'Carrot' },
+      { emoji: '🥪', name: 'Sandwich' },
+      { emoji: '🍕', name: 'Pizza' },
+      { emoji: '🍔', name: 'Burger' },
+      { emoji: '🌮', name: 'Taco' },
+      { emoji: '🍝', name: 'Pasta' },
+      { emoji: '🥣', name: 'Cereal' },
+      { emoji: '🧃', name: 'Juice Box' },
+      { emoji: '💧', name: 'Water' },
+      { emoji: '🥛', name: 'Milk' },
+    ]
+  },
+  routines: {
+    name: 'Daily Routines',
+    icons: [
+      { emoji: '🌅', name: 'Wake Up' },
+      { emoji: '🦷', name: 'Brush Teeth' },
+      { emoji: '👕', name: 'Get Dressed' },
+      { emoji: '🍳', name: 'Breakfast' },
+      { emoji: '🚌', name: 'Bus/School' },
+      { emoji: '✏️', name: 'Homework' },
+      { emoji: '🛁', name: 'Bath Time' },
+      { emoji: '📖', name: 'Story Time' },
+      { emoji: '🌙', name: 'Bedtime' },
+      { emoji: '💤', name: 'Sleep' },
+      { emoji: '🧼', name: 'Wash Hands' },
+      { emoji: '💊', name: 'Medicine' },
+    ]
+  },
+  feelings: {
+    name: 'Feelings',
+    icons: [
+      { emoji: '😊', name: 'Happy' },
+      { emoji: '😢', name: 'Sad' },
+      { emoji: '😠', name: 'Angry' },
+      { emoji: '😰', name: 'Worried' },
+      { emoji: '😴', name: 'Tired' },
+      { emoji: '🤒', name: 'Sick' },
+      { emoji: '😋', name: 'Hungry' },
+      { emoji: '🥵', name: 'Hot' },
+      { emoji: '🥶', name: 'Cold' },
+      { emoji: '🤗', name: 'Loved' },
+      { emoji: '😎', name: 'Cool' },
+      { emoji: '🤔', name: 'Thinking' },
+    ]
+  },
+  objects: {
+    name: 'Objects',
+    icons: [
+      { emoji: '🧸', name: 'Teddy Bear' },
+      { emoji: '🎈', name: 'Balloon' },
+      { emoji: '🚗', name: 'Car' },
+      { emoji: '🚂', name: 'Train' },
+      { emoji: '✈️', name: 'Airplane' },
+      { emoji: '📱', name: 'Phone/Tablet' },
+      { emoji: '🎁', name: 'Present' },
+      { emoji: '⭐', name: 'Star' },
+      { emoji: '❤️', name: 'Heart' },
+      { emoji: '🌈', name: 'Rainbow' },
+      { emoji: '🌸', name: 'Flower' },
+      { emoji: '🐕', name: 'Dog' },
+    ]
+  },
+};
 
 // Confetti component
 const Confetti = ({ isActive }) => {
@@ -79,6 +196,114 @@ const Confetti = ({ isActive }) => {
           />
         </div>
       ))}
+    </div>
+  );
+};
+
+// =====================================================
+// Icon Picker Modal - NEW COMPONENT
+// =====================================================
+const IconPickerModal = ({ isOpen, onClose, onSelectIcon, onSelectImage, currentEmoji }) => {
+  const [activeCategory, setActiveCategory] = useState('activities');
+  const fileInputRef = useRef(null);
+
+  if (!isOpen) return null;
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    onSelectImage(file);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+      <div 
+        className="bg-[#FFFEF5] w-full max-w-md max-h-[85vh] rounded-2xl border-4 border-[#F5A623] shadow-crayon-lg flex flex-col"
+        style={{ borderRadius: '30px 70px 30px 70px / 70px 30px 70px 30px' }}
+      >
+        {/* Header */}
+        <div className="bg-[#F5A623] text-white p-4 flex items-center gap-3">
+          <Grid3X3 size={24} />
+          <h3 className="font-display text-xl flex-1">Choose Icon</h3>
+          <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
+            <X size={24} />
+          </button>
+        </div>
+
+        {/* Category Tabs */}
+        <div className="flex overflow-x-auto gap-1 p-2 bg-orange-50 border-b-2 border-orange-200">
+          {Object.entries(PRESET_ICONS).map(([key, category]) => (
+            <button
+              key={key}
+              onClick={() => setActiveCategory(key)}
+              className={`px-3 py-1.5 rounded-full font-crayon text-xs whitespace-nowrap transition-all
+                ${activeCategory === key 
+                  ? 'bg-[#F5A623] text-white' 
+                  : 'bg-white text-gray-600 hover:bg-orange-100'
+                }`}
+            >
+              {category.name}
+            </button>
+          ))}
+        </div>
+
+        {/* Icon Grid */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="grid grid-cols-4 gap-2">
+            {PRESET_ICONS[activeCategory].icons.map((icon, idx) => (
+              <button
+                key={idx}
+                onClick={() => {
+                  onSelectIcon(icon.emoji, icon.name);
+                  onClose();
+                }}
+                className={`flex flex-col items-center p-2 rounded-xl border-2 transition-all
+                  ${currentEmoji === icon.emoji 
+                    ? 'border-[#F5A623] bg-orange-100' 
+                    : 'border-gray-200 hover:border-[#F5A623] hover:bg-orange-50'
+                  }`}
+              >
+                <span className="text-3xl mb-1">{icon.emoji}</span>
+                <span className="font-crayon text-[10px] text-gray-500 text-center leading-tight">
+                  {icon.name}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Custom Image Option */}
+        <div className="p-4 border-t-3 border-gray-200 bg-gray-50">
+          <p className="font-crayon text-sm text-gray-500 mb-2 text-center">Or use your own image:</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex-1 py-3 bg-white border-3 border-[#4A9FD4] rounded-xl font-crayon text-[#4A9FD4]
+                       hover:bg-[#4A9FD4] hover:text-white transition-all flex items-center justify-center gap-2"
+            >
+              <Camera size={18} />
+              Take Photo
+            </button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex-1 py-3 bg-white border-3 border-[#8E6BBF] rounded-xl font-crayon text-[#8E6BBF]
+                       hover:bg-[#8E6BBF] hover:text-white transition-all flex items-center justify-center gap-2"
+            >
+              <Upload size={18} />
+              Upload
+            </button>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleImageUpload}
+          />
+        </div>
+      </div>
     </div>
   );
 };
@@ -219,17 +444,14 @@ const AddToScheduleModal = ({ selectedOption, onClose, onAdd, toast }) => {
   );
 };
 
-// Edit Board Modal
+// Edit Board Modal - UPDATED with Icon Picker
 const EditBoardModal = ({ board, onSave, onClose, toast }) => {
   const [name, setName] = useState(board?.name || '');
   const [options, setOptions] = useState(board?.options || []);
-  const fileInputRef = useRef(null);
+  const [showIconPicker, setShowIconPicker] = useState(false);
   const [editingOptionIndex, setEditingOptionIndex] = useState(null);
 
-  const handleImageUpload = async (e, index) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const handleImageUpload = async (file, index) => {
     if (!file.type.startsWith('image/')) {
       toast.error('Invalid File', 'Please select an image file');
       return;
@@ -239,13 +461,27 @@ const EditBoardModal = ({ board, onSave, onClose, toast }) => {
       const compressed = await compressImage(file, 300, 0.8);
       setOptions((prev) => {
         const updated = [...prev];
-        updated[index] = { ...updated[index], image: compressed };
+        updated[index] = { ...updated[index], image: compressed, emoji: null };
         return updated;
       });
       toast.success('Image Added', 'Photo uploaded successfully!');
     } catch (err) {
       toast.error('Upload Failed', 'Could not process image');
     }
+  };
+
+  const handleSelectIcon = (emoji, name, index) => {
+    setOptions((prev) => {
+      const updated = [...prev];
+      updated[index] = { 
+        ...updated[index], 
+        emoji: emoji, 
+        image: null,
+        // Optionally pre-fill name if empty
+        name: updated[index].name || name
+      };
+      return updated;
+    });
   };
 
   const addOption = () => {
@@ -330,7 +566,7 @@ const EditBoardModal = ({ board, onSave, onClose, toast }) => {
           {/* Options List */}
           <div>
             <label className="font-crayon text-gray-600 text-sm mb-2 block">
-              Options ({options.length}/6)
+              Options ({options.length}/6) - Tap icon to change
             </label>
 
             <div className="space-y-2">
@@ -340,14 +576,17 @@ const EditBoardModal = ({ board, onSave, onClose, toast }) => {
                   className="flex items-center gap-3 p-3 bg-white rounded-xl border-3"
                   style={{ borderColor: option.color }}
                 >
-                  {/* Image/Emoji Preview */}
-                  <div
-                    className="w-14 h-14 rounded-lg flex items-center justify-center flex-shrink-0 cursor-pointer overflow-hidden relative"
-                    style={{ backgroundColor: `${option.color}20` }}
+                  {/* Image/Emoji Preview - Click to open picker */}
+                  <button
+                    type="button"
                     onClick={() => {
                       setEditingOptionIndex(index);
-                      fileInputRef.current?.click();
+                      setShowIconPicker(true);
                     }}
+                    className="w-14 h-14 rounded-lg flex items-center justify-center flex-shrink-0 
+                               overflow-hidden relative group cursor-pointer transition-all
+                               hover:ring-2 hover:ring-[#F5A623] hover:ring-offset-2"
+                    style={{ backgroundColor: `${option.color}20` }}
                   >
                     {option.image ? (
                       <img
@@ -358,13 +597,11 @@ const EditBoardModal = ({ board, onSave, onClose, toast }) => {
                     ) : (
                       <span className="text-2xl">{option.emoji}</span>
                     )}
-                    <div className="absolute inset-0 bg-black/0 hover:bg-black/20 flex items-center justify-center transition-colors">
-                      <Camera
-                        size={16}
-                        className="text-white opacity-0 hover:opacity-100"
-                      />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 
+                                    flex items-center justify-center transition-colors">
+                      <Grid3X3 size={16} className="text-white opacity-0 group-hover:opacity-100" />
                     </div>
-                  </div>
+                  </button>
 
                   {/* Name Input */}
                   <input
@@ -406,21 +643,6 @@ const EditBoardModal = ({ board, onSave, onClose, toast }) => {
               </button>
             )}
           </div>
-
-          {/* Hidden file input */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={(e) => {
-              if (editingOptionIndex !== null) {
-                handleImageUpload(e, editingOptionIndex);
-                setEditingOptionIndex(null);
-              }
-            }}
-          />
         </div>
 
         {/* Footer */}
@@ -442,6 +664,26 @@ const EditBoardModal = ({ board, onSave, onClose, toast }) => {
           </button>
         </div>
       </div>
+
+      {/* Icon Picker Modal */}
+      <IconPickerModal
+        isOpen={showIconPicker}
+        onClose={() => {
+          setShowIconPicker(false);
+          setEditingOptionIndex(null);
+        }}
+        currentEmoji={editingOptionIndex !== null ? options[editingOptionIndex]?.emoji : null}
+        onSelectIcon={(emoji, name) => {
+          if (editingOptionIndex !== null) {
+            handleSelectIcon(emoji, name, editingOptionIndex);
+          }
+        }}
+        onSelectImage={(file) => {
+          if (editingOptionIndex !== null) {
+            handleImageUpload(file, editingOptionIndex);
+          }
+        }}
+      />
     </div>
   );
 };
@@ -491,173 +733,170 @@ const ChoiceBoard = () => {
       notes.forEach((freq, i) => {
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
+
         oscillator.connect(gainNode);
         gainNode.connect(audioContext.destination);
+
         oscillator.frequency.value = freq;
         oscillator.type = 'sine';
-        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime + i * 0.1);
+
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime + i * 0.15);
         gainNode.gain.exponentialRampToValueAtTime(
           0.01,
-          audioContext.currentTime + i * 0.1 + 0.3
+          audioContext.currentTime + i * 0.15 + 0.3
         );
-        oscillator.start(audioContext.currentTime + i * 0.1);
-        oscillator.stop(audioContext.currentTime + i * 0.1 + 0.3);
+
+        oscillator.start(audioContext.currentTime + i * 0.15);
+        oscillator.stop(audioContext.currentTime + i * 0.15 + 0.3);
       });
     } catch (e) {
-      console.log('Audio not available');
+      // Audio not supported
     }
+  };
+
+  // Handle save board
+  const handleSaveBoard = (boardData) => {
+    const existingIndex = boards.findIndex((b) => b.id === boardData.id);
+    let newBoards;
+
+    if (existingIndex >= 0) {
+      newBoards = [...boards];
+      newBoards[existingIndex] = boardData;
+      toast.success('Board Updated', `"${boardData.name}" has been updated`);
+    } else {
+      newBoards = [...boards, boardData];
+      toast.success('Board Created', `"${boardData.name}" is ready to use!`);
+    }
+
+    saveBoards(newBoards);
+    setEditingBoard(null);
+    setSelectedBoard(boardData);
+  };
+
+  // Handle delete board
+  const handleDeleteBoard = (boardId) => {
+    const board = boards.find((b) => b.id === boardId);
+    const newBoards = boards.filter((b) => b.id !== boardId);
+    saveBoards(newBoards);
+    setShowDeleteConfirm(null);
+    if (selectedBoard?.id === boardId) {
+      setSelectedBoard(null);
+    }
+    toast.success('Board Deleted', `"${board?.name}" has been removed`);
+  };
+
+  // Toggle option availability
+  const toggleAvailability = (boardId, optionId) => {
+    const newBoards = boards.map((board) => {
+      if (board.id === boardId) {
+        const newOptions = board.options.map((opt) => {
+          if (opt.id === optionId) {
+            const newAvailable = !opt.isAvailable;
+            toast.info(
+              newAvailable ? 'Option Available' : 'Option Unavailable',
+              `"${opt.name}" is now ${newAvailable ? 'available' : 'unavailable'}`
+            );
+            return { ...opt, isAvailable: newAvailable };
+          }
+          return opt;
+        });
+        return { ...board, options: newOptions };
+      }
+      return board;
+    });
+    saveBoards(newBoards);
+    setSelectedBoard(newBoards.find((b) => b.id === boardId));
   };
 
   // Handle option selection
   const handleSelectOption = (option) => {
     if (!option.isAvailable) {
-      toast.error('Not Available', `${option.name} is not available right now`);
+      toast.error(
+        'Not Available',
+        `"${option.name}" is not available right now`
+      );
       return;
     }
 
-    // Celebration!
+    // Show celebration
     setShowConfetti(true);
     playSound();
 
-    setTimeout(() => {
-      setShowConfetti(false);
-      // Offer to add to schedule
-      setSelectedOption(option);
-      setShowAddToSchedule(true);
-    }, 1500);
+    toast.celebration(
+      `Great Choice! 🎉`,
+      `You picked "${option.name}"!`
+    );
+
+    setTimeout(() => setShowConfetti(false), 2000);
+
+    // Ask to add to schedule
+    setSelectedOption(option);
+    setShowAddToSchedule(true);
   };
 
-  // Toggle option availability
-  const toggleAvailability = (boardId, optionId) => {
-    const updatedBoards = boards.map((board) => {
-      if (board.id === boardId) {
-        return {
-          ...board,
-          options: board.options.map((opt) =>
-            opt.id === optionId ? { ...opt, isAvailable: !opt.isAvailable } : opt
-          ),
-        };
-      }
-      return board;
-    });
-    saveBoards(updatedBoards);
-
-    // Update selected board if viewing it
-    if (selectedBoard?.id === boardId) {
-      setSelectedBoard(updatedBoards.find((b) => b.id === boardId));
-    }
-  };
-
-  // Add to Visual Schedule - FIXED VERSION
+  // Add to Visual Schedule - Using unified helper
   const handleAddToSchedule = ({ option, date, time, reminder }) => {
     try {
-      // Get existing schedules from localStorage
-      const scheduleKey = `snw_calendar_schedules`;
-      const existingData = localStorage.getItem(scheduleKey);
-      const schedules = existingData ? JSON.parse(existingData) : {};
-
-      // Get or create schedule for selected date
-      const dateSchedule = schedules[date] || { items: [] };
-
-      // Create new activity item
-      const newActivity = {
-        id: `choice-${Date.now()}`,
-        activityId: `choice-${option.id}`,
+      const result = addActivityToSchedule({
+        date: date,
         name: option.name,
-        icon: null,
-        color: option.color || '#5CB85C',
-        completed: false,
-        customImage: option.image || null,
         time: time,
-        fromChoiceBoard: true,
-        notifications: reminder ? [0, 5] : [], // 0 and 5 minutes before
-      };
+        emoji: option.emoji || '⭐',
+        color: option.color || SOURCE_COLORS[SCHEDULE_SOURCES.CHOICE_BOARD],
+        source: SCHEDULE_SOURCES.CHOICE_BOARD,
+        notify: reminder,
+        customImage: option.image || null,
+        metadata: { 
+          fromChoiceBoard: true,
+          optionId: option.id,
+        },
+      });
 
-      // Add to schedule
-      dateSchedule.items.push(newActivity);
-      schedules[date] = dateSchedule;
-
-      // Save back to localStorage
-      localStorage.setItem(scheduleKey, JSON.stringify(schedules));
-
-      // Close modal and show success
+      // Close modal
       setShowAddToSchedule(false);
       setSelectedOption(null);
       
-      toast.schedule(
-        'Added to Schedule! 📅',
-        `${option.name} scheduled for ${new Date(date).toLocaleDateString()} at ${time}`
-      );
-
-      // Optionally navigate to Visual Schedule
-      // navigate('/visual-schedule');
+      if (result.success) {
+        toast.schedule(
+          'Added to Schedule! 📅',
+          `${option.name} scheduled for ${formatDateDisplay(date)} at ${formatTimeDisplay(time)}`
+        );
+      } else {
+        toast.error('Save Failed', result.error || 'Could not add to schedule. Please try again.');
+      }
     } catch (e) {
       console.error('Failed to add to schedule:', e);
       toast.error('Save Failed', 'Could not add to schedule. Please try again.');
     }
   };
 
-  // Save board
-  const handleSaveBoard = (board) => {
-    const existingIndex = boards.findIndex((b) => b.id === board.id);
-    let updatedBoards;
-
-    if (existingIndex >= 0) {
-      updatedBoards = [...boards];
-      updatedBoards[existingIndex] = board;
-    } else {
-      updatedBoards = [...boards, board];
-    }
-
-    saveBoards(updatedBoards);
-    setEditingBoard(null);
-    toast.success('Saved!', `"${board.name}" has been saved`);
-  };
-
-  // Delete board
-  const handleDeleteBoard = (boardId) => {
-    const board = boards.find((b) => b.id === boardId);
-    saveBoards(boards.filter((b) => b.id !== boardId));
-    setShowDeleteConfirm(null);
-    if (selectedBoard?.id === boardId) {
-      setSelectedBoard(null);
-    }
-    toast.info('Deleted', `"${board?.name}" has been removed`);
-  };
-
-  // Render board selection view
+  // Render board list
   const renderBoardList = () => (
     <div className="space-y-4">
       <div className="text-center mb-6">
-        <h2 className="text-2xl font-display text-[#F5A623] mb-2">
-          🎯 Choice Boards
+        <h2 className="text-2xl font-display text-[#F5A623] crayon-text">
+          Your Choice Boards
         </h2>
-        <p className="font-crayon text-gray-600">
-          Pick a board or create a new one!
+        <p className="font-crayon text-gray-500">
+          Tap a board to use it, or create a new one!
         </p>
       </div>
 
-      {/* Board Grid */}
       <div className="grid grid-cols-2 gap-4">
         {boards.map((board) => (
-          <div
-            key={board.id}
-            className="relative bg-white rounded-2xl border-4 border-[#F5A623] p-4 shadow-crayon
-                       hover:shadow-crayon-lg transition-all"
-            style={{ borderRadius: '255px 15px 225px 15px/15px 225px 15px 255px' }}
-          >
+          <div key={board.id} className="relative group">
             <button
               onClick={() => setSelectedBoard(board)}
-              className="w-full text-left"
+              className="w-full bg-white rounded-2xl border-4 border-[#F5A623] p-4
+                       hover:shadow-crayon-lg transition-all"
+              style={{ borderRadius: '255px 15px 225px 15px/15px 225px 15px 255px' }}
             >
-              <h3 className="font-display text-lg text-gray-800 mb-2">
-                {board.name}
-              </h3>
-              <div className="flex flex-wrap gap-1">
-                {board.options.slice(0, 4).map((opt, i) => (
+              {/* Preview icons */}
+              <div className="flex justify-center gap-1 mb-2">
+                {board.options.slice(0, 3).map((opt, i) => (
                   <div
                     key={i}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-sm overflow-hidden"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden"
                     style={{ backgroundColor: opt.color }}
                   >
                     {opt.image ? (
@@ -667,31 +906,45 @@ const ChoiceBoard = () => {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      opt.emoji || '⭐'
+                      <span className="text-sm">{opt.emoji}</span>
                     )}
                   </div>
                 ))}
-                {board.options.length > 4 && (
-                  <div className="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-xs text-gray-500">
-                    +{board.options.length - 4}
+                {board.options.length > 3 && (
+                  <div className="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center">
+                    <span className="text-xs font-crayon">+{board.options.length - 3}</span>
                   </div>
                 )}
               </div>
+              <span className="font-display text-gray-800 block truncate">
+                {board.name}
+              </span>
+              <span className="font-crayon text-xs text-gray-400">
+                {board.options.length} options
+              </span>
             </button>
 
             {/* Edit/Delete buttons */}
-            <div className="absolute top-2 right-2 flex gap-1">
+            <div className="absolute -top-2 -right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
-                onClick={() => setEditingBoard(board)}
-                className="p-1.5 bg-white rounded-full shadow hover:bg-gray-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingBoard(board);
+                }}
+                className="w-8 h-8 bg-[#4A9FD4] rounded-full flex items-center justify-center shadow-lg
+                         hover:bg-blue-600 transition-colors"
               >
-                <Edit3 size={14} className="text-gray-500" />
+                <Edit3 size={14} className="text-white" />
               </button>
               <button
-                onClick={() => setShowDeleteConfirm(board.id)}
-                className="p-1.5 bg-white rounded-full shadow hover:bg-red-50"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDeleteConfirm(board.id);
+                }}
+                className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center shadow-lg
+                         hover:bg-red-600 transition-colors"
               >
-                <Trash2 size={14} className="text-red-400" />
+                <Trash2 size={14} className="text-white" />
               </button>
             </div>
           </div>
