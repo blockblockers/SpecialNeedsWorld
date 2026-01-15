@@ -1,6 +1,6 @@
 // send-notifications/index.ts
-// Supabase Edge Function to send Web Push notifications
-// Deploy with: supabase functions deploy send-notifications
+// Supabase Edge Function to send Web Push notifications for Special Needs World
+// Deploy with: supabase functions deploy send-notifications --no-verify-jwt
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -13,35 +13,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Encouraging messages for notifications
-const ENCOURAGING_MESSAGES = [
-  { title: "🌟 You've got this!", body: "I believe in you!" },
-  { title: "⭐ Almost time!", body: "You're doing amazing today!" },
-  { title: "🎈 Friendly reminder!", body: "You're a superstar!" },
-  { title: "🌈 Hey there, friend!", body: "Take your time, you're wonderful!" },
-  { title: "💪 You can do it!", body: "One step at a time!" },
-  { title: "🎉 Great job today!", body: "Keep being awesome!" },
-  { title: "🦋 Gentle reminder", body: "You're doing so well!" },
-  { title: "🌻 Hello sunshine!", body: "I'm proud of you!" },
-  { title: "🐢 No rush!", body: "Take a deep breath!" },
-  { title: "💖 You matter!", body: "You're loved and capable!" },
-];
-
-const REPEAT_MESSAGES = [
-  "Still on your list - take your time! 💙",
-  "Gentle nudge! Whenever you're ready. 🌸",
-  "No rush at all - just a friendly reminder! 🐌",
-  "Checking in with love! You've got this! 💝",
-  "Still here for you! One step at a time. 🌿",
-  "Remember this one? I know you can do it! ⭐",
-  "Just a soft reminder - you're doing great! 🦋",
-  "Hey friend! This is still waiting for you. 🌼",
-  "Sending encouragement your way! 🌈",
-  "You haven't forgotten - and neither have I! 🤗",
-];
-
-const getRandomMessage = (arr: any[]) => arr[Math.floor(Math.random() * arr.length)];
-
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -49,15 +20,33 @@ serve(async (req) => {
   }
 
   try {
-    // Get environment variables
+    // Get environment variables - CORRECTED: Use proper env var names
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY")!;
-    const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY")!;
-    const vapidEmail = Deno.env.get("VAPID_EMAIL") || "mailto:admin@specialneedsworld.app";
+    
+    // VAPID keys - these must be set as Edge Function secrets
+    const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY");
+    const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY");
+    const vapidEmail = Deno.env.get("VAPID_EMAIL") || "mailto:kcassel888@gmail.com";
 
-    // Configure web-push
-    webpush.setVapidDetails(vapidEmail, vapidPublicKey, vapidPrivateKey);
+    // Validate VAPID keys are configured
+    if (!vapidPublicKey || !vapidPrivateKey) {
+      console.error("VAPID keys not configured!");
+      return new Response(
+        JSON.stringify({ 
+          error: "VAPID keys not configured. Please set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY secrets.",
+          setup_required: true 
+        }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      );
+    }
+
+    // Configure web-push with mailto: prefix for email
+    const emailWithPrefix = vapidEmail.startsWith("mailto:") ? vapidEmail : `mailto:${vapidEmail}`;
+    webpush.setVapidDetails(emailWithPrefix, vapidPublicKey, vapidPrivateKey);
 
     // Create Supabase client with service role (bypasses RLS)
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -72,7 +61,8 @@ serve(async (req) => {
         body,
         scheduled_for,
         repeat_until_complete,
-        repeat_interval_minutes
+        repeat_interval_minutes,
+        data
       `)
       .eq("status", "processing")
       .limit(100);
@@ -88,8 +78,11 @@ serve(async (req) => {
       );
     }
 
+    console.log(`Processing ${notifications.length} notifications`);
+
     let sentCount = 0;
     let failedCount = 0;
+    const errors: string[] = [];
 
     // Process each notification
     for (const notification of notifications) {
@@ -99,11 +92,19 @@ serve(async (req) => {
         .select("endpoint, p256dh, auth")
         .eq("user_id", notification.user_id);
 
-      if (subError || !subscriptions || subscriptions.length === 0) {
+      if (subError) {
+        console.error(`Error fetching subscriptions for user ${notification.user_id}:`, subError);
+        errors.push(`User ${notification.user_id}: ${subError.message}`);
+      }
+
+      if (!subscriptions || subscriptions.length === 0) {
         // No subscriptions, mark as failed
         await supabase
           .from("scheduled_notifications")
-          .update({ status: "failed" })
+          .update({ 
+            status: "failed",
+            error_message: "No push subscriptions found for user"
+          })
           .eq("id", notification.id);
         failedCount++;
         continue;
@@ -120,36 +121,56 @@ serve(async (req) => {
           },
         };
 
+        // Build notification payload with Special Needs World theming
         const payload = JSON.stringify({
-          title: notification.title,
-          body: notification.body,
-          icon: "/logo.jpeg",
-          badge: "/favicon-32.png",
-          tag: notification.id,
+          title: notification.title || "Special Needs World",
+          body: notification.body || "You have a notification",
+          // Themed icons for Special Needs World
+          icon: "/logo.jpeg",           // Main app logo (192x192 recommended)
+          badge: "/badge-icon.png",     // Monochrome badge for status bar (96x96)
+          tag: `snw-${notification.id}`, // Unique tag to prevent duplicate notifications
+          // Vibration pattern: short-pause-long (friendly, not alarming)
+          vibrate: [100, 50, 200],
+          // Keep notification visible until user interacts
+          requireInteraction: true,
+          // Custom data for click handling
           data: {
             notificationId: notification.id,
-            url: "/visual-schedule",
+            url: notification.data?.url || "/visual-schedule",
+            timestamp: new Date().toISOString(),
+            ...notification.data
           },
+          // Action buttons themed for special needs (clear, simple)
           actions: [
-            { action: "complete", title: "✓ Done" },
-            { action: "snooze", title: "⏰ Snooze" },
+            { 
+              action: "complete", 
+              title: "✓ Done",
+              icon: "/icons/check-circle.png"
+            },
+            { 
+              action: "snooze", 
+              title: "⏰ Later",
+              icon: "/icons/clock.png"
+            },
           ],
         });
 
         try {
           await webpush.sendNotification(pushSubscription, payload);
           anySent = true;
+          console.log(`Sent notification ${notification.id} to endpoint: ${sub.endpoint.substring(0, 50)}...`);
 
-          // Update last_used_at
+          // Update last_used_at for this subscription
           await supabase
             .from("push_subscriptions")
             .update({ last_used_at: new Date().toISOString() })
             .eq("endpoint", sub.endpoint);
-        } catch (pushError) {
-          console.error("Push failed:", pushError);
+        } catch (pushError: any) {
+          console.error("Push failed:", pushError.message || pushError);
           
           // If subscription is invalid (410 Gone or 404), remove it
           if (pushError.statusCode === 410 || pushError.statusCode === 404) {
+            console.log(`Removing invalid subscription: ${sub.endpoint.substring(0, 50)}...`);
             await supabase
               .from("push_subscriptions")
               .delete()
@@ -158,20 +179,47 @@ serve(async (req) => {
         }
       }
 
-      // Update notification status
+      // Update notification status based on results
       if (anySent) {
+        const updateData: any = { 
+          status: "sent",
+          sent_at: new Date().toISOString()
+        };
+
+        // If repeat is enabled, create a follow-up notification
+        if (notification.repeat_until_complete && notification.repeat_interval_minutes) {
+          // Create next reminder
+          const nextTime = new Date();
+          nextTime.setMinutes(nextTime.getMinutes() + notification.repeat_interval_minutes);
+          
+          await supabase
+            .from("scheduled_notifications")
+            .insert({
+              user_id: notification.user_id,
+              title: `🔔 Reminder: ${notification.title}`,
+              body: notification.body,
+              scheduled_for: nextTime.toISOString(),
+              repeat_until_complete: true,
+              repeat_interval_minutes: notification.repeat_interval_minutes,
+              status: "pending",
+              data: notification.data
+            });
+          
+          console.log(`Created follow-up notification for ${notification.repeat_interval_minutes} minutes from now`);
+        }
+
         await supabase
           .from("scheduled_notifications")
-          .update({ 
-            status: "sent",
-            sent_at: new Date().toISOString()
-          })
+          .update(updateData)
           .eq("id", notification.id);
         sentCount++;
       } else {
         await supabase
           .from("scheduled_notifications")
-          .update({ status: "failed" })
+          .update({ 
+            status: "failed",
+            error_message: "Failed to send to any device"
+          })
           .eq("id", notification.id);
         failedCount++;
       }
@@ -183,13 +231,18 @@ serve(async (req) => {
         sent: sentCount,
         failed: failedCount,
         total: notifications.length,
+        errors: errors.length > 0 ? errors : undefined,
+        timestamp: new Date().toISOString()
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        stack: error.stack
+      }),
       { 
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" } 

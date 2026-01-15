@@ -1,18 +1,10 @@
 // pushSubscription.js - Web Push subscription management
-// Handles push subscription registration and storage
+// Handles subscribing to push notifications and storing in Supabase
 
 import { supabase, isSupabaseConfigured } from './supabase';
 
-// ============================================
-// VAPID PUBLIC KEY
-// ============================================
-// This should be set in your environment variables
-// Generate with: npx web-push generate-vapid-keys
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
-
-// ============================================
-// HELPERS
-// ============================================
+// VAPID public key from environment
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
 // Convert URL-safe base64 to Uint8Array
 const urlBase64ToUint8Array = (base64String) => {
@@ -20,61 +12,23 @@ const urlBase64ToUint8Array = (base64String) => {
   const base64 = (base64String + padding)
     .replace(/-/g, '+')
     .replace(/_/g, '/');
-  
+
   const rawData = window.atob(base64);
   const outputArray = new Uint8Array(rawData.length);
-  
+
   for (let i = 0; i < rawData.length; ++i) {
     outputArray[i] = rawData.charCodeAt(i);
   }
   return outputArray;
 };
 
-// Convert ArrayBuffer to base64
-const arrayBufferToBase64 = (buffer) => {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return window.btoa(binary);
-};
-
-// ============================================
-// SERVICE WORKER REGISTRATION
-// ============================================
-
 /**
- * Get or register service worker
- */
-export const getServiceWorkerRegistration = async () => {
-  if (!('serviceWorker' in navigator)) {
-    throw new Error('Service workers not supported');
-  }
-  
-  // Wait for existing registration
-  let registration = await navigator.serviceWorker.getRegistration();
-  
-  if (!registration) {
-    // Register if not already registered
-    registration = await navigator.serviceWorker.register('/sw.js');
-  }
-  
-  // Wait for it to be ready
-  await navigator.serviceWorker.ready;
-  
-  return registration;
-};
-
-// ============================================
-// PUSH SUBSCRIPTION
-// ============================================
-
-/**
- * Check if push is supported
+ * Check if push notifications are supported
  */
 export const isPushSupported = () => {
-  return 'PushManager' in window && 'serviceWorker' in navigator;
+  return 'serviceWorker' in navigator && 
+         'PushManager' in window && 
+         'Notification' in window;
 };
 
 /**
@@ -84,7 +38,7 @@ export const getCurrentSubscription = async () => {
   if (!isPushSupported()) return null;
   
   try {
-    const registration = await getServiceWorkerRegistration();
+    const registration = await navigator.serviceWorker.ready;
     return await registration.pushManager.getSubscription();
   } catch (error) {
     console.error('Error getting subscription:', error);
@@ -95,7 +49,7 @@ export const getCurrentSubscription = async () => {
 /**
  * Subscribe to push notifications
  */
-export const subscribeToPush = async () => {
+export const subscribeToPush = async (userId) => {
   if (!isPushSupported()) {
     throw new Error('Push notifications not supported');
   }
@@ -105,24 +59,38 @@ export const subscribeToPush = async () => {
   }
   
   try {
-    const registration = await getServiceWorkerRegistration();
-    
-    // Check existing subscription
-    let subscription = await registration.pushManager.getSubscription();
-    
-    if (subscription) {
-      return subscription;
+    // Request notification permission
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      throw new Error('Notification permission denied');
     }
     
-    // Create new subscription
-    subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-    });
+    // Get service worker registration
+    const registration = await navigator.serviceWorker.ready;
     
+    // Check for existing subscription
+    let subscription = await registration.pushManager.getSubscription();
+    
+    if (!subscription) {
+      // Create new subscription
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
+    
+    // Save to Supabase if configured and user is logged in
+    if (isSupabaseConfigured() && userId) {
+      await saveSubscriptionToDatabase(userId, subscription);
+    }
+    
+    // Also save locally for offline access
+    localStorage.setItem('snw_push_subscription', JSON.stringify(subscription.toJSON()));
+    
+    console.log('Push subscription successful:', subscription.endpoint);
     return subscription;
   } catch (error) {
-    console.error('Error subscribing to push:', error);
+    console.error('Push subscription error:', error);
     throw error;
   }
 };
@@ -130,196 +98,218 @@ export const subscribeToPush = async () => {
 /**
  * Unsubscribe from push notifications
  */
-export const unsubscribeFromPush = async () => {
+export const unsubscribeFromPush = async (userId) => {
   try {
     const subscription = await getCurrentSubscription();
+    
     if (subscription) {
       await subscription.unsubscribe();
-      return true;
+      
+      // Remove from database
+      if (isSupabaseConfigured() && userId) {
+        await removeSubscriptionFromDatabase(userId, subscription.endpoint);
+      }
+      
+      // Remove local storage
+      localStorage.removeItem('snw_push_subscription');
     }
-    return false;
-  } catch (error) {
-    console.error('Error unsubscribing:', error);
-    return false;
-  }
-};
-
-// ============================================
-// DATABASE OPERATIONS
-// ============================================
-
-/**
- * Save push subscription to database
- */
-export const savePushSubscriptionToCloud = async (userId, subscription) => {
-  if (!isSupabaseConfigured() || !userId || !subscription) return false;
-  
-  try {
-    const subscriptionJson = subscription.toJSON();
     
-    const { error } = await supabase
-      .from('push_subscriptions')
-      .upsert({
-        user_id: userId,
-        endpoint: subscriptionJson.endpoint,
-        p256dh: subscriptionJson.keys.p256dh,
-        auth: subscriptionJson.keys.auth,
-        device_name: getDeviceName(),
-      }, {
-        onConflict: 'user_id,endpoint'
-      });
-    
-    if (error) throw error;
     return true;
   } catch (error) {
-    console.error('Error saving push subscription:', error);
-    return false;
+    console.error('Unsubscribe error:', error);
+    throw error;
   }
 };
 
 /**
- * Remove push subscription from database
+ * Save subscription to Supabase
  */
-export const removePushSubscriptionFromCloud = async (userId, endpoint) => {
-  if (!isSupabaseConfigured() || !userId) return false;
+const saveSubscriptionToDatabase = async (userId, subscription) => {
+  const subscriptionJSON = subscription.toJSON();
   
-  try {
-    const { error } = await supabase
-      .from('push_subscriptions')
-      .delete()
-      .eq('user_id', userId)
-      .eq('endpoint', endpoint);
-    
-    if (error) throw error;
-    return true;
-  } catch (error) {
-    console.error('Error removing push subscription:', error);
-    return false;
+  const { error } = await supabase
+    .from('push_subscriptions')
+    .upsert({
+      user_id: userId,
+      endpoint: subscriptionJSON.endpoint,
+      p256dh: subscriptionJSON.keys?.p256dh || '',
+      auth: subscriptionJSON.keys?.auth || '',
+      device_name: getDeviceName(),
+      last_used_at: new Date().toISOString(),
+    }, {
+      onConflict: 'user_id,endpoint'
+    });
+  
+  if (error) {
+    console.error('Error saving subscription to database:', error);
+    throw error;
   }
 };
 
 /**
- * Get user's push subscriptions from database
+ * Remove subscription from Supabase
  */
-export const getUserSubscriptions = async (userId) => {
-  if (!isSupabaseConfigured() || !userId) return [];
+const removeSubscriptionFromDatabase = async (userId, endpoint) => {
+  const { error } = await supabase
+    .from('push_subscriptions')
+    .delete()
+    .eq('user_id', userId)
+    .eq('endpoint', endpoint);
   
-  try {
-    const { data, error } = await supabase
-      .from('push_subscriptions')
-      .select('*')
-      .eq('user_id', userId);
-    
-    if (error) throw error;
-    return data || [];
-  } catch (error) {
-    console.error('Error getting push subscriptions:', error);
-    return [];
+  if (error) {
+    console.error('Error removing subscription from database:', error);
   }
 };
 
-// ============================================
-// HELPER FUNCTIONS
-// ============================================
-
 /**
- * Get a friendly device name
+ * Get device name for identifying subscriptions
  */
 const getDeviceName = () => {
   const ua = navigator.userAgent;
-  
-  if (/iPad/.test(ua)) return 'iPad';
-  if (/iPhone/.test(ua)) return 'iPhone';
-  if (/Android/.test(ua)) return 'Android';
-  if (/Windows/.test(ua)) return 'Windows';
+  if (/iPhone|iPad|iPod/.test(ua)) return 'iOS Device';
+  if (/Android/.test(ua)) return 'Android Device';
+  if (/Windows/.test(ua)) return 'Windows PC';
   if (/Mac/.test(ua)) return 'Mac';
   if (/Linux/.test(ua)) return 'Linux';
-  
   return 'Unknown Device';
 };
 
-// ============================================
-// UNIFIED API
-// ============================================
-
 /**
- * Enable push notifications for user
+ * Schedule a notification in the database (for server-side delivery)
  */
-export const enablePushNotifications = async (userId) => {
-  try {
-    // Request permission
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      return { success: false, error: 'Permission denied' };
-    }
-    
-    // Subscribe to push
-    const subscription = await subscribeToPush();
-    
-    // Save to database
-    const saved = await savePushSubscriptionToCloud(userId, subscription);
-    
-    return { 
-      success: true, 
-      subscription,
-      savedToCloud: saved 
-    };
-  } catch (error) {
-    console.error('Error enabling push:', error);
-    return { success: false, error: error.message };
+export const scheduleServerNotification = async (userId, {
+  title,
+  body,
+  scheduledFor,
+  scheduleId = null,
+  activityIndex = null,
+  repeatUntilComplete = false,
+  repeatIntervalMinutes = 5,
+}) => {
+  if (!isSupabaseConfigured() || !userId) {
+    console.log('Cannot schedule server notification - not configured or no user');
+    return false;
   }
-};
-
-/**
- * Disable push notifications for user
- */
-export const disablePushNotifications = async (userId) => {
-  try {
-    const subscription = await getCurrentSubscription();
-    
-    if (subscription) {
-      // Remove from database
-      await removePushSubscriptionFromCloud(userId, subscription.endpoint);
-      
-      // Unsubscribe locally
-      await subscription.unsubscribe();
-    }
-    
-    return { success: true };
-  } catch (error) {
-    console.error('Error disabling push:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-/**
- * Check if push is enabled for current device
- */
-export const isPushEnabled = async () => {
-  if (!isPushSupported()) return false;
   
-  const subscription = await getCurrentSubscription();
-  return subscription !== null;
+  try {
+    const { error } = await supabase
+      .from('scheduled_notifications')
+      .insert({
+        user_id: userId,
+        schedule_id: scheduleId,
+        activity_index: activityIndex,
+        title,
+        body,
+        scheduled_for: scheduledFor,
+        repeat_until_complete: repeatUntilComplete,
+        repeat_interval_minutes: repeatIntervalMinutes,
+        status: 'pending',
+      });
+    
+    if (error) throw error;
+    
+    console.log('Server notification scheduled for:', scheduledFor);
+    return true;
+  } catch (error) {
+    console.error('Error scheduling server notification:', error);
+    return false;
+  }
 };
 
 /**
- * Sync current subscription with database
+ * Cancel scheduled notifications for a schedule
  */
-export const syncPushSubscription = async (userId) => {
+export const cancelScheduledNotifications = async (userId, scheduleId) => {
   if (!isSupabaseConfigured() || !userId) return false;
   
   try {
-    const subscription = await getCurrentSubscription();
+    const { error } = await supabase
+      .from('scheduled_notifications')
+      .update({ status: 'cancelled' })
+      .eq('user_id', userId)
+      .eq('schedule_id', scheduleId)
+      .eq('status', 'pending');
     
-    if (subscription) {
-      return await savePushSubscriptionToCloud(userId, subscription);
-    }
-    
-    return false;
+    if (error) throw error;
+    return true;
   } catch (error) {
-    console.error('Error syncing push subscription:', error);
+    console.error('Error cancelling notifications:', error);
     return false;
   }
+};
+
+/**
+ * Schedule notifications for a day's activities
+ */
+export const scheduleActivityNotificationsOnServer = async (userId, dateStr, activities, options = {}) => {
+  if (!isSupabaseConfigured() || !userId) {
+    console.log('Cannot schedule server notifications - not configured or no user');
+    return 0;
+  }
+  
+  const {
+    reminderMinutesBefore = [0, 5],
+    repeatUntilComplete = true,
+    repeatIntervalMinutes = 5,
+  } = options;
+  
+  // First, cancel any existing pending notifications for this date
+  try {
+    await supabase
+      .from('scheduled_notifications')
+      .update({ status: 'cancelled' })
+      .eq('user_id', userId)
+      .like('title', `%${dateStr}%`)
+      .eq('status', 'pending');
+  } catch (err) {
+    console.log('Could not cancel existing notifications');
+  }
+  
+  let scheduledCount = 0;
+  const now = new Date();
+  
+  for (let i = 0; i < activities.length; i++) {
+    const activity = activities[i];
+    
+    // Skip if no time, notifications disabled, or already completed
+    if (!activity.time || activity.notify === false || activity.completed) {
+      continue;
+    }
+    
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const [hours, minutes] = activity.time.split(':').map(Number);
+    const activityTime = new Date(year, month - 1, day, hours, minutes);
+    
+    // Schedule for each reminder interval
+    for (const minsBefore of reminderMinutesBefore) {
+      const scheduledFor = new Date(activityTime.getTime() - minsBefore * 60 * 1000);
+      
+      // Only schedule future notifications
+      if (scheduledFor > now) {
+        const title = minsBefore === 0 
+          ? `⏰ Time for ${activity.name}!`
+          : `🔔 ${activity.name} in ${minsBefore} minutes`;
+        
+        const body = minsBefore === 0
+          ? "It's time! You've got this! 💪"
+          : `Getting ready for ${activity.name}`;
+        
+        const success = await scheduleServerNotification(userId, {
+          title,
+          body,
+          scheduledFor: scheduledFor.toISOString(),
+          activityIndex: i,
+          repeatUntilComplete: repeatUntilComplete && minsBefore === 0,
+          repeatIntervalMinutes,
+        });
+        
+        if (success) scheduledCount++;
+      }
+    }
+  }
+  
+  console.log(`Scheduled ${scheduledCount} server notifications for ${dateStr}`);
+  return scheduledCount;
 };
 
 export default {
@@ -327,11 +317,7 @@ export default {
   getCurrentSubscription,
   subscribeToPush,
   unsubscribeFromPush,
-  savePushSubscriptionToCloud,
-  removePushSubscriptionFromCloud,
-  getUserSubscriptions,
-  enablePushNotifications,
-  disablePushNotifications,
-  isPushEnabled,
-  syncPushSubscription,
+  scheduleServerNotification,
+  cancelScheduledNotifications,
+  scheduleActivityNotificationsOnServer,
 };

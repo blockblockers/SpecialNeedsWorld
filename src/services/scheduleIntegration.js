@@ -1,7 +1,7 @@
 // scheduleIntegration.js - Shared service for adding items to Visual Schedule
 // Used by: Appointments, Reminders, Daily Routines, First-Then, OT Exercises,
 //          Sensory Breaks, Health Trackers, Social Stories
-// Now with cloud sync support!
+// Now with cloud sync and server-side push notifications!
 
 import {
   formatDate,
@@ -19,17 +19,34 @@ import {
 import {
   saveSchedule as saveScheduleWithSync,
 } from './calendarSync';
+import { supabase, isSupabaseConfigured } from './supabase';
+import {
+  scheduleActivityNotificationsOnServer,
+} from './pushSubscription';
 
 // Get current user ID if available (for cloud sync)
 const getCurrentUserId = () => {
   try {
-    const authData = localStorage.getItem('sb-auth-token');
-    if (authData) {
-      const parsed = JSON.parse(authData);
-      return parsed?.user?.id || null;
+    // Try to get from Supabase session
+    if (isSupabaseConfigured() && supabase.auth) {
+      const session = supabase.auth.session?.();
+      if (session?.user?.id) {
+        return session.user.id;
+      }
     }
-  } catch {
-    // Ignore errors
+    
+    // Fallback: check localStorage with the correct Supabase key format
+    const keys = Object.keys(localStorage);
+    const authKey = keys.find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+    if (authKey) {
+      const authData = localStorage.getItem(authKey);
+      if (authData) {
+        const parsed = JSON.parse(authData);
+        return parsed?.user?.id || null;
+      }
+    }
+  } catch (err) {
+    console.log('Could not get user ID:', err);
   }
   return null;
 };

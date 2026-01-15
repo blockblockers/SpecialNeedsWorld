@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Generate Badge Icon</title>
+</head>
+<body>
+  <h1>Special Needs World Badge Icon Generator</h1>
+  <p>Right-click the image below and "Save Image As" badge-icon.png</p>
+  
+  <canvas id="canvas" width="96" height="96"></canvas>
+  <br><br>
+  <img id="output" alt="Generated badge">
+  
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Draw Special Needs World themed badge (heart with puzzle indication)
+    // Badge icons should be simple and monochrome for status bars
+    
+    // Clear with transparency
+    ctx.clearRect(0, 0, 96, 96);
+    
+    // Draw heart shape
+    ctx.fillStyle = '#4A90D9';
+    ctx.beginPath();
+    
+    // Heart path
+    ctx.moveTo(48, 20);
+    ctx.bezierCurveTo(48, 20, 20, 20, 20, 45);
+    ctx.bezierCurveTo(20, 65, 48, 85, 48, 85);
+    ctx.bezierCurveTo(48, 85, 76, 65, 76, 45);
+    ctx.bezierCurveTo(76, 20, 48, 20, 48, 20);
+    ctx.fill();
+    
+    // Add small puzzle piece cutout (white to show transparency)
+    ctx.fillStyle = 'white';
+    ctx.fillRect(38, 38, 20, 20);
+    
+    // Puzzle tab
+    ctx.beginPath();
+    ctx.arc(48, 38, 5, 0, Math.PI, true);
+    ctx.fill();
+    
+    ctx.beginPath();
+    ctx.arc(58, 48, 5, Math.PI * 0.5, Math.PI * 1.5, true);
+    ctx.fill();
+    
+    // Convert to image
+    const dataUrl = canvas.toDataURL('image/png');
+    document.getElementById('output').src = dataUrl;
+    
+    // Log base64 for copying
+    console.log('Badge icon base64:', dataUrl);
+  </script>
+  
+  <h2>Alternative: Use this SVG</h2>
+  <p>Save this as badge-icon.svg in your public folder:</p>
+  <pre style="background: #f0f0f0; padding: 10px; overflow-x: auto;">
+&lt;svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96"&gt;
+  &lt;path d="M48 85 C48 85 15 60 15 38 C15 22 28 15 40 15 C46 15 48 20 48 20 C48 20 50 15 56 15 C68 15 81 22 81 38 C81 60 48 85 48 85Z" fill="#4A90D9"/&gt;
+  &lt;rect x="38" y="38" width="20" height="20" fill="white"/&gt;
+  &lt;circle cx="48" cy="38" r="5" fill="white"/&gt;
+  &lt;circle cx="58" cy="48" r="5" fill="white"/&gt;
+&lt;/svg&gt;
+  </pre>
+</body>
+</html>
