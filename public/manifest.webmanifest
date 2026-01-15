@@ -25,6 +25,12 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    },
+    {
+      "src": "/badge-icon.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "monochrome"
     }
   ],
   "categories": ["education", "kids", "health", "lifestyle"],

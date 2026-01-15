@@ -47,6 +47,7 @@ import CommunityProfileSetup from './pages/CommunityProfileSetup';
 import CommunityNewThread from './pages/CommunityNewThread';
 import CommunityThread from './pages/CommunityThread';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
+import { ToastProvider } from './components/ThemedToast';
 import { supabase, isSupabaseConfigured } from './services/supabase';
 import { initNotifications } from './services/notifications';
 
@@ -339,8 +340,9 @@ const ProtectedRoute = ({ children }) => {
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
+    <ToastProvider>
+      <AuthProvider>
+        <Router>
         <Routes>
           {/* Entry/Auth Screen */}
           <Route path="/" element={<EntryAuthScreen />} />
@@ -765,6 +767,7 @@ function App() {
         <PWAInstallPrompt />
       </Router>
     </AuthProvider>
+    </ToastProvider>
   );
 }
 
