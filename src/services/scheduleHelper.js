@@ -10,6 +10,22 @@ import {
   saveScheduleToDate,
   getScheduleForDate,
 } from './calendar';
+
+// Re-export calendar functions for backward compatibility
+// (Some components import these from scheduleHelper instead of calendar)
+export { 
+  formatDate, 
+  formatDisplayDate, 
+  getToday, 
+  addDays,
+  getScheduleForDate,
+} from './calendar';
+
+// Create getTomorrow helper
+export const getTomorrow = () => addDays(getToday(), 1);
+
+// Alias for formatDisplayDate (some components use this name)
+export const formatDateDisplay = formatDisplayDate;
 import {
   scheduleActivityNotifications,
   getNotificationSettings,
@@ -333,6 +349,9 @@ export const addMultipleActivitiesToSchedule = ({
     };
   }
 };
+
+// Alias for backward compatibility (some components use this shorter name)
+export const addMultipleActivities = addMultipleActivitiesToSchedule;
 
 // ============================================
 // REMOVE ACTIVITIES BY SOURCE
@@ -842,9 +861,19 @@ export default {
   // Core functions
   addActivityToSchedule,
   addMultipleActivitiesToSchedule,
+  addMultipleActivities, // Alias
   removeActivitiesBySource,
   activityExists,
   getActivitiesBySource,
+  
+  // Calendar re-exports
+  formatDate,
+  formatDisplayDate,
+  formatDateDisplay, // Alias
+  getToday,
+  getTomorrow,
+  addDays,
+  getScheduleForDate,
   
   // Helpers
   createScheduleModalHandlers,

@@ -14,9 +14,19 @@ export {
   // Core functions
   addActivityToSchedule,
   addMultipleActivitiesToSchedule,
+  addMultipleActivities,
   removeActivitiesBySource,
   activityExists,
   getActivitiesBySource,
+  
+  // Calendar re-exports (for components that import from here)
+  formatDate,
+  formatDisplayDate,
+  formatDateDisplay,
+  getToday,
+  getTomorrow,
+  addDays,
+  getScheduleForDate,
   
   // Helpers
   createScheduleModalHandlers,
