@@ -1,3 +1,6 @@
+// Tools.jsx - Daily Tools Hub for ATLASassist
+// FIXED: Milestone Guide text is now white, all tools are ready (no coming soon)
+
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -9,7 +12,7 @@ import {
   BarChart3
 } from 'lucide-react';
 
-// Tool items available
+// Tool items - ALL ARE READY (no coming soon)
 const tools = [
   {
     id: 'milestones',
@@ -18,7 +21,6 @@ const tools = [
     icon: BarChart3,
     color: 'bg-[#F8D14A]',
     borderColor: 'border-yellow-500',
-    textColor: 'text-gray-800',
     path: '/tools/milestones',
     emoji: '📊',
     ready: true,
@@ -97,7 +99,7 @@ const Tools = () => {
           <button
             onClick={() => navigate('/hub')}
             className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F8D14A] 
-                       rounded-xl font-display font-bold text-[#8B5A2B] hover:bg-[#F8D14A] 
+                       rounded-xl font-display font-bold text-[#F8D14A] hover:bg-[#F8D14A] 
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
@@ -109,8 +111,8 @@ const Tools = () => {
             className="w-10 h-10 rounded-lg shadow-sm"
           />
           <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-display text-[#8B5A2B] crayon-text flex items-center gap-2">
-              🔧 Tools
+            <h1 className="text-lg sm:text-xl font-display text-[#F8D14A] crayon-text flex items-center gap-2">
+              🔧 Daily Tools
             </h1>
           </div>
         </div>
@@ -133,7 +135,7 @@ const Tools = () => {
                 disabled={!tool.ready}
                 className={`
                   relative p-4 rounded-2xl border-4 ${tool.borderColor}
-                  ${tool.color} ${tool.textColor || 'text-white'}
+                  ${tool.color} text-white
                   transition-all duration-200 shadow-crayon
                   ${tool.ready 
                     ? 'hover:scale-105 hover:-rotate-1 active:scale-95 cursor-pointer' 
@@ -144,13 +146,6 @@ const Tools = () => {
                   borderRadius: '20px 8px 20px 8px',
                 }}
               >
-                {/* Coming Soon Badge */}
-                {!tool.ready && (
-                  <div className="absolute -top-2 -right-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full font-crayon">
-                    Soon!
-                  </div>
-                )}
-
                 {/* Emoji */}
                 <div className="text-3xl mb-2">{tool.emoji}</div>
 
@@ -176,7 +171,7 @@ const Tools = () => {
         {/* Info Note */}
         <div className="mt-8 p-4 bg-white rounded-2xl border-3 border-[#87CEEB] shadow-sm">
           <p className="text-center text-gray-600 font-crayon text-sm">
-            💡 More tools coming soon! Check back for updates.
+            💡 These tools help with daily routines, communication, and calming.
           </p>
         </div>
       </main>

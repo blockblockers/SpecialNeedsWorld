@@ -1,4 +1,5 @@
 // EntryAuthScreen.jsx - Clean authentication screen for ATLASassist
+// FIXED: Google auth back-out now properly resets loading state
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -24,8 +25,36 @@ const EntryAuthScreen = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // Reset loading when window regains focus (handles Google OAuth popup close)
+  useEffect(() => {
+    const handleFocus = () => {
+      // If loading and window regains focus, user likely cancelled OAuth
+      if (loading) {
+        setTimeout(() => {
+          setLoading(false);
+        }, 500);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && loading) {
+        setTimeout(() => {
+          setLoading(false);
+        }, 500);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [loading]);
+
   const clearMessages = () => { setError(''); setSuccess(''); };
-  const switchMode = (m) => { setMode(m); clearMessages(); };
+  const switchMode = (m) => { setMode(m); clearMessages(); setLoading(false); };
 
   const handleSignIn = async (e) => {
     e.preventDefault();
@@ -57,8 +86,19 @@ const EntryAuthScreen = () => {
   const handleGoogleSignIn = async () => {
     clearMessages();
     setLoading(true);
-    const result = await signInWithGoogle();
-    if (result.error) { setError(result.error.message); setLoading(false); }
+    
+    try {
+      const result = await signInWithGoogle();
+      if (result.error) { 
+        setError(result.error.message); 
+        setLoading(false); 
+      }
+      // Note: If successful, OAuth will redirect, so loading stays true
+      // If user cancels, the focus/visibility handlers will reset loading
+    } catch (err) {
+      setError('Google sign-in failed. Please try again.');
+      setLoading(false);
+    }
   };
 
   const handleForgotPassword = async (e) => {
@@ -89,21 +129,26 @@ const EntryAuthScreen = () => {
                    flex items-center justify-center gap-3 disabled:opacity-50"
         style={{ borderRadius: '20px 8px 20px 8px' }}
       >
-        <svg className="w-5 h-5" viewBox="0 0 24 24">
-          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-        </svg>
+        {loading ? (
+          <div className="w-5 h-5 border-3 border-[#E63B2E] border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <svg className="w-5 h-5" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+          </svg>
+        )}
         Sign in with Google
       </button>
 
       {/* Email Sign In */}
       <button
         onClick={() => switchMode('login')}
+        disabled={loading}
         className="w-full p-4 bg-[#4A9FD4] text-white border-4 border-blue-600 rounded-2xl font-crayon
                    shadow-crayon hover:shadow-crayon-lg hover:-translate-y-1 transition-all
-                   flex items-center justify-center gap-3"
+                   flex items-center justify-center gap-3 disabled:opacity-50"
         style={{ borderRadius: '8px 20px 8px 20px' }}
       >
         <Mail size={20} />
@@ -113,9 +158,10 @@ const EntryAuthScreen = () => {
       {/* Create Account */}
       <button
         onClick={() => switchMode('signup')}
+        disabled={loading}
         className="w-full p-4 bg-[#5CB85C] text-white border-4 border-green-600 rounded-2xl font-crayon
                    shadow-crayon hover:shadow-crayon-lg hover:-translate-y-1 transition-all
-                   flex items-center justify-center gap-3"
+                   flex items-center justify-center gap-3 disabled:opacity-50"
         style={{ borderRadius: '20px 8px 20px 8px' }}
       >
         <UserPlus size={20} />
@@ -125,8 +171,9 @@ const EntryAuthScreen = () => {
       {/* Guest Mode */}
       <button
         onClick={handleGuestMode}
+        disabled={loading}
         className="w-full p-3 bg-gray-100 text-gray-600 rounded-xl font-crayon text-sm
-                   hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
+                   hover:bg-gray-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
       >
         Continue as Guest
         <span className="text-xs bg-gray-300 px-2 py-0.5 rounded-full">No save</span>
@@ -252,45 +299,45 @@ const EntryAuthScreen = () => {
         
         <button type="submit" disabled={loading}
           className="w-full py-3 bg-[#8E6BBF] text-white rounded-xl font-crayon text-lg shadow-crayon hover:shadow-crayon-lg disabled:opacity-50">
-          {loading ? <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin mx-auto" /> : 'Send Reset Link'}
+          {loading ? 'Sending...' : 'Send Reset Link'}
         </button>
       </form>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-[#FFFEF5] flex flex-col">
-      {/* Main content */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4">
-        {/* Logo */}
-        <img src="/logo.jpeg" alt="ATLASassist" 
-          className="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl shadow-crayon-lg mb-4" />
-        
-        {/* Title */}
-        <h1 className="text-3xl sm:text-4xl font-display rainbow-text crayon-text mb-1">ATLAS</h1>
-        <h2 className="text-2xl sm:text-3xl font-display text-[#4A9FD4] crayon-text mb-2">assist</h2>
-        <p className="text-xs sm:text-sm font-crayon text-gray-600 max-w-xs text-center mb-4 leading-relaxed">
-          Assistive Tools for Learning, Access &amp; Support
-        </p>
-        <p className="text-xs font-crayon text-[#8E6BBF] max-w-xs text-center mb-4">
-          Tools for individuals with neurodiverse abilities
-        </p>
-        
-        {/* Auth Card */}
-        <div className="w-full max-w-sm bg-white p-5 shadow-crayon-lg border-4 border-[#F5A623] rounded-2xl"
-             style={{ borderRadius: '24px' }}>
+    <div className="min-h-screen bg-[#FFFEF5] flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      {/* Background decorations */}
+      <div className="absolute top-10 right-10 w-16 h-16 rounded-full bg-[#F8D14A] animate-pulse opacity-50" />
+      <div className="absolute bottom-20 left-10 w-12 h-12 rounded-full bg-[#E86B9A] animate-bounce opacity-40" />
+      <div className="absolute top-1/4 left-5 w-8 h-8 rounded-full bg-[#4A9FD4] animate-pulse opacity-30" />
+
+      {/* Main Card */}
+      <div className="w-full max-w-sm">
+        {/* Logo & Title */}
+        <div className="text-center mb-6">
+          <img 
+            src="/logo.jpeg" 
+            alt="ATLASassist" 
+            className="w-24 h-24 rounded-2xl shadow-crayon mx-auto mb-4"
+          />
+          <h1 className="text-3xl font-display text-[#4A9FD4] crayon-text">ATLASassist</h1>
+          <p className="font-crayon text-gray-600 mt-1">Assistive Tools for Learning, Access & Support</p>
+        </div>
+
+        {/* Auth Forms */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-3xl border-4 border-[#87CEEB] p-6 shadow-crayon">
           {mode === 'select' && renderSelect()}
           {mode === 'login' && renderLogin()}
           {mode === 'signup' && renderSignup()}
           {mode === 'forgot' && renderForgot()}
         </div>
-      </div>
 
-      {/* Footer */}
-      <footer className="text-center py-4 px-4">
-        <p className="text-gray-500 font-crayon text-xs">© 2025 ATLASassist</p>
-        <p className="text-[#8E6BBF] font-display text-sm italic">For Finn, and for people like him. 💜</p>
-      </footer>
+        {/* Footer */}
+        <p className="text-center text-gray-500 font-crayon text-sm mt-6">
+          Made with 💙 for neurodiverse abilities
+        </p>
+      </div>
     </div>
   );
 };

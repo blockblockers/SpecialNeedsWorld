@@ -1,5 +1,6 @@
 // PlanningHub.jsx - Planning & Documents hub for ATLASassist
 // Critical planning, advocacy, and emergency documents
+// FIXED: All items are now ready (no coming soon)
 
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -14,7 +15,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 
-// Planning & Documents apps
+// Planning & Documents apps - ALL READY
 const planningApps = [
   {
     id: 'student-profile',
@@ -25,8 +26,7 @@ const planningApps = [
     borderColor: 'border-blue-500',
     path: '/planning/student-profile',
     emoji: '👤',
-    ready: false,
-    isNew: true,
+    ready: true,
     priority: 'high',
   },
   {
@@ -38,8 +38,7 @@ const planningApps = [
     borderColor: 'border-red-600',
     path: '/planning/file-of-life',
     emoji: '🏥',
-    ready: false,
-    isNew: true,
+    ready: true,
     priority: 'high',
   },
   {
@@ -51,8 +50,7 @@ const planningApps = [
     borderColor: 'border-pink-500',
     path: '/planning/person-centered',
     emoji: '💜',
-    ready: false,
-    isNew: true,
+    ready: true,
     priority: 'medium',
   },
   {
@@ -64,8 +62,7 @@ const planningApps = [
     borderColor: 'border-purple-500',
     path: '/planning/memo-intent',
     emoji: '📜',
-    ready: false,
-    isNew: true,
+    ready: true,
     priority: 'low',
   },
 ];
@@ -118,107 +115,69 @@ const PlanningHub = () => {
           <AlertTriangle className="text-amber-600 flex-shrink-0 mt-0.5" size={20} />
           <div>
             <h3 className="font-display text-amber-700 text-sm mb-1">Privacy Note</h3>
-            <p className="font-crayon text-xs text-amber-600">
-              These documents contain sensitive information. They are stored locally on your 
-              device by default. You control when and how to share them.
+            <p className="font-crayon text-amber-600 text-xs">
+              All documents are stored locally on your device. We recommend downloading 
+              completed documents and storing them securely.
             </p>
           </div>
         </div>
 
-        {/* App Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {planningApps.map((app) => (
-            <button
-              key={app.id}
-              onClick={() => handleAppClick(app)}
-              disabled={!app.ready}
-              className={`relative ${app.color} ${app.borderColor} border-4 rounded-2xl p-5 
-                         shadow-crayon transition-all duration-200 
-                         flex items-start gap-4 text-white text-left
-                         ${app.ready 
-                           ? 'hover:shadow-crayon-lg hover:scale-105 active:scale-95' 
-                           : 'opacity-70 cursor-not-allowed'}`}
-              style={{
-                borderRadius: '20px 40px 20px 40px / 40px 20px 40px 20px',
-              }}
-            >
-              {/* NEW Badge */}
-              {app.isNew && (
-                <span className="absolute -top-2 -right-2 bg-[#20B2AA] text-white text-xs font-display 
-                                 px-2 py-0.5 rounded-full shadow-md">
-                  Coming Soon
-                </span>
-              )}
+        {/* Apps Grid */}
+        <div className="grid grid-cols-2 gap-4">
+          {planningApps.map((app) => {
+            const IconComponent = app.icon;
+            return (
+              <button
+                key={app.id}
+                onClick={() => handleAppClick(app)}
+                disabled={!app.ready}
+                className={`
+                  relative p-4 rounded-2xl border-4 ${app.borderColor}
+                  ${app.color} text-white
+                  transition-all duration-200 shadow-crayon
+                  ${app.ready 
+                    ? 'hover:scale-105 hover:-rotate-1 active:scale-95 cursor-pointer' 
+                    : 'opacity-60 cursor-not-allowed grayscale-[30%]'
+                  }
+                `}
+                style={{
+                  borderRadius: '20px 8px 20px 8px',
+                }}
+              >
+                {/* Priority Badge */}
+                {app.priority === 'high' && (
+                  <div className="absolute -top-2 -right-2 bg-amber-500 text-white text-xs px-2 py-1 rounded-full font-crayon">
+                    Important
+                  </div>
+                )}
 
-              {/* Icon */}
-              <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                <span className="text-3xl">{app.emoji}</span>
-              </div>
-              
-              {/* Text */}
-              <div>
-                <h3 className="font-display text-base leading-tight mb-1">
+                {/* Emoji */}
+                <div className="text-3xl mb-2">{app.emoji}</div>
+
+                {/* Icon */}
+                <div className="flex justify-center mb-2">
+                  <IconComponent size={32} strokeWidth={2.5} />
+                </div>
+
+                {/* Name */}
+                <h3 className="font-display text-lg crayon-text">
                   {app.name}
                 </h3>
-                <p className="font-crayon text-sm text-white/80">
+
+                {/* Description */}
+                <p className="text-sm opacity-90 font-crayon mt-1">
                   {app.description}
                 </p>
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
 
-        {/* What Are These? */}
-        <div className="mt-6 space-y-4">
-          <h3 className="font-display text-gray-700 text-lg">📖 What Are These Documents?</h3>
-          
-          <div className="bg-white rounded-2xl border-3 border-gray-200 shadow-sm p-4">
-            <h4 className="font-display text-[#4A9FD4] mb-2">👤 Student Profile & One-Pager</h4>
-            <p className="font-crayon text-sm text-gray-600">
-              A concise document sharing important information about your child with teachers, 
-              substitutes, and new providers. Includes strengths, needs, communication style, 
-              and what helps them succeed.
-            </p>
-          </div>
-
-          <div className="bg-white rounded-2xl border-3 border-gray-200 shadow-sm p-4">
-            <h4 className="font-display text-[#E63B2E] mb-2">🏥 File of Life</h4>
-            <p className="font-crayon text-sm text-gray-600">
-              Emergency medical information in the standard format recognized by first responders. 
-              Includes conditions, medications, allergies, emergency contacts, and communication needs.
-              Can be printed as a wallet card or fridge magnet.
-            </p>
-          </div>
-
-          <div className="bg-white rounded-2xl border-3 border-gray-200 shadow-sm p-4">
-            <h4 className="font-display text-[#E86B9A] mb-2">💜 Person-Centered Plan</h4>
-            <p className="font-crayon text-sm text-gray-600">
-              A comprehensive planning template focusing on what's important TO the person 
-              (their preferences) and what's important FOR them (health & safety). Used for 
-              IEP meetings, transition planning, and life planning.
-            </p>
-          </div>
-
-          <div className="bg-white rounded-2xl border-3 border-gray-200 shadow-sm p-4">
-            <h4 className="font-display text-[#8E6BBF] mb-2">📜 Memorandum of Intent</h4>
-            <p className="font-crayon text-sm text-gray-600">
-              A detailed letter to future caregivers about your loved one's history, preferences, 
-              routines, and needs. Not legally binding, but provides invaluable guidance for 
-              whoever may provide care in the future.
-            </p>
-          </div>
-        </div>
-
-        {/* Why This Matters */}
-        <div className="mt-6 p-4 bg-[#CD853F]/10 rounded-2xl border-3 border-[#CD853F]/30">
-          <h3 className="font-display text-[#CD853F] mb-2 flex items-center gap-2">
-            <Heart size={18} />
-            Why This Matters
-          </h3>
-          <p className="font-crayon text-sm text-gray-600">
-            Having these documents prepared and up-to-date helps ensure your loved one receives 
-            consistent, informed care - whether it's a substitute teacher, an emergency room visit, 
-            or planning for the future. These tools guide you through creating them step by step.
+        {/* Info Note */}
+        <div className="mt-8 p-4 bg-white rounded-2xl border-3 border-[#CD853F] shadow-sm">
+          <p className="text-center text-gray-600 font-crayon text-sm">
+            📝 These documents help communicate your child's needs to schools, 
+            healthcare providers, and caregivers.
           </p>
         </div>
       </main>

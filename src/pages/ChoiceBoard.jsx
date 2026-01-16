@@ -1,11 +1,10 @@
-// ChoiceBoard.jsx - Fixed version with themed toasts, red unavailable options, and PRESET ICONS
-// Choice Board app for Special Needs World
+// ChoiceBoard.jsx - FIXED version
+// Fixed: celebration toast, unavailable watermark, removed confusing buttons
 // Features:
-// - Create boards with 2-6 options (photos + text)
-// - PRESET ICONS for common activities (NEW!)
-// - Mark options as unavailable (shown in RED, not gray)
-// - Confetti celebration on selection
-// - Add choices to Visual Schedule
+// - Create boards with 2-6 options
+// - Unavailable items show diagonal "UNAVAILABLE" watermark (not strikethrough)
+// - Confetti celebration on selection + prompt to add to schedule
+// - Edit availability through edit screen only (no corner buttons in view mode)
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -26,6 +25,7 @@ import {
   CalendarPlus,
   Star,
   Grid3X3,
+  Volume2,
 } from 'lucide-react';
 import { useAuth } from '../App';
 import { compressImage } from '../services/storage';
@@ -34,6 +34,8 @@ import {
   addActivityToSchedule, 
   SCHEDULE_SOURCES, 
   SOURCE_COLORS,
+  getToday,
+  getTomorrow,
   formatDateDisplay,
   formatTimeDisplay 
 } from '../services/scheduleHelper';
@@ -43,12 +45,12 @@ const STORAGE_KEY = 'snw_choice_boards';
 
 // Default colors for options
 const OPTION_COLORS = [
-  '#E63B2E', // Red
   '#4A9FD4', // Blue
   '#5CB85C', // Green
   '#F5A623', // Orange
   '#8E6BBF', // Purple
   '#E86B9A', // Pink
+  '#20B2AA', // Teal
 ];
 
 // =====================================================
@@ -79,48 +81,31 @@ const PRESET_ICONS = {
       { emoji: '🏫', name: 'School' },
       { emoji: '🏪', name: 'Store' },
       { emoji: '🏥', name: 'Doctor' },
-      { emoji: '🏛️', name: 'Library' },
-      { emoji: '🎢', name: 'Park' },
-      { emoji: '🍕', name: 'Restaurant' },
-      { emoji: '🛒', name: 'Grocery Store' },
-      { emoji: '⛪', name: 'Church' },
+      { emoji: '🌳', name: 'Park' },
+      { emoji: '📚', name: 'Library' },
+      { emoji: '🍔', name: 'Restaurant' },
+      { emoji: '🎢', name: 'Theme Park' },
       { emoji: '🏖️', name: 'Beach' },
       { emoji: '🎬', name: 'Movies' },
-      { emoji: '🍦', name: 'Ice Cream' },
+      { emoji: '🛒', name: 'Grocery' },
+      { emoji: '👨‍👩‍👧', name: 'Grandparents' },
     ]
   },
   food: {
-    name: 'Food & Drinks',
+    name: 'Food',
     icons: [
-      { emoji: '🍎', name: 'Apple' },
-      { emoji: '🍌', name: 'Banana' },
-      { emoji: '🥕', name: 'Carrot' },
-      { emoji: '🥪', name: 'Sandwich' },
       { emoji: '🍕', name: 'Pizza' },
       { emoji: '🍔', name: 'Burger' },
-      { emoji: '🌮', name: 'Taco' },
+      { emoji: '🌮', name: 'Tacos' },
       { emoji: '🍝', name: 'Pasta' },
-      { emoji: '🥣', name: 'Cereal' },
-      { emoji: '🧃', name: 'Juice Box' },
-      { emoji: '💧', name: 'Water' },
-      { emoji: '🥛', name: 'Milk' },
-    ]
-  },
-  routines: {
-    name: 'Daily Routines',
-    icons: [
-      { emoji: '🌅', name: 'Wake Up' },
-      { emoji: '🦷', name: 'Brush Teeth' },
-      { emoji: '👕', name: 'Get Dressed' },
-      { emoji: '🍳', name: 'Breakfast' },
-      { emoji: '🚌', name: 'Bus/School' },
-      { emoji: '✏️', name: 'Homework' },
-      { emoji: '🛁', name: 'Bath Time' },
-      { emoji: '📖', name: 'Story Time' },
-      { emoji: '🌙', name: 'Bedtime' },
-      { emoji: '💤', name: 'Sleep' },
-      { emoji: '🧼', name: 'Wash Hands' },
-      { emoji: '💊', name: 'Medicine' },
+      { emoji: '🍎', name: 'Apple' },
+      { emoji: '🥪', name: 'Sandwich' },
+      { emoji: '🍦', name: 'Ice Cream' },
+      { emoji: '🍪', name: 'Cookies' },
+      { emoji: '🥤', name: 'Drink' },
+      { emoji: '🍿', name: 'Popcorn' },
+      { emoji: '🥗', name: 'Salad' },
+      { emoji: '🍩', name: 'Donut' },
     ]
   },
   feelings: {
@@ -129,7 +114,7 @@ const PRESET_ICONS = {
       { emoji: '😊', name: 'Happy' },
       { emoji: '😢', name: 'Sad' },
       { emoji: '😠', name: 'Angry' },
-      { emoji: '😰', name: 'Worried' },
+      { emoji: '😨', name: 'Scared' },
       { emoji: '😴', name: 'Tired' },
       { emoji: '🤒', name: 'Sick' },
       { emoji: '😋', name: 'Hungry' },
@@ -159,7 +144,9 @@ const PRESET_ICONS = {
   },
 };
 
-// Confetti component
+// =====================================================
+// Confetti Component
+// =====================================================
 const Confetti = ({ isActive }) => {
   if (!isActive) return null;
 
@@ -201,7 +188,137 @@ const Confetti = ({ isActive }) => {
 };
 
 // =====================================================
-// Icon Picker Modal - NEW COMPONENT
+// Add to Schedule Modal
+// =====================================================
+const AddToScheduleModal = ({ isOpen, onClose, option, onAdd }) => {
+  const [selectedDate, setSelectedDate] = useState(getToday());
+  const [selectedTime, setSelectedTime] = useState('10:00');
+  const [enableReminder, setEnableReminder] = useState(true);
+
+  if (!isOpen || !option) return null;
+
+  const timeOptions = [
+    '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
+    '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'
+  ];
+
+  const handleAdd = () => {
+    onAdd({
+      option,
+      date: selectedDate,
+      time: selectedTime,
+      reminder: enableReminder,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="bg-[#8E6BBF] text-white p-4 flex items-center gap-3">
+          <CalendarPlus size={24} />
+          <h3 className="font-display text-xl flex-1">Add to Schedule?</h3>
+          <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
+            <X size={24} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-4 space-y-4">
+          {/* Selected Option Preview */}
+          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+            <div 
+              className="w-12 h-12 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: option.color }}
+            >
+              {option.image ? (
+                <img src={option.image} alt={option.name} className="w-full h-full object-cover rounded-xl" />
+              ) : (
+                <span className="text-2xl">{option.emoji || '⭐'}</span>
+              )}
+            </div>
+            <div>
+              <p className="font-display text-gray-800">{option.name}</p>
+              <p className="font-crayon text-sm text-gray-500">Your choice!</p>
+            </div>
+          </div>
+
+          {/* Date Selection */}
+          <div>
+            <label className="block font-crayon text-gray-600 mb-2">When?</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setSelectedDate(getToday())}
+                className={`flex-1 py-2 rounded-xl font-crayon text-sm border-2 transition-all
+                          ${selectedDate === getToday() 
+                            ? 'bg-[#8E6BBF]/20 border-[#8E6BBF] text-[#8E6BBF]' 
+                            : 'bg-white border-gray-200 text-gray-600'}`}
+              >
+                Today
+              </button>
+              <button
+                onClick={() => setSelectedDate(getTomorrow())}
+                className={`flex-1 py-2 rounded-xl font-crayon text-sm border-2 transition-all
+                          ${selectedDate === getTomorrow() 
+                            ? 'bg-[#8E6BBF]/20 border-[#8E6BBF] text-[#8E6BBF]' 
+                            : 'bg-white border-gray-200 text-gray-600'}`}
+              >
+                Tomorrow
+              </button>
+            </div>
+          </div>
+
+          {/* Time Selection */}
+          <div>
+            <label className="block font-crayon text-gray-600 mb-2">What time?</label>
+            <select
+              value={selectedTime}
+              onChange={(e) => setSelectedTime(e.target.value)}
+              className="w-full p-3 border-2 border-gray-200 rounded-xl font-crayon focus:border-[#8E6BBF] outline-none"
+            >
+              {timeOptions.map(time => (
+                <option key={time} value={time}>{formatTimeDisplay(time)}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Reminder Toggle */}
+          <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer">
+            <input
+              type="checkbox"
+              checked={enableReminder}
+              onChange={(e) => setEnableReminder(e.target.checked)}
+              className="w-5 h-5 rounded text-[#8E6BBF]"
+            />
+            <span className="font-crayon text-gray-700">Remind me when it's time</span>
+          </label>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={onClose}
+              className="flex-1 py-3 border-2 border-gray-300 rounded-xl font-crayon text-gray-600
+                       hover:bg-gray-50 transition-colors"
+            >
+              Maybe Later
+            </button>
+            <button
+              onClick={handleAdd}
+              className="flex-1 py-3 bg-[#8E6BBF] text-white rounded-xl font-display
+                       hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+            >
+              <CalendarPlus size={18} />
+              Add to Schedule
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// =====================================================
+// Icon Picker Modal
 // =====================================================
 const IconPickerModal = ({ isOpen, onClose, onSelectIcon, onSelectImage, currentEmoji }) => {
   const [activeCategory, setActiveCategory] = useState('activities');
@@ -211,232 +328,83 @@ const IconPickerModal = ({ isOpen, onClose, onSelectIcon, onSelectImage, current
 
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    onSelectImage(file);
-    onClose();
+    if (file) {
+      try {
+        const compressed = await compressImage(file, 200, 200);
+        onSelectImage(compressed);
+        onClose();
+      } catch (error) {
+        console.error('Failed to compress image:', error);
+      }
+    }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
-      <div 
-        className="bg-[#FFFEF5] w-full max-w-md max-h-[85vh] rounded-2xl border-4 border-[#F5A623] shadow-crayon-lg flex flex-col"
-        style={{ borderRadius: '30px 70px 30px 70px / 70px 30px 70px 30px' }}
-      >
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-hidden shadow-2xl">
         {/* Header */}
-        <div className="bg-[#F5A623] text-white p-4 flex items-center gap-3">
-          <Grid3X3 size={24} />
-          <h3 className="font-display text-xl flex-1">Choose Icon</h3>
+        <div className="bg-[#F5A623] text-white p-4 flex items-center justify-between">
+          <h3 className="font-display text-lg">Choose an Icon</h3>
           <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
             <X size={24} />
           </button>
         </div>
 
         {/* Category Tabs */}
-        <div className="flex overflow-x-auto gap-1 p-2 bg-orange-50 border-b-2 border-orange-200">
+        <div className="flex overflow-x-auto border-b">
           {Object.entries(PRESET_ICONS).map(([key, category]) => (
             <button
               key={key}
               onClick={() => setActiveCategory(key)}
-              className={`px-3 py-1.5 rounded-full font-crayon text-xs whitespace-nowrap transition-all
-                ${activeCategory === key 
-                  ? 'bg-[#F5A623] text-white' 
-                  : 'bg-white text-gray-600 hover:bg-orange-100'
-                }`}
+              className={`px-4 py-2 font-crayon text-sm whitespace-nowrap border-b-2 transition-colors
+                        ${activeCategory === key 
+                          ? 'border-[#F5A623] text-[#F5A623]' 
+                          : 'border-transparent text-gray-500'}`}
             >
               {category.name}
             </button>
           ))}
         </div>
 
-        {/* Icon Grid */}
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="grid grid-cols-4 gap-2">
-            {PRESET_ICONS[activeCategory].icons.map((icon, idx) => (
+        {/* Icons Grid */}
+        <div className="p-4 overflow-y-auto max-h-[300px]">
+          <div className="grid grid-cols-4 gap-3">
+            {PRESET_ICONS[activeCategory].icons.map((icon, index) => (
               <button
-                key={idx}
+                key={index}
                 onClick={() => {
                   onSelectIcon(icon.emoji, icon.name);
                   onClose();
                 }}
-                className={`flex flex-col items-center p-2 rounded-xl border-2 transition-all
-                  ${currentEmoji === icon.emoji 
-                    ? 'border-[#F5A623] bg-orange-100' 
-                    : 'border-gray-200 hover:border-[#F5A623] hover:bg-orange-50'
-                  }`}
+                className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 hover:scale-105 transition-all
+                          ${currentEmoji === icon.emoji 
+                            ? 'border-[#F5A623] bg-orange-50' 
+                            : 'border-gray-200 hover:border-gray-300'}`}
               >
-                <span className="text-3xl mb-1">{icon.emoji}</span>
-                <span className="font-crayon text-[10px] text-gray-500 text-center leading-tight">
-                  {icon.name}
-                </span>
+                <span className="text-2xl">{icon.emoji}</span>
+                <span className="font-crayon text-xs text-gray-600 text-center leading-tight">{icon.name}</span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Custom Image Option */}
-        <div className="p-4 border-t-3 border-gray-200 bg-gray-50">
-          <p className="font-crayon text-sm text-gray-500 mb-2 text-center">Or use your own image:</p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex-1 py-3 bg-white border-3 border-[#4A9FD4] rounded-xl font-crayon text-[#4A9FD4]
-                       hover:bg-[#4A9FD4] hover:text-white transition-all flex items-center justify-center gap-2"
-            >
-              <Camera size={18} />
-              Take Photo
-            </button>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex-1 py-3 bg-white border-3 border-[#8E6BBF] rounded-xl font-crayon text-[#8E6BBF]
-                       hover:bg-[#8E6BBF] hover:text-white transition-all flex items-center justify-center gap-2"
-            >
-              <Upload size={18} />
-              Upload
-            </button>
-          </div>
+        {/* Upload Custom Image */}
+        <div className="p-4 border-t">
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            capture="environment"
-            className="hidden"
             onChange={handleImageUpload}
+            className="hidden"
           />
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Add to Schedule Modal
-const AddToScheduleModal = ({ selectedOption, onClose, onAdd, toast }) => {
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split('T')[0]
-  );
-  const [selectedTime, setSelectedTime] = useState('09:00');
-  const [enableReminder, setEnableReminder] = useState(true);
-
-  const handleAdd = () => {
-    if (!selectedDate) {
-      toast.warning('Missing Date', 'Please select a date');
-      return;
-    }
-
-    onAdd({
-      option: selectedOption,
-      date: selectedDate,
-      time: selectedTime,
-      reminder: enableReminder,
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div
-        className="bg-[#FFFEF5] w-full max-w-sm rounded-2xl border-4 border-[#5CB85C] shadow-crayon-lg overflow-hidden"
-        style={{ borderRadius: '30px 70px 30px 70px / 70px 30px 70px 30px' }}
-      >
-        {/* Header */}
-        <div className="bg-[#5CB85C] text-white p-4 flex items-center gap-3">
-          <CalendarPlus size={24} />
-          <h3 className="font-display text-xl flex-1">Add to Schedule</h3>
           <button
-            onClick={onClose}
-            className="p-1 hover:bg-white/20 rounded-full"
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl
+                     font-crayon text-gray-600 hover:border-[#F5A623] hover:text-[#F5A623] 
+                     transition-colors flex items-center justify-center gap-2"
           >
-            <X size={24} />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="p-4 space-y-4">
-          {/* Selected Option Preview */}
-          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-            <div
-              className="w-12 h-12 rounded-lg flex items-center justify-center overflow-hidden"
-              style={{ backgroundColor: selectedOption.color }}
-            >
-              {selectedOption.image ? (
-                <img
-                  src={selectedOption.image}
-                  alt={selectedOption.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="text-2xl">{selectedOption.emoji || '⭐'}</span>
-              )}
-            </div>
-            <span className="font-crayon text-lg text-gray-700">
-              {selectedOption.name}
-            </span>
-          </div>
-
-          {/* Date Picker */}
-          <div>
-            <label className="font-crayon text-gray-600 text-sm mb-1 block">
-              📅 Date
-            </label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full px-4 py-3 border-3 border-gray-200 rounded-xl font-crayon
-                       focus:border-[#5CB85C] focus:outline-none"
-            />
-          </div>
-
-          {/* Time Picker */}
-          <div>
-            <label className="font-crayon text-gray-600 text-sm mb-1 block">
-              🕐 Time
-            </label>
-            <input
-              type="time"
-              value={selectedTime}
-              onChange={(e) => setSelectedTime(e.target.value)}
-              className="w-full px-4 py-3 border-3 border-gray-200 rounded-xl font-crayon
-                       focus:border-[#5CB85C] focus:outline-none"
-            />
-          </div>
-
-          {/* Reminder Toggle */}
-          <button
-            onClick={() => setEnableReminder(!enableReminder)}
-            className={`w-full p-3 rounded-xl border-3 flex items-center gap-3 transition-all
-                       ${
-                         enableReminder
-                           ? 'bg-purple-50 border-purple-400'
-                           : 'bg-gray-50 border-gray-200'
-                       }`}
-          >
-            <div
-              className={`w-6 h-6 rounded-full flex items-center justify-center
-                         ${enableReminder ? 'bg-purple-500' : 'bg-gray-300'}`}
-            >
-              {enableReminder && <Check size={14} className="text-white" />}
-            </div>
-            <span className="font-crayon text-gray-700">
-              🔔 Send me a reminder
-            </span>
-          </button>
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-3 p-4 pt-0">
-          <button
-            onClick={onClose}
-            className="flex-1 py-3 border-3 border-gray-300 rounded-xl font-crayon text-gray-600
-                       hover:bg-gray-100 transition-all"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleAdd}
-            className="flex-1 py-3 bg-[#5CB85C] border-3 border-green-600 rounded-xl font-crayon text-white
-                       hover:bg-green-600 transition-all flex items-center justify-center gap-2"
-          >
-            <Check size={20} />
-            Add
+            <Camera size={20} />
+            Upload Custom Image
           </button>
         </div>
       </div>
@@ -444,225 +412,190 @@ const AddToScheduleModal = ({ selectedOption, onClose, onAdd, toast }) => {
   );
 };
 
-// Edit Board Modal - UPDATED with Icon Picker
-const EditBoardModal = ({ board, onSave, onClose, toast }) => {
+// =====================================================
+// Board Editor Component
+// =====================================================
+const BoardEditor = ({ board, onSave, onCancel }) => {
   const [name, setName] = useState(board?.name || '');
-  const [options, setOptions] = useState(board?.options || []);
+  const [options, setOptions] = useState(
+    board?.options || [
+      { id: 1, name: '', emoji: '⭐', image: null, color: OPTION_COLORS[0], isAvailable: true },
+      { id: 2, name: '', emoji: '⭐', image: null, color: OPTION_COLORS[1], isAvailable: true },
+    ]
+  );
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [editingOptionIndex, setEditingOptionIndex] = useState(null);
 
-  const handleImageUpload = async (file, index) => {
-    if (!file.type.startsWith('image/')) {
-      toast.error('Invalid File', 'Please select an image file');
-      return;
-    }
-
-    try {
-      const compressed = await compressImage(file, 300, 0.8);
-      setOptions((prev) => {
-        const updated = [...prev];
-        updated[index] = { ...updated[index], image: compressed, emoji: null };
-        return updated;
-      });
-      toast.success('Image Added', 'Photo uploaded successfully!');
-    } catch (err) {
-      toast.error('Upload Failed', 'Could not process image');
-    }
-  };
-
-  const handleSelectIcon = (emoji, name, index) => {
-    setOptions((prev) => {
-      const updated = [...prev];
-      updated[index] = { 
-        ...updated[index], 
-        emoji: emoji, 
-        image: null,
-        // Optionally pre-fill name if empty
-        name: updated[index].name || name
-      };
-      return updated;
-    });
-  };
-
   const addOption = () => {
-    if (options.length >= 6) {
-      toast.warning('Maximum Options', 'You can have up to 6 options');
-      return;
+    if (options.length < 6) {
+      setOptions([
+        ...options,
+        {
+          id: Date.now(),
+          name: '',
+          emoji: '⭐',
+          image: null,
+          color: OPTION_COLORS[options.length % OPTION_COLORS.length],
+          isAvailable: true,
+        },
+      ]);
     }
-    setOptions((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        name: '',
-        image: null,
-        emoji: '⭐',
-        color: OPTION_COLORS[prev.length % OPTION_COLORS.length],
-        isAvailable: true,
-      },
-    ]);
   };
 
   const removeOption = (index) => {
-    if (options.length <= 2) {
-      toast.warning('Minimum Options', 'Keep at least 2 options');
-      return;
+    if (options.length > 2) {
+      setOptions(options.filter((_, i) => i !== index));
     }
-    setOptions((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateOption = (index, field, value) => {
+    const newOptions = [...options];
+    newOptions[index] = { ...newOptions[index], [field]: value };
+    setOptions(newOptions);
+  };
+
+  const handleSelectIcon = (emoji, emojiName, index) => {
+    const newOptions = [...options];
+    newOptions[index] = { 
+      ...newOptions[index], 
+      emoji, 
+      image: null,
+      name: newOptions[index].name || emojiName 
+    };
+    setOptions(newOptions);
+  };
+
+  const handleImageUpload = (imageData, index) => {
+    const newOptions = [...options];
+    newOptions[index] = { ...newOptions[index], image: imageData, emoji: null };
+    setOptions(newOptions);
   };
 
   const handleSave = () => {
-    if (!name.trim()) {
-      toast.warning('Missing Name', 'Please enter a name for this choice board');
-      return;
-    }
-    if (options.length < 2) {
-      toast.warning('Need More Options', 'Please add at least 2 options');
-      return;
-    }
-    if (options.some((opt) => !opt.name.trim())) {
-      toast.warning('Missing Names', 'Please name all your options');
-      return;
-    }
+    if (!name.trim()) return;
+    if (options.some(opt => !opt.name.trim())) return;
+
     onSave({
-      ...board,
       id: board?.id || Date.now(),
       name: name.trim(),
       options,
+      createdAt: board?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     });
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-[#FFFEF5] w-full max-w-lg rounded-2xl border-4 border-[#F5A623] shadow-crayon-lg max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="bg-[#F5A623] text-white p-4 flex items-center justify-between">
-          <h3 className="font-display text-xl">
-            {board?.id ? 'Edit Choice Board' : 'Create Choice Board'}
-          </h3>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-white/20 rounded-full"
-          >
-            <X size={24} />
-          </button>
-        </div>
+    <div className="space-y-4">
+      {/* Board Name */}
+      <div>
+        <label className="block font-crayon text-gray-600 mb-2">Board Name</label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g., After School Activities"
+          className="w-full px-4 py-3 rounded-xl border-3 border-gray-200 font-crayon
+                   focus:border-[#F5A623] focus:outline-none transition-colors"
+        />
+      </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Board Name */}
-          <div>
-            <label className="font-crayon text-gray-600 text-sm mb-2 block">
-              Board Name *
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Where to go today?"
-              className="w-full px-4 py-3 border-3 border-gray-200 rounded-xl font-crayon text-lg
-                       focus:border-[#F5A623] focus:outline-none"
-            />
-          </div>
-
-          {/* Options List */}
-          <div>
-            <label className="font-crayon text-gray-600 text-sm mb-2 block">
-              Options ({options.length}/6) - Tap icon to change
-            </label>
-
-            <div className="space-y-2">
-              {options.map((option, index) => (
-                <div
-                  key={option.id || index}
-                  className="flex items-center gap-3 p-3 bg-white rounded-xl border-3"
-                  style={{ borderColor: option.color }}
-                >
-                  {/* Image/Emoji Preview - Click to open picker */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingOptionIndex(index);
-                      setShowIconPicker(true);
-                    }}
-                    className="w-14 h-14 rounded-lg flex items-center justify-center flex-shrink-0 
-                               overflow-hidden relative group cursor-pointer transition-all
-                               hover:ring-2 hover:ring-[#F5A623] hover:ring-offset-2"
-                    style={{ backgroundColor: `${option.color}20` }}
-                  >
-                    {option.image ? (
-                      <img
-                        src={option.image}
-                        alt={option.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-2xl">{option.emoji}</span>
-                    )}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 
-                                    flex items-center justify-center transition-colors">
-                      <Grid3X3 size={16} className="text-white opacity-0 group-hover:opacity-100" />
-                    </div>
-                  </button>
-
-                  {/* Name Input */}
-                  <input
-                    type="text"
-                    value={option.name}
-                    onChange={(e) => {
-                      setOptions((prev) => {
-                        const updated = [...prev];
-                        updated[index] = { ...updated[index], name: e.target.value };
-                        return updated;
-                      });
-                    }}
-                    placeholder="Option name"
-                    className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg font-crayon
-                             focus:border-[#F5A623] focus:outline-none"
-                  />
-
-                  {/* Remove Button */}
-                  <button
-                    onClick={() => removeOption(index)}
-                    className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                  >
-                    <Trash2 size={20} />
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            {/* Add Option Button */}
-            {options.length < 6 && (
+      {/* Options */}
+      <div>
+        <label className="block font-crayon text-gray-600 mb-2">
+          Choices ({options.length}/6)
+        </label>
+        <div className="space-y-3">
+          {options.map((option, index) => (
+            <div 
+              key={option.id} 
+              className="flex items-center gap-3 p-3 bg-white rounded-xl border-3"
+              style={{ borderColor: option.color }}
+            >
+              {/* Icon/Image Button */}
               <button
-                onClick={addOption}
-                className="w-full mt-3 py-3 border-3 border-dashed border-gray-300 rounded-xl
-                         font-crayon text-gray-500 hover:border-[#F5A623] hover:text-[#F5A623]
-                         transition-all flex items-center justify-center gap-2"
+                onClick={() => {
+                  setEditingOptionIndex(index);
+                  setShowIconPicker(true);
+                }}
+                className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0
+                         hover:opacity-80 transition-opacity"
+                style={{ backgroundColor: option.color }}
               >
-                <Plus size={20} />
-                Add Option
+                {option.image ? (
+                  <img src={option.image} alt="" className="w-full h-full object-cover rounded-xl" />
+                ) : (
+                  <span className="text-2xl">{option.emoji}</span>
+                )}
               </button>
-            )}
-          </div>
+
+              {/* Name Input */}
+              <input
+                type="text"
+                value={option.name}
+                onChange={(e) => updateOption(index, 'name', e.target.value)}
+                placeholder={`Choice ${index + 1}`}
+                className="flex-1 px-3 py-2 rounded-lg border-2 border-gray-200 font-crayon
+                         focus:border-[#F5A623] focus:outline-none"
+              />
+
+              {/* Availability Toggle */}
+              <button
+                onClick={() => updateOption(index, 'isAvailable', !option.isAvailable)}
+                className={`p-2 rounded-lg transition-colors ${
+                  option.isAvailable 
+                    ? 'bg-green-100 text-green-600' 
+                    : 'bg-red-100 text-red-600'
+                }`}
+                title={option.isAvailable ? 'Available' : 'Unavailable'}
+              >
+                {option.isAvailable ? <Check size={20} /> : <Ban size={20} />}
+              </button>
+
+              {/* Remove Button */}
+              {options.length > 2 && (
+                <button
+                  onClick={() => removeOption(index)}
+                  className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  <Trash2 size={20} />
+                </button>
+              )}
+            </div>
+          ))}
         </div>
 
-        {/* Footer */}
-        <div className="flex gap-3 p-4 border-t-3 border-gray-200">
+        {/* Add Option Button */}
+        {options.length < 6 && (
           <button
-            onClick={onClose}
-            className="flex-1 py-3 border-3 border-gray-300 rounded-xl font-crayon text-gray-600
-                       hover:bg-gray-100 transition-all"
+            onClick={addOption}
+            className="w-full mt-3 py-3 border-3 border-dashed border-gray-300 rounded-xl
+                     font-crayon text-gray-500 hover:border-[#F5A623] hover:text-[#F5A623] transition-colors"
           >
-            Cancel
+            <Plus size={20} className="inline mr-2" />
+            Add Choice
           </button>
-          <button
-            onClick={handleSave}
-            className="flex-1 py-3 bg-[#5CB85C] border-3 border-green-600 rounded-xl font-crayon text-white
-                       hover:bg-green-600 transition-all flex items-center justify-center gap-2"
-          >
-            <Check size={20} />
-            Save
-          </button>
-        </div>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-3 pt-4">
+        <button
+          onClick={onCancel}
+          className="flex-1 py-3 border-3 border-gray-300 rounded-xl font-crayon text-gray-600
+                   hover:bg-gray-50 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleSave}
+          disabled={!name.trim() || options.some(opt => !opt.name.trim())}
+          className="flex-1 py-3 bg-[#5CB85C] text-white rounded-xl font-display
+                   hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed
+                   flex items-center justify-center gap-2"
+        >
+          <Check size={20} />
+          Save Board
+        </button>
       </div>
 
       {/* Icon Picker Modal */}
@@ -688,7 +621,9 @@ const EditBoardModal = ({ board, onSave, onClose, toast }) => {
   );
 };
 
+// =====================================================
 // Main ChoiceBoard Component
+// =====================================================
 const ChoiceBoard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -728,7 +663,7 @@ const ChoiceBoard = () => {
   const playSound = () => {
     try {
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
+      const notes = [523.25, 659.25, 783.99, 1046.5];
 
       notes.forEach((freq, i) => {
         const oscillator = audioContext.createOscillator();
@@ -741,10 +676,7 @@ const ChoiceBoard = () => {
         oscillator.type = 'sine';
 
         gainNode.gain.setValueAtTime(0.3, audioContext.currentTime + i * 0.15);
-        gainNode.gain.exponentialRampToValueAtTime(
-          0.01,
-          audioContext.currentTime + i * 0.15 + 0.3
-        );
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + i * 0.15 + 0.3);
 
         oscillator.start(audioContext.currentTime + i * 0.15);
         oscillator.stop(audioContext.currentTime + i * 0.15 + 0.3);
@@ -785,56 +717,30 @@ const ChoiceBoard = () => {
     toast.success('Board Deleted', `"${board?.name}" has been removed`);
   };
 
-  // Toggle option availability
-  const toggleAvailability = (boardId, optionId) => {
-    const newBoards = boards.map((board) => {
-      if (board.id === boardId) {
-        const newOptions = board.options.map((opt) => {
-          if (opt.id === optionId) {
-            const newAvailable = !opt.isAvailable;
-            toast.info(
-              newAvailable ? 'Option Available' : 'Option Unavailable',
-              `"${opt.name}" is now ${newAvailable ? 'available' : 'unavailable'}`
-            );
-            return { ...opt, isAvailable: newAvailable };
-          }
-          return opt;
-        });
-        return { ...board, options: newOptions };
-      }
-      return board;
-    });
-    saveBoards(newBoards);
-    setSelectedBoard(newBoards.find((b) => b.id === boardId));
-  };
-
-  // Handle option selection
+  // Handle option selection - WITH CELEBRATION
   const handleSelectOption = (option) => {
     if (!option.isAvailable) {
-      toast.error(
-        'Not Available',
-        `"${option.name}" is not available right now`
-      );
+      toast.error('Not Available', `"${option.name}" is not available right now`);
       return;
     }
 
-    // Show celebration
+    // Show confetti celebration
     setShowConfetti(true);
     playSound();
 
-    toast.celebration(
-      `Great Choice! 🎉`,
-      `You picked "${option.name}"!`
-    );
+    // Use celebration toast
+    toast.celebration('Great Choice! 🎉', `You picked "${option.name}"!`);
 
-    setTimeout(() => setShowConfetti(false), 2000);
+    setTimeout(() => setShowConfetti(false), 2500);
 
-    // Ask to add to schedule
-    setSelectedOption(option);
-    setShowAddToSchedule(true);
+    // Show add to schedule modal after a short delay
+    setTimeout(() => {
+      setSelectedOption(option);
+      setShowAddToSchedule(true);
+    }, 500);
   };
 
-  // Add to Visual Schedule - Using unified helper
+  // Add to Visual Schedule
   const handleAddToSchedule = ({ option, date, time, reminder }) => {
     try {
       const result = addActivityToSchedule({
@@ -852,229 +758,109 @@ const ChoiceBoard = () => {
         },
       });
 
-      // Close modal
       setShowAddToSchedule(false);
       setSelectedOption(null);
       
       if (result.success) {
-        toast.schedule(
-          'Added to Schedule! 📅',
-          `${option.name} scheduled for ${formatDateDisplay(date)} at ${formatTimeDisplay(time)}`
-        );
+        toast.schedule('Added to Schedule!', `"${option.name}" is on your schedule for ${formatDateDisplay(date)}`);
       } else {
-        toast.error('Save Failed', result.error || 'Could not add to schedule. Please try again.');
+        toast.error('Could Not Add', result.error || 'Please try again');
       }
-    } catch (e) {
-      console.error('Failed to add to schedule:', e);
-      toast.error('Save Failed', 'Could not add to schedule. Please try again.');
+    } catch (error) {
+      console.error('Error adding to schedule:', error);
+      toast.error('Something Went Wrong', 'Please try again');
     }
   };
 
-  // Render board list
-  const renderBoardList = () => (
-    <div className="space-y-4">
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-display text-[#F5A623] crayon-text">
-          Your Choice Boards
-        </h2>
-        <p className="font-crayon text-gray-500">
-          Tap a board to use it, or create a new one!
-        </p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        {boards.map((board) => (
-          <div key={board.id} className="relative group">
-            <button
-              onClick={() => setSelectedBoard(board)}
-              className="w-full bg-white rounded-2xl border-4 border-[#F5A623] p-4
-                       hover:shadow-crayon-lg transition-all"
-              style={{ borderRadius: '255px 15px 225px 15px/15px 225px 15px 255px' }}
-            >
-              {/* Preview icons */}
-              <div className="flex justify-center gap-1 mb-2">
-                {board.options.slice(0, 3).map((opt, i) => (
-                  <div
-                    key={i}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden"
-                    style={{ backgroundColor: opt.color }}
-                  >
-                    {opt.image ? (
-                      <img
-                        src={opt.image}
-                        alt=""
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-sm">{opt.emoji}</span>
-                    )}
-                  </div>
-                ))}
-                {board.options.length > 3 && (
-                  <div className="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center">
-                    <span className="text-xs font-crayon">+{board.options.length - 3}</span>
-                  </div>
-                )}
-              </div>
-              <span className="font-display text-gray-800 block truncate">
-                {board.name}
-              </span>
-              <span className="font-crayon text-xs text-gray-400">
-                {board.options.length} options
-              </span>
-            </button>
-
-            {/* Edit/Delete buttons */}
-            <div className="absolute -top-2 -right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setEditingBoard(board);
-                }}
-                className="w-8 h-8 bg-[#4A9FD4] rounded-full flex items-center justify-center shadow-lg
-                         hover:bg-blue-600 transition-colors"
-              >
-                <Edit3 size={14} className="text-white" />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowDeleteConfirm(board.id);
-                }}
-                className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center shadow-lg
-                         hover:bg-red-600 transition-colors"
-              >
-                <Trash2 size={14} className="text-white" />
-              </button>
-            </div>
-          </div>
-        ))}
-
-        {/* Create New Board Button */}
-        <button
-          onClick={() => setEditingBoard({})}
-          className="bg-white rounded-2xl border-4 border-dashed border-gray-300 p-6
-                     flex flex-col items-center justify-center gap-2
-                     hover:border-[#F5A623] hover:bg-orange-50 transition-all"
-          style={{ borderRadius: '255px 15px 225px 15px/15px 225px 15px 255px' }}
-        >
-          <Plus size={32} className="text-gray-400" />
-          <span className="font-crayon text-gray-500">New Board</span>
-        </button>
-      </div>
-    </div>
-  );
-
-  // Render selected board view with options
-  const renderSelectedBoard = () => {
+  // Render board view
+  const renderBoardView = () => {
     if (!selectedBoard) return null;
 
     return (
       <div className="space-y-4">
         {/* Board Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => setSelectedBoard(null)}
-            className="flex items-center gap-2 px-3 py-2 bg-white border-3 border-[#F5A623]
-                       rounded-full font-crayon text-[#F5A623] hover:bg-[#F5A623] hover:text-white transition-all"
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
           >
-            <ArrowLeft size={18} />
-            Back
+            <ArrowLeft size={24} className="text-gray-600" />
           </button>
-          <h2 className="font-display text-xl text-[#F5A623]">
-            {selectedBoard.name}
-          </h2>
+          <h2 className="flex-1 text-xl font-display text-gray-800">{selectedBoard.name}</h2>
           <button
             onClick={() => setEditingBoard(selectedBoard)}
-            className="p-2 bg-white border-3 border-gray-300 rounded-full hover:border-[#F5A623] transition-all"
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            title="Edit Board"
           >
-            <Edit3 size={18} className="text-gray-500" />
+            <Edit3 size={20} className="text-gray-500" />
           </button>
         </div>
 
-        {/* Options Grid */}
-        <div
-          className={`grid gap-4 ${
-            selectedBoard.options.length <= 2
-              ? 'grid-cols-2'
-              : selectedBoard.options.length <= 4
-              ? 'grid-cols-2'
-              : 'grid-cols-3'
-          }`}
-        >
+        {/* Options Grid - NO corner buttons in view mode */}
+        <div className={`grid gap-4 ${
+          selectedBoard.options.length <= 2
+            ? 'grid-cols-2'
+            : selectedBoard.options.length <= 4
+            ? 'grid-cols-2'
+            : 'grid-cols-3'
+        }`}>
           {selectedBoard.options.map((option) => (
-            <div key={option.id} className="relative group">
-              {/* Main Option Button */}
-              <button
-                onClick={() => handleSelectOption(option)}
-                className={`
-                  w-full aspect-square rounded-2xl border-4 p-3
-                  flex flex-col items-center justify-center gap-2
-                  transition-all transform
-                  ${
-                    option.isAvailable
-                      ? 'bg-white hover:scale-105 hover:shadow-crayon-lg active:scale-95'
-                      : 'choice-unavailable'
-                  }
-                `}
-                style={{
-                  borderColor: option.isAvailable ? option.color : '#E63B2E',
-                  borderRadius: '255px 15px 225px 15px/15px 225px 15px 255px',
-                }}
-              >
-                {/* Option Image/Emoji */}
-                <div
-                  className={`w-20 h-20 rounded-xl flex items-center justify-center overflow-hidden ${
-                    option.isAvailable ? '' : 'opacity-70'
-                  }`}
-                  style={{ backgroundColor: option.isAvailable ? option.color : 'rgba(230, 59, 46, 0.2)' }}
-                >
-                  {option.image ? (
-                    <img
-                      src={option.image}
-                      alt={option.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-4xl choice-emoji">{option.emoji || '⭐'}</span>
-                  )}
+            <button
+              key={option.id}
+              onClick={() => handleSelectOption(option)}
+              className={`
+                relative w-full aspect-square rounded-2xl border-4 p-3
+                flex flex-col items-center justify-center gap-2
+                transition-all transform overflow-hidden
+                ${option.isAvailable
+                  ? 'bg-white hover:scale-105 hover:shadow-lg active:scale-95'
+                  : 'bg-red-50'
+                }
+              `}
+              style={{
+                borderColor: option.isAvailable ? option.color : '#E63B2E',
+              }}
+            >
+              {/* Diagonal UNAVAILABLE watermark */}
+              {!option.isAvailable && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+                  <div 
+                    className="absolute bg-red-500/20 text-red-600 font-display text-lg tracking-wider py-2 w-[200%]
+                             transform -rotate-45 text-center"
+                    style={{ letterSpacing: '0.2em' }}
+                  >
+                    UNAVAILABLE
+                  </div>
                 </div>
+              )}
 
-                {/* Option Name */}
-                <span
-                  className={`font-display text-lg text-center choice-text ${
-                    option.isAvailable ? 'text-gray-800' : 'text-[#E63B2E] line-through'
-                  }`}
-                >
-                  {option.name}
-                </span>
-              </button>
-
-              {/* Availability Toggle Button */}
-              <button
-                onClick={() => toggleAvailability(selectedBoard.id, option.id)}
-                className={`
-                  absolute -top-2 -right-2 w-8 h-8 rounded-full
-                  flex items-center justify-center shadow-lg transition-all
-                  ${option.isAvailable 
-                    ? 'bg-red-500 hover:bg-red-600' 
-                    : 'bg-green-500 hover:bg-green-600'}
-                `}
-                title={option.isAvailable ? 'Mark unavailable' : 'Mark available'}
+              {/* Option Image/Emoji */}
+              <div
+                className={`w-20 h-20 rounded-xl flex items-center justify-center overflow-hidden ${
+                  option.isAvailable ? '' : 'opacity-50'
+                }`}
+                style={{ backgroundColor: option.isAvailable ? option.color : '#FEE2E2' }}
               >
-                {option.isAvailable ? (
-                  <Ban size={16} className="text-white" />
+                {option.image ? (
+                  <img src={option.image} alt={option.name} className="w-full h-full object-cover" />
                 ) : (
-                  <Check size={16} className="text-white" />
+                  <span className="text-4xl">{option.emoji || '⭐'}</span>
                 )}
-              </button>
-            </div>
+              </div>
+
+              {/* Option Name */}
+              <span className={`font-display text-lg text-center ${
+                option.isAvailable ? 'text-gray-800' : 'text-red-400'
+              }`}>
+                {option.name}
+              </span>
+            </button>
           ))}
         </div>
 
         {/* Help Text */}
         <p className="text-center font-crayon text-gray-500 text-sm">
-          Tap an option to choose! Use the corner buttons to mark items unavailable.
+          Tap an option to choose! Edit the board to change availability.
         </p>
       </div>
     );
@@ -1097,88 +883,144 @@ const ChoiceBoard = () => {
             Back
           </button>
 
-          <img
-            src="/logo.jpeg"
-            alt="Special Needs World"
-            className="w-10 h-10 rounded-xl shadow-sm"
-          />
+          <img src="/logo.jpeg" alt="ATLASassist" className="w-10 h-10 rounded-xl shadow-sm" />
 
-          <h1 className="flex-1 text-xl font-display text-[#F5A623]">
-            🎯 Choice Board
-          </h1>
+          <h1 className="flex-1 text-xl font-display text-[#F5A623]">🎯 Choice Board</h1>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
-        {selectedBoard ? renderSelectedBoard() : renderBoardList()}
+        {selectedBoard ? (
+          editingBoard ? (
+            <BoardEditor
+              board={editingBoard}
+              onSave={handleSaveBoard}
+              onCancel={() => setEditingBoard(null)}
+            />
+          ) : (
+            renderBoardView()
+          )
+        ) : editingBoard ? (
+          <BoardEditor
+            board={editingBoard}
+            onSave={handleSaveBoard}
+            onCancel={() => setEditingBoard(null)}
+          />
+        ) : (
+          // Board List
+          <div className="space-y-4">
+            <p className="text-center font-crayon text-gray-600">
+              Create choice boards to help make decisions easier!
+            </p>
+
+            {/* Create New Board Button */}
+            <button
+              onClick={() => setEditingBoard({})}
+              className="w-full py-4 bg-gradient-to-r from-[#F5A623] to-[#E86B9A] text-white
+                       rounded-2xl font-display text-lg hover:opacity-90 transition-opacity
+                       flex items-center justify-center gap-2 shadow-lg"
+            >
+              <Plus size={24} />
+              Create New Board
+            </button>
+
+            {/* Existing Boards */}
+            {boards.length > 0 ? (
+              <div className="grid gap-4">
+                {boards.map((board) => (
+                  <div
+                    key={board.id}
+                    className="bg-white rounded-2xl border-3 border-gray-200 overflow-hidden
+                             hover:border-[#F5A623] transition-colors"
+                  >
+                    <button
+                      onClick={() => setSelectedBoard(board)}
+                      className="w-full p-4 flex items-center gap-4 text-left"
+                    >
+                      {/* Preview Icons */}
+                      <div className="flex -space-x-2">
+                        {board.options.slice(0, 3).map((opt, i) => (
+                          <div
+                            key={i}
+                            className="w-10 h-10 rounded-full flex items-center justify-center border-2 border-white"
+                            style={{ backgroundColor: opt.color }}
+                          >
+                            {opt.image ? (
+                              <img src={opt.image} alt="" className="w-full h-full object-cover rounded-full" />
+                            ) : (
+                              <span className="text-lg">{opt.emoji}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Board Info */}
+                      <div className="flex-1">
+                        <h3 className="font-display text-lg text-gray-800">{board.name}</h3>
+                        <p className="font-crayon text-sm text-gray-500">
+                          {board.options.length} choices
+                        </p>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingBoard(board);
+                          }}
+                          className="p-2 text-gray-400 hover:text-[#F5A623] hover:bg-orange-50 rounded-lg transition-colors"
+                        >
+                          <Edit3 size={18} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowDeleteConfirm(board.id);
+                          }}
+                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Grid3X3 size={48} className="mx-auto text-gray-300 mb-4" />
+                <p className="font-crayon text-gray-500">
+                  No boards yet. Create your first one!
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
-      {/* Bottom Nav */}
-      <nav className="sticky bottom-0 bg-white border-t-4 border-gray-200 safe-area-bottom">
-        <div className="max-w-2xl mx-auto flex justify-around py-2">
-          <button
-            onClick={() => {
-              setSelectedBoard(null);
-            }}
-            className="flex flex-col items-center p-2 text-gray-500 hover:text-[#F5A623]"
-          >
-            <ArrowLeft size={24} />
-            <span className="text-xs font-crayon mt-0.5">Boards</span>
-          </button>
-
-          <button
-            onClick={() => setEditingBoard({})}
-            className="flex flex-col items-center p-2 text-[#F5A623]"
-          >
-            <Plus size={24} />
-            <span className="text-xs font-crayon mt-0.5">New</span>
-          </button>
-
-          <button
-            onClick={() => navigate('/hub')}
-            className="flex flex-col items-center p-2 text-gray-500 hover:text-[#4A9FD4]"
-          >
-            <Home size={24} />
-            <span className="text-xs font-crayon mt-0.5">Home</span>
-          </button>
-        </div>
-      </nav>
-
-      {/* Edit Board Modal */}
-      {editingBoard !== null && (
-        <EditBoardModal
-          board={editingBoard}
-          onSave={handleSaveBoard}
-          onClose={() => setEditingBoard(null)}
-          toast={toast}
-        />
-      )}
-
       {/* Add to Schedule Modal */}
-      {showAddToSchedule && selectedOption && (
-        <AddToScheduleModal
-          selectedOption={selectedOption}
-          onClose={() => {
-            setShowAddToSchedule(false);
-            setSelectedOption(null);
-          }}
-          onAdd={handleAddToSchedule}
-          toast={toast}
-        />
-      )}
+      <AddToScheduleModal
+        isOpen={showAddToSchedule}
+        onClose={() => {
+          setShowAddToSchedule(false);
+          setSelectedOption(null);
+        }}
+        option={selectedOption}
+        onAdd={handleAddToSchedule}
+      />
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Confirmation */}
       <ConfirmModal
-        isOpen={showDeleteConfirm !== null}
+        isOpen={!!showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(null)}
         onConfirm={() => handleDeleteBoard(showDeleteConfirm)}
         title="Delete Board?"
-        message="This will permanently remove this choice board and all its options."
+        message="Are you sure you want to delete this board? This cannot be undone."
         confirmText="Delete"
         cancelText="Keep"
         type="error"
-        icon={Trash2}
       />
     </div>
   );

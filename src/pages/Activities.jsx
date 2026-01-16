@@ -1,5 +1,6 @@
 // Activities.jsx - Activities hub for ATLASassist
 // Contains creative and learning activities
+// FIXED: All items are now ready (no coming soon)
 
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -15,7 +16,7 @@ import {
   Mic
 } from 'lucide-react';
 
-// Activity apps
+// Activity apps - ALL READY
 const activityApps = [
   {
     id: 'sensory-breaks',
@@ -75,7 +76,7 @@ const activityApps = [
     color: '#87CEEB',
     emoji: '🎵',
     path: '/activities/music',
-    ready: false,
+    ready: true,
   },
   {
     id: 'puzzles',
@@ -84,8 +85,8 @@ const activityApps = [
     icon: Puzzle,
     color: '#F5A623',
     emoji: '🧩',
-    path: '/activities/puzzles',
-    ready: false,
+    path: '/games/puzzles',
+    ready: true,
   },
   {
     id: 'photo-journal',
@@ -95,7 +96,7 @@ const activityApps = [
     color: '#E86B9A',
     emoji: '📸',
     path: '/activities/photo-journal',
-    ready: false,
+    ready: true,
   },
   {
     id: 'rewards',
@@ -105,18 +106,24 @@ const activityApps = [
     color: '#F8D14A',
     emoji: '⭐',
     path: '/activities/rewards',
-    ready: false,
+    ready: true,
   },
 ];
 
 const Activities = () => {
   const navigate = useNavigate();
 
+  const handleAppClick = (app) => {
+    if (app.ready) {
+      navigate(app.path);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#4A9FD4]">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/hub')}
             className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#4A9FD4] 
@@ -131,29 +138,32 @@ const Activities = () => {
             alt="ATLASassist" 
             className="w-10 h-10 rounded-lg shadow-sm"
           />
-          <h1 className="text-xl sm:text-2xl font-display text-[#4A9FD4] crayon-text flex items-center gap-2">
-            🎨 Activities
-          </h1>
+          <div className="flex-1">
+            <h1 className="text-lg sm:text-xl font-display text-[#4A9FD4] crayon-text flex items-center gap-2">
+              🎨 Activities
+            </h1>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-6">
+      {/* Main Content */}
+      <main className="max-w-2xl mx-auto px-4 py-6">
         <p className="text-center text-gray-600 font-crayon mb-6">
-          Fun things to do and create!
+          Fun things to do and make! Tap to explore.
         </p>
 
-        {/* Activity Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Apps List */}
+        <div className="space-y-3">
           {activityApps.map((app, index) => {
             const IconComponent = app.icon;
             return (
               <button
                 key={app.id}
-                onClick={() => app.ready ? navigate(app.path) : null}
+                onClick={() => handleAppClick(app)}
                 disabled={!app.ready}
                 className={`
-                  p-6 rounded-2xl border-4 text-left
-                  transition-all transform
+                  w-full p-4 rounded-2xl border-4 text-white
+                  transition-all duration-200 shadow-crayon text-left
                   ${app.ready 
                     ? 'hover:-translate-y-1 hover:shadow-crayon-lg cursor-pointer' 
                     : 'opacity-60 cursor-not-allowed'
@@ -178,11 +188,6 @@ const Activities = () => {
                     <p className="font-crayon text-sm text-white/80 mt-1">
                       {app.description}
                     </p>
-                    {!app.ready && (
-                      <span className="inline-block mt-2 px-2 py-1 bg-white/30 rounded-full text-xs font-crayon text-white">
-                        Coming Soon
-                      </span>
-                    )}
                   </div>
                 </div>
               </button>

@@ -1,8 +1,9 @@
-// ThemedToast.jsx - Themed notification component for Special Needs World
+// ThemedToast.jsx - Themed notification component for ATLASassist
 // Replaces standard browser alerts with kid-friendly styled notifications
+// UPDATED: Added celebration toast type
 
 import { useState, useEffect, createContext, useContext, useCallback } from 'react';
-import { X, Check, AlertCircle, Info, Calendar, CheckCircle } from 'lucide-react';
+import { X, Check, AlertCircle, Info, Calendar, CheckCircle, PartyPopper, Sparkles } from 'lucide-react';
 
 // Toast Context for global access
 const ToastContext = createContext(null);
@@ -39,6 +40,12 @@ const TOAST_TYPES = {
     icon: Calendar,
     iconColor: 'text-white',
   },
+  celebration: {
+    bg: 'bg-gradient-to-r from-[#E86B9A] to-[#F5A623]',
+    border: 'border-pink-500',
+    icon: PartyPopper,
+    iconColor: 'text-white',
+  },
 };
 
 // Individual Toast Component
@@ -69,6 +76,7 @@ const Toast = ({ id, type = 'info', title, message, duration = 3000, onClose }) 
         transform transition-all duration-300 min-w-[280px] max-w-[400px]
         ${config.bg} ${config.border}
         ${isExiting ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'}
+        ${type === 'celebration' ? 'animate-bounce-in' : ''}
       `}
       style={{ borderRadius: '255px 15px 225px 15px/15px 225px 15px 255px' }}
     >
@@ -203,6 +211,11 @@ export const ToastProvider = ({ children }) => {
     return addToast({ type: 'schedule', title, message, duration });
   }, [addToast]);
 
+  // NEW: Celebration toast for achievements and selections
+  const celebration = useCallback((title, message, duration = 4000) => {
+    return addToast({ type: 'celebration', title, message, duration });
+  }, [addToast]);
+
   const value = {
     addToast,
     removeToast,
@@ -211,6 +224,7 @@ export const ToastProvider = ({ children }) => {
     warning,
     info,
     schedule,
+    celebration,
   };
 
   return (
@@ -229,13 +243,5 @@ export const useToast = () => {
   }
   return context;
 };
-
-// Add bounce-in animation to CSS (add to index.css if not present)
-// @keyframes bounce-in {
-//   0% { transform: scale(0.5); opacity: 0; }
-//   70% { transform: scale(1.05); }
-//   100% { transform: scale(1); opacity: 1; }
-// }
-// .animate-bounce-in { animation: bounce-in 0.3s ease-out; }
 
 export default ToastProvider;
