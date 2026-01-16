@@ -1,7 +1,7 @@
 // EmotionChart.jsx - Interactive Emotion Identification Tool
 // Part of the Emotional Wellness hub
 // Uses ARASAAC pictograms for accessibility
-// UPDATED: Added Visual Schedule integration for emotion check-ins
+// UPDATED: Added Visual Schedule integration using EXISTING scheduleHelper
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -22,9 +22,10 @@ import {
   Check
 } from 'lucide-react';
 import { getPictogramUrl, ARASAAC_PICTOGRAM_IDS } from '../services/arasaac';
+// Use EXISTING scheduleHelper exports only
 import { 
-  addEmotionCheckin, 
-  addDailyEmotionCheckins,
+  addActivityToSchedule,
+  addMultipleActivities,
   getToday, 
   getTomorrow,
   formatDateDisplay,
@@ -371,7 +372,7 @@ const EmotionCard = ({ emotion, onClick, size = 'normal' }) => {
 // SCHEDULE CHECK-IN MODAL
 // ============================================
 const ScheduleCheckinModal = ({ isOpen, onClose }) => {
-  const [scheduleType, setScheduleType] = useState('daily'); // 'single' or 'daily'
+  const [scheduleType, setScheduleType] = useState('daily');
   const [selectedDate, setSelectedDate] = useState(getToday());
   const [selectedTime, setSelectedTime] = useState('10:00');
   const [dailyTimes, setDailyTimes] = useState(['09:00', '12:00', '15:00', '18:00']);
@@ -380,11 +381,17 @@ const ScheduleCheckinModal = ({ isOpen, onClose }) => {
   
   if (!isOpen) return null;
   
+  // Use existing addActivityToSchedule for single check-in
   const handleAddSingleCheckin = () => {
-    const result = addEmotionCheckin({
+    const result = addActivityToSchedule({
       date: selectedDate,
       time: selectedTime,
+      name: 'How am I feeling?',
+      emoji: '💚',
+      color: '#F5A623',
+      source: SCHEDULE_SOURCES?.MANUAL || 'manual',
       notify: true,
+      metadata: { type: 'emotion-checkin' },
     });
     
     if (result.success) {
@@ -398,8 +405,20 @@ const ScheduleCheckinModal = ({ isOpen, onClose }) => {
     }
   };
   
+  // Use existing addMultipleActivities for daily check-ins
   const handleAddDailyCheckins = () => {
-    const result = addDailyEmotionCheckins(selectedDate, dailyTimes);
+    const activities = dailyTimes.map(time => ({
+      date: selectedDate,
+      time,
+      name: 'How am I feeling?',
+      emoji: '💚',
+      color: '#F5A623',
+      source: SCHEDULE_SOURCES?.MANUAL || 'manual',
+      notify: true,
+      metadata: { type: 'emotion-checkin' },
+    }));
+    
+    const result = addMultipleActivities(activities);
     
     if (result.success || result.count > 0) {
       setSuccess(true);
@@ -666,7 +685,6 @@ const EmotionDetailModal = ({ emotion, onClose, onLogFeeling }) => {
             </h3>
             <p className="font-crayon text-gray-600">{emotion.bodyFeel}</p>
             
-            {/* Simple Body Map Toggle */}
             <button
               onClick={() => setShowBodyMap(!showBodyMap)}
               className="mt-3 text-sm font-crayon underline"

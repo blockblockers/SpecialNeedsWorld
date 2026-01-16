@@ -1,9 +1,8 @@
 // CopingSkillsChart.jsx - Personalized Coping Strategies Tool
 // Part of the Emotional Wellness hub
-// UPDATED: Added Visual Schedule integration for scheduling coping breaks
-// Helps users build their own toolkit of strategies for different emotions
+// UPDATED: Added Visual Schedule integration using EXISTING scheduleHelper
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -12,30 +11,19 @@ import {
   Star,
   Trash2,
   Printer,
-  Share2,
   X,
   Check,
   ChevronRight,
-  ChevronDown,
-  Camera,
-  Sparkles,
-  Wind,
-  Music,
-  PersonStanding,
-  MessageCircle,
-  Pencil,
-  Image,
   Volume2,
   HelpCircle,
-  Download,
   CalendarPlus,
-  Clock,
   Bell
 } from 'lucide-react';
 import { getPictogramUrl } from '../services/arasaac';
+// Use EXISTING scheduleHelper exports only
 import { 
-  addCopingBreak, 
-  addCopingRoutine,
+  addActivityToSchedule,
+  addMultipleActivities,
   getToday, 
   getTomorrow,
   formatDateDisplay,
@@ -157,8 +145,8 @@ const speak = (text) => {
 // ============================================
 // SCHEDULE COPING BREAKS MODAL
 // ============================================
-const ScheduleBreaksModal = ({ isOpen, onClose, userStrategies, allStrategies }) => {
-  const [scheduleType, setScheduleType] = useState('single'); // 'single' or 'routine'
+const ScheduleBreaksModal = ({ isOpen, onClose, allStrategies }) => {
+  const [scheduleType, setScheduleType] = useState('single');
   const [selectedDate, setSelectedDate] = useState(getToday());
   const [selectedTime, setSelectedTime] = useState('10:00');
   const [selectedStrategy, setSelectedStrategy] = useState(null);
@@ -172,6 +160,7 @@ const ScheduleBreaksModal = ({ isOpen, onClose, userStrategies, allStrategies })
   
   if (!isOpen) return null;
   
+  // Use existing addActivityToSchedule for single break
   const handleAddSingleBreak = () => {
     if (!selectedStrategy) {
       setError('Please select a coping strategy');
@@ -184,12 +173,15 @@ const ScheduleBreaksModal = ({ isOpen, onClose, userStrategies, allStrategies })
       return;
     }
     
-    const result = addCopingBreak({
+    const result = addActivityToSchedule({
       date: selectedDate,
       time: selectedTime,
-      skillName: strategy.name,
+      name: strategy.name,
       emoji: strategy.icon,
+      color: '#20B2AA',
+      source: SCHEDULE_SOURCES?.MANUAL || 'manual',
       notify: true,
+      metadata: { type: 'coping-skill', skill: strategy.name },
     });
     
     if (result.success) {
@@ -204,6 +196,7 @@ const ScheduleBreaksModal = ({ isOpen, onClose, userStrategies, allStrategies })
     }
   };
   
+  // Use existing addMultipleActivities for routine
   const handleAddRoutine = () => {
     const validBreaks = routineBreaks.filter(b => b.strategyId);
     if (validBreaks.length === 0) {
@@ -211,16 +204,21 @@ const ScheduleBreaksModal = ({ isOpen, onClose, userStrategies, allStrategies })
       return;
     }
     
-    const skills = validBreaks.map(b => {
+    const activities = validBreaks.map(b => {
       const strategy = allStrategies.find(s => s.id === b.strategyId);
       return {
+        date: selectedDate,
         time: b.time,
         name: strategy?.name || 'Coping Break',
         emoji: strategy?.icon || '🧘',
+        color: '#20B2AA',
+        source: SCHEDULE_SOURCES?.MANUAL || 'manual',
+        notify: true,
+        metadata: { type: 'coping-skill', skill: strategy?.name },
       };
     });
     
-    const result = addCopingRoutine(selectedDate, skills);
+    const result = addMultipleActivities(activities);
     
     if (result.success || result.count > 0) {
       setSuccess(true);
@@ -563,7 +561,7 @@ const InfoModal = ({ isOpen, onClose }) => {
           </div>
           <div className="flex items-start gap-3">
             <span className="text-2xl">📅</span>
-            <p><strong>NEW!</strong> Schedule coping breaks throughout your day to practice staying calm!</p>
+            <p><strong>NEW!</strong> Schedule coping breaks throughout your day!</p>
           </div>
         </div>
         
@@ -583,7 +581,7 @@ const InfoModal = ({ isOpen, onClose }) => {
 // ============================================
 const CopingSkillsChart = () => {
   const navigate = useNavigate();
-  const [view, setView] = useState('chart'); // 'chart' or 'edit'
+  const [view, setView] = useState('chart');
   const [userStrategies, setUserStrategies] = useState([]);
   const [favorites, setFavorites] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -591,10 +589,8 @@ const CopingSkillsChart = () => {
   const [showInfo, setShowInfo] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   
-  // Combine default and user strategies
   const allStrategies = [...DEFAULT_STRATEGIES, ...userStrategies.filter(s => s.isCustom)];
   
-  // Load saved data
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -608,7 +604,6 @@ const CopingSkillsChart = () => {
     }
   }, []);
   
-  // Save data
   const saveData = (strategies, favs) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       strategies,
@@ -621,7 +616,6 @@ const CopingSkillsChart = () => {
     let updated;
     
     if (existing) {
-      // Update emotions array
       const emotions = existing.emotions || [];
       if (emotions.includes(emotionId)) {
         const newEmotions = emotions.filter(e => e !== emotionId);
@@ -638,7 +632,6 @@ const CopingSkillsChart = () => {
         );
       }
     } else {
-      // Add new strategy with this emotion
       const strategy = DEFAULT_STRATEGIES.find(s => s.id === strategyId);
       if (strategy) {
         updated = [...userStrategies, { ...strategy, emotions: [emotionId] }];
@@ -741,7 +734,7 @@ const CopingSkillsChart = () => {
           </button>
         </div>
         
-        {/* Schedule Coping Breaks Card */}
+        {/* Schedule Card */}
         <div className="p-4 bg-gradient-to-r from-[#20B2AA]/20 to-[#5CB85C]/20 rounded-2xl border-3 border-[#20B2AA]/30 mb-6 print:hidden">
           <h3 className="font-display text-gray-700 mb-2 flex items-center gap-2">
             <CalendarPlus size={18} className="text-[#20B2AA]" />
@@ -767,7 +760,7 @@ const CopingSkillsChart = () => {
               Your personalized coping strategies for different feelings
             </p>
             
-            {/* Favorite Strategies Quick Access */}
+            {/* Favorites */}
             {favorites.length > 0 && (
               <div className="p-4 bg-yellow-50 rounded-2xl border-3 border-yellow-300 mb-4">
                 <h3 className="font-display text-yellow-700 mb-3 flex items-center gap-2">
@@ -986,7 +979,6 @@ const CopingSkillsChart = () => {
       <ScheduleBreaksModal
         isOpen={showScheduleModal}
         onClose={() => setShowScheduleModal(false)}
-        userStrategies={userStrategies}
         allStrategies={allStrategies}
       />
     </div>
