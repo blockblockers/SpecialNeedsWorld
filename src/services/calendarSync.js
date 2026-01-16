@@ -1,15 +1,51 @@
 // calendarSync.js - Syncs Visual Schedule with Supabase
+// FIXED: Changed .single() to .maybeSingle() to prevent 406 errors
 // Provides offline-first storage with cloud sync
 
 import { supabase, isSupabaseConfigured } from './supabase';
-import { 
-  formatDate, 
-  parseDate, 
-  getScheduleForDate as getLocalSchedule,
-  saveScheduleToDate as saveLocalSchedule,
-  getAllSchedules as getAllLocalSchedules,
-  deleteScheduleForDate as deleteLocalSchedule
-} from './calendar';
+
+// ============================================
+// LOCAL STORAGE HELPERS
+// ============================================
+
+const LOCAL_SCHEDULE_KEY = 'snw_calendar_schedules';
+
+const getLocalSchedule = (dateStr) => {
+  try {
+    const all = JSON.parse(localStorage.getItem(LOCAL_SCHEDULE_KEY) || '{}');
+    return all[dateStr] || null;
+  } catch {
+    return null;
+  }
+};
+
+const saveLocalSchedule = (dateStr, schedule) => {
+  try {
+    const all = JSON.parse(localStorage.getItem(LOCAL_SCHEDULE_KEY) || '{}');
+    all[dateStr] = { ...schedule, updatedAt: new Date().toISOString() };
+    localStorage.setItem(LOCAL_SCHEDULE_KEY, JSON.stringify(all));
+  } catch (e) {
+    console.error('Error saving local schedule:', e);
+  }
+};
+
+const deleteLocalSchedule = (dateStr) => {
+  try {
+    const all = JSON.parse(localStorage.getItem(LOCAL_SCHEDULE_KEY) || '{}');
+    delete all[dateStr];
+    localStorage.setItem(LOCAL_SCHEDULE_KEY, JSON.stringify(all));
+  } catch (e) {
+    console.error('Error deleting local schedule:', e);
+  }
+};
+
+const getAllLocalSchedules = () => {
+  try {
+    return JSON.parse(localStorage.getItem(LOCAL_SCHEDULE_KEY) || '{}');
+  } catch {
+    return {};
+  }
+};
 
 // ============================================
 // SYNC STATUS TRACKING
@@ -60,8 +96,8 @@ export const saveScheduleToCloud = async (userId, dateStr, schedule) => {
       .upsert({
         user_id: userId,
         schedule_date: dateStr,
-        name: schedule.name,
-        activities: schedule.activities,
+        name: schedule.name || 'My Schedule',
+        activities: schedule.activities || schedule.items || [],
       }, {
         onConflict: 'user_id,schedule_date'
       });
@@ -79,6 +115,7 @@ export const saveScheduleToCloud = async (userId, dateStr, schedule) => {
 
 /**
  * Get schedule from database
+ * FIXED: Using .maybeSingle() instead of .single() to avoid 406 errors
  */
 export const getScheduleFromCloud = async (userId, dateStr) => {
   if (!isSupabaseConfigured() || !userId) return null;
@@ -89,10 +126,10 @@ export const getScheduleFromCloud = async (userId, dateStr) => {
       .select('*')
       .eq('user_id', userId)
       .eq('schedule_date', dateStr)
-      .single();
+      .maybeSingle(); // FIXED: Changed from .single() to .maybeSingle()
     
-    if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows
-    return data;
+    if (error) throw error;
+    return data; // Returns null if no rows found, instead of throwing 406
   } catch (error) {
     console.error('Error getting schedule from cloud:', error);
     return null;

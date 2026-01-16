@@ -1,102 +1,104 @@
-// AddToScheduleModal.jsx - Reusable modal for adding items to Visual Schedule
-// Used by: Appointments, Reminders, Daily Routines, First-Then, OT Exercises,
-//          Sensory Breaks, Health Trackers, Social Stories
+// AddToScheduleModal.jsx - Universal modal for adding items to Visual Schedule
+// FIXED: Time input now allows any time (not just 7am-8pm in hour increments)
+// Used by: Choice Board, Healthy Choices, Move/Exercise, Nutrition, Social Stories, etc.
 
 import { useState, useEffect } from 'react';
+import { X, Check, Calendar, Clock, Bell, BellOff } from 'lucide-react';
 import { 
-  X, 
-  Calendar, 
-  Clock, 
-  Bell, 
-  BellOff,
-  Check,
-  ChevronRight
-} from 'lucide-react';
-import { formatDate, getToday, addDays, formatDisplayDate } from '../services/calendar';
-
-// Quick date options
-const getDateOptions = () => {
-  const today = getToday();
-  return [
-    { label: 'Today', value: formatDate(today), isToday: true },
-    { label: 'Tomorrow', value: formatDate(addDays(today, 1)) },
-    { label: 'In 2 days', value: formatDate(addDays(today, 2)) },
-    { label: 'In 3 days', value: formatDate(addDays(today, 3)) },
-    { label: 'Next week', value: formatDate(addDays(today, 7)) },
-  ];
-};
-
-// Common time presets
-const TIME_PRESETS = [
-  { label: 'Morning', times: ['07:00', '08:00', '09:00', '10:00', '11:00'] },
-  { label: 'Afternoon', times: ['12:00', '13:00', '14:00', '15:00', '16:00', '17:00'] },
-  { label: 'Evening', times: ['18:00', '19:00', '20:00', '21:00'] },
-];
+  addActivityToSchedule, 
+  getToday, 
+  getTomorrow, 
+  formatDateDisplay,
+  formatTimeDisplay,
+  activityExists 
+} from '../services/scheduleHelper';
 
 const AddToScheduleModal = ({
   isOpen,
   onClose,
-  onAdd,
-  title = 'Add to Schedule',
+  onSuccess,
+  // Item details
   itemName,
-  itemEmoji,
+  itemEmoji = '⭐',
   itemColor = '#4A9FD4',
+  itemSource = 'custom',
   itemImage = null,
+  itemMetadata = {},
+  // Configuration
   defaultTime = '09:00',
   showTimeSelection = true,
   showNotifyOption = true,
-  customContent = null,
-  confirmButtonText = 'Add to Schedule',
+  title = 'Add to Schedule',
+  confirmText = 'Add to Schedule',
 }) => {
-  const [selectedDate, setSelectedDate] = useState(formatDate(getToday()));
+  const [selectedDate, setSelectedDate] = useState(getToday());
   const [selectedTime, setSelectedTime] = useState(defaultTime);
-  const [customTime, setCustomTime] = useState(false);
-  const [notify, setNotify] = useState(true);
-  const [isAdding, setIsAdding] = useState(false);
+  const [enableNotify, setEnableNotify] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
 
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
-      setSelectedDate(formatDate(getToday()));
+      setSelectedDate(getToday());
       setSelectedTime(defaultTime);
-      setCustomTime(false);
-      setNotify(true);
-      setIsAdding(false);
+      setEnableNotify(true);
+      setIsSubmitting(false);
+      setError(null);
     }
   }, [isOpen, defaultTime]);
 
   if (!isOpen) return null;
 
-  const dateOptions = getDateOptions();
+  const handleSubmit = async () => {
+    setError(null);
+    setIsSubmitting(true);
 
-  const handleAdd = async () => {
-    setIsAdding(true);
     try {
-      await onAdd({
-        date: selectedDate,
-        time: showTimeSelection ? selectedTime : null,
-        notify,
-      });
-      onClose();
-    } catch (error) {
-      console.error('Error adding to schedule:', error);
-    } finally {
-      setIsAdding(false);
-    }
-  };
+      // Check if activity already exists
+      if (activityExists && activityExists(selectedDate, itemName, selectedTime)) {
+        setError('This activity is already scheduled for this time.');
+        setIsSubmitting(false);
+        return;
+      }
 
-  // Format time for display
-  const formatTimeDisplay = (time24) => {
-    if (!time24) return '';
-    const [hours, minutes] = time24.split(':').map(Number);
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    const hour12 = hours % 12 || 12;
-    return `${hour12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+      const result = addActivityToSchedule({
+        date: selectedDate,
+        name: itemName,
+        time: selectedTime,
+        emoji: itemEmoji,
+        color: itemColor,
+        source: itemSource,
+        notify: enableNotify,
+        customImage: itemImage,
+        metadata: itemMetadata,
+      });
+
+      if (result && result.success) {
+        onSuccess?.({
+          date: selectedDate,
+          time: selectedTime,
+          notify: enableNotify,
+          activityId: result.activityId,
+        });
+        onClose();
+      } else {
+        setError(result?.error || 'Failed to add to schedule. Please try again.');
+      }
+    } catch (err) {
+      console.error('Error adding to schedule:', err);
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center">
-      <div className="bg-[#FFFEF5] w-full max-w-md max-h-[90vh] rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col">
+      <div 
+        className="bg-[#FFFEF5] w-full max-w-md max-h-[90vh] rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div 
           className="p-4 flex items-center justify-between flex-shrink-0"
@@ -140,8 +142,12 @@ const AddToScheduleModal = ({
             </div>
           </div>
 
-          {/* Custom Content (if any) */}
-          {customContent}
+          {/* Error Message */}
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
+              <p className="font-crayon text-sm text-red-600">{error}</p>
+            </div>
+          )}
 
           {/* Date Selection */}
           <div>
@@ -149,49 +155,54 @@ const AddToScheduleModal = ({
               <Calendar size={16} />
               Select Date
             </label>
-            <div className="grid grid-cols-2 gap-2">
-              {dateOptions.map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => setSelectedDate(option.value)}
-                  className={`p-3 rounded-xl border-2 font-crayon text-sm transition-all
-                    ${selectedDate === option.value 
-                      ? 'border-current bg-opacity-20' 
-                      : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  style={{ 
-                    borderColor: selectedDate === option.value ? itemColor : undefined,
-                    backgroundColor: selectedDate === option.value ? `${itemColor}15` : undefined,
-                    color: selectedDate === option.value ? itemColor : undefined,
-                  }}
-                >
-                  {option.label}
-                  {option.isToday && (
-                    <span className="block text-xs text-gray-400 mt-0.5">
-                      {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                    </span>
-                  )}
-                </button>
-              ))}
-              
-              {/* Custom date picker */}
-              <div className="col-span-2">
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  min={formatDate(getToday())}
-                  className="w-full p-3 rounded-xl border-2 border-gray-200 font-crayon text-sm
-                           focus:outline-none focus:border-current"
-                  style={{ 
-                    borderColor: !dateOptions.some(o => o.value === selectedDate) ? itemColor : undefined 
-                  }}
-                />
-              </div>
+            
+            {/* Quick Date Buttons */}
+            <div className="flex gap-2 mb-2">
+              <button
+                onClick={() => setSelectedDate(getToday())}
+                className={`flex-1 py-2 rounded-xl font-crayon text-sm border-2 transition-all
+                          ${selectedDate === getToday() 
+                            ? 'border-current bg-opacity-20' 
+                            : 'border-gray-200 hover:border-gray-300'}`}
+                style={{ 
+                  borderColor: selectedDate === getToday() ? itemColor : undefined,
+                  backgroundColor: selectedDate === getToday() ? `${itemColor}15` : undefined,
+                  color: selectedDate === getToday() ? itemColor : undefined,
+                }}
+              >
+                Today
+              </button>
+              <button
+                onClick={() => setSelectedDate(getTomorrow())}
+                className={`flex-1 py-2 rounded-xl font-crayon text-sm border-2 transition-all
+                          ${selectedDate === getTomorrow() 
+                            ? 'border-current bg-opacity-20' 
+                            : 'border-gray-200 hover:border-gray-300'}`}
+                style={{ 
+                  borderColor: selectedDate === getTomorrow() ? itemColor : undefined,
+                  backgroundColor: selectedDate === getTomorrow() ? `${itemColor}15` : undefined,
+                  color: selectedDate === getTomorrow() ? itemColor : undefined,
+                }}
+              >
+                Tomorrow
+              </button>
             </div>
+            
+            {/* Custom date picker */}
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              min={getToday()}
+              className="w-full p-3 rounded-xl border-2 border-gray-200 font-crayon text-sm
+                       focus:outline-none focus:border-current"
+              style={{ 
+                borderColor: selectedDate !== getToday() && selectedDate !== getTomorrow() ? itemColor : undefined 
+              }}
+            />
           </div>
 
-          {/* Time Selection */}
+          {/* Time Selection - NOW USES INPUT TYPE="TIME" */}
           {showTimeSelection && (
             <div>
               <label className="font-crayon text-gray-600 text-sm mb-2 flex items-center gap-2">
@@ -199,121 +210,81 @@ const AddToScheduleModal = ({
                 Select Time
               </label>
               
-              {!customTime ? (
-                <div className="space-y-3">
-                  {TIME_PRESETS.map((preset) => (
-                    <div key={preset.label}>
-                      <p className="font-crayon text-xs text-gray-400 mb-1">{preset.label}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {preset.times.map((time) => (
-                          <button
-                            key={time}
-                            onClick={() => setSelectedTime(time)}
-                            className={`px-3 py-1.5 rounded-lg border-2 font-crayon text-sm transition-all
-                              ${selectedTime === time 
-                                ? 'border-current' 
-                                : 'border-gray-200 hover:border-gray-300'
-                              }`}
-                            style={{ 
-                              borderColor: selectedTime === time ? itemColor : undefined,
-                              backgroundColor: selectedTime === time ? `${itemColor}15` : undefined,
-                              color: selectedTime === time ? itemColor : undefined,
-                            }}
-                          >
-                            {formatTimeDisplay(time)}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                  
-                  <button
-                    onClick={() => setCustomTime(true)}
-                    className="w-full p-2 rounded-lg border-2 border-dashed border-gray-300 
-                             font-crayon text-sm text-gray-500 hover:border-gray-400"
-                  >
-                    Choose different time...
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <input
-                    type="time"
-                    value={selectedTime}
-                    onChange={(e) => setSelectedTime(e.target.value)}
-                    className="w-full p-3 rounded-xl border-2 border-gray-200 font-crayon text-lg
-                             focus:outline-none"
-                    style={{ borderColor: itemColor }}
-                  />
-                  <button
-                    onClick={() => setCustomTime(false)}
-                    className="text-sm font-crayon text-gray-500 hover:text-gray-700"
-                  >
-                    ← Back to presets
-                  </button>
-                </div>
-              )}
+              {/* Time input - allows any time */}
+              <input
+                type="time"
+                value={selectedTime}
+                onChange={(e) => setSelectedTime(e.target.value)}
+                className="w-full p-3 rounded-xl border-2 border-gray-200 font-crayon text-lg
+                         focus:outline-none focus:border-current"
+                style={{ borderColor: itemColor }}
+              />
+              <p className="text-xs font-crayon text-gray-400 mt-1">
+                Tap to pick any time or type it in
+              </p>
             </div>
           )}
 
           {/* Notification Toggle */}
           {showNotifyOption && (
             <button
-              onClick={() => setNotify(!notify)}
-              className={`w-full p-3 rounded-xl border-2 flex items-center justify-between
-                transition-all ${notify ? 'border-green-400 bg-green-50' : 'border-gray-200'}`}
+              onClick={() => setEnableNotify(!enableNotify)}
+              className={`w-full p-3 rounded-xl border-2 flex items-center gap-3 transition-all
+                ${enableNotify 
+                  ? 'border-green-500 bg-green-50' 
+                  : 'border-gray-200 bg-gray-50'
+                }`}
             >
-              <span className="flex items-center gap-2 font-crayon">
-                {notify ? (
-                  <>
-                    <Bell size={20} className="text-green-600" />
-                    <span className="text-green-700">Notifications ON</span>
-                  </>
-                ) : (
-                  <>
-                    <BellOff size={20} className="text-gray-400" />
-                    <span className="text-gray-500">Notifications OFF</span>
-                  </>
-                )}
+              {enableNotify ? (
+                <Bell size={20} className="text-green-600" />
+              ) : (
+                <BellOff size={20} className="text-gray-400" />
+              )}
+              <span className={`font-crayon flex-1 text-left ${enableNotify ? 'text-green-700' : 'text-gray-500'}`}>
+                {enableNotify ? '🔔 Notify me at this time' : '🔕 No notification'}
               </span>
               <div 
-                className={`w-12 h-6 rounded-full transition-all flex items-center px-1
-                  ${notify ? 'bg-green-500' : 'bg-gray-300'}`}
+                className={`w-10 h-6 rounded-full transition-all flex items-center px-0.5
+                  ${enableNotify ? 'bg-green-500' : 'bg-gray-300'}`}
               >
                 <div 
-                  className={`w-4 h-4 rounded-full bg-white transition-transform
-                    ${notify ? 'translate-x-6' : 'translate-x-0'}`}
+                  className={`w-5 h-5 bg-white rounded-full shadow transition-transform
+                    ${enableNotify ? 'translate-x-4' : 'translate-x-0'}`}
                 />
               </div>
             </button>
           )}
         </div>
-
+        
         {/* Footer */}
-        <div className="p-4 border-t border-gray-200 flex-shrink-0">
+        <div className="p-4 border-t bg-gray-50 flex gap-3 flex-shrink-0">
           <button
-            onClick={handleAdd}
-            disabled={isAdding}
-            className="w-full py-3 rounded-xl font-display text-white text-lg
-                     transition-all hover:opacity-90 disabled:opacity-50
-                     flex items-center justify-center gap-2"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="flex-1 py-3 bg-white border-2 border-gray-300 rounded-xl font-crayon 
+                     text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="flex-1 py-3 rounded-xl font-crayon text-white transition-colors
+                     flex items-center justify-center gap-2 disabled:opacity-50"
             style={{ backgroundColor: itemColor }}
           >
-            {isAdding ? (
-              'Adding...'
+            {isSubmitting ? (
+              <>
+                <span className="animate-spin">⏳</span>
+                Adding...
+              </>
             ) : (
               <>
                 <Check size={20} />
-                {confirmButtonText}
+                {confirmText}
               </>
             )}
           </button>
-          
-          {/* Preview what will be added */}
-          <p className="text-center font-crayon text-xs text-gray-400 mt-2">
-            Will add to {formatDisplayDate(new Date(selectedDate + 'T00:00:00'))}
-            {showTimeSelection && ` at ${formatTimeDisplay(selectedTime)}`}
-          </p>
         </div>
       </div>
     </div>

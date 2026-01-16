@@ -1,6 +1,7 @@
 // ResourcesHub.jsx - Resources & Research hub for ATLASassist
-// Contains: Laws & Rights, Research, Printables, Recommended Products
-// FIXED: All items are now ready (no coming soon)
+// FIXED: Navigation paths corrected
+// - US & State Resources now navigates to /knowledge (the existing Knowledge component)
+// - All items are now ready (no coming soon)
 
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -18,7 +19,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 
-// Resource sections - ALL READY
+// Resource sections - ALL READY with CORRECT PATHS
 const resourceSections = [
   {
     id: 'laws',
@@ -27,7 +28,7 @@ const resourceSections = [
     icon: Scale,
     color: 'bg-[#4A9FD4]',
     borderColor: 'border-blue-500',
-    path: '/resources/laws',
+    path: '/knowledge', // FIXED: Points to the existing Knowledge component
     emoji: '⚖️',
     ready: true,
   },
@@ -74,82 +75,6 @@ const PRINTABLES_PREVIEW = [
   { name: 'Social Stories', count: 10, emoji: '📖' },
   { name: 'Token Boards', count: 6, emoji: '⭐' },
   { name: 'First-Then Boards', count: 8, emoji: '➡️' },
-];
-
-// Recommended Products Categories - Based on user's preferences
-const PRODUCT_CATEGORIES = [
-  {
-    id: 'gps-safety',
-    name: 'GPS & Safety Devices',
-    emoji: '📍',
-    description: 'Location tracking and safety tools',
-    featured: {
-      name: 'AngelSense',
-      description: 'GPS tracker designed for special needs - includes voice monitoring, safe zones, and 24/7 support',
-      url: 'https://www.angelsense.com',
-      priceRange: '$$$',
-      why: 'Specifically designed for individuals with autism and special needs. Features like voice monitoring and runner prevention alerts.',
-    },
-    otherProducts: [
-      { name: 'Jiobit', priceRange: '$$' },
-      { name: 'Apple AirTag', priceRange: '$' },
-      { name: 'Tile Pro', priceRange: '$' },
-    ],
-  },
-  {
-    id: 'therapy-materials',
-    name: 'Therapy & Educational Materials',
-    emoji: '📚',
-    description: 'Speech, language, and learning resources',
-    featured: {
-      name: 'Super Duper Publications',
-      description: 'Award-winning educational materials for speech-language pathologists, teachers, and parents',
-      url: 'https://www.superduperinc.com',
-      priceRange: '$$',
-      why: 'Trusted by therapists for decades. High-quality materials designed by SLPs. Great articulation cards, language games, and social skills resources.',
-    },
-    otherProducts: [
-      { name: 'LinguiSystems', priceRange: '$$' },
-      { name: 'Pro-Ed', priceRange: '$$$' },
-      { name: 'Teachers Pay Teachers', priceRange: '$' },
-    ],
-  },
-  {
-    id: 'sensory-tools',
-    name: 'Sensory Tools & Fidgets',
-    emoji: '🧸',
-    description: 'Calming and focusing aids',
-    featured: {
-      name: 'National Autism Resources',
-      description: 'Comprehensive autism therapy store with sensory products, educational materials, and daily living aids',
-      url: 'https://www.nationalautismresources.com',
-      priceRange: '$$',
-      why: 'Curated specifically for the autism community. Wide variety of sensory products, weighted items, chewables, and more.',
-    },
-    otherProducts: [
-      { name: 'Fun and Function', priceRange: '$$' },
-      { name: 'ARK Therapeutic', priceRange: '$' },
-      { name: 'Stimtastic', priceRange: '$' },
-    ],
-  },
-  {
-    id: 'communication',
-    name: 'AAC & Communication',
-    emoji: '💬',
-    description: 'Augmentative communication devices',
-    featured: {
-      name: 'TouchChat',
-      description: 'Full-featured AAC app with core word vocabulary and customizable boards',
-      url: 'https://touchchatapp.com',
-      priceRange: '$$',
-      why: 'Widely used by SLPs. Symbol-supported communication with natural voices. Great for building language skills.',
-    },
-    otherProducts: [
-      { name: 'LAMP Words for Life', priceRange: '$$' },
-      { name: 'Proloquo2Go', priceRange: '$$$' },
-      { name: 'GoTalk Devices', priceRange: '$$$' },
-    ],
-  },
 ];
 
 // Featured external resources
@@ -316,35 +241,6 @@ const ResourcesHub = () => {
                      hover:bg-orange-500 transition-colors"
           >
             View All Printables →
-          </button>
-        </div>
-
-        {/* Products Preview */}
-        <div className="p-4 bg-purple-50 rounded-2xl border-3 border-[#8E6BBF]">
-          <h2 className="font-display text-[#8E6BBF] mb-3 flex items-center gap-2">
-            <ShoppingBag size={20} />
-            Recommended Products
-          </h2>
-          <div className="space-y-2">
-            {PRODUCT_CATEGORIES.slice(0, 3).map((cat) => (
-              <div
-                key={cat.id}
-                className="p-2 bg-white rounded-lg flex items-center gap-3"
-              >
-                <span className="text-xl">{cat.emoji}</span>
-                <div className="flex-1">
-                  <p className="font-crayon text-sm text-gray-700">{cat.name}</p>
-                  <p className="font-crayon text-xs text-gray-500">{cat.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <button
-            onClick={() => navigate('/resources/products')}
-            className="mt-3 w-full py-2 bg-[#8E6BBF] text-white rounded-lg font-crayon text-sm
-                     hover:bg-purple-600 transition-colors"
-          >
-            View All Products →
           </button>
         </div>
 

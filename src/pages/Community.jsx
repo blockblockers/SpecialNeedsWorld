@@ -1,4 +1,5 @@
 // Community.jsx - Community forum hub
+// FIXED: Changed .single() to .maybeSingle() to prevent 406 errors when profile doesn't exist
 // Browse threads, search, create discussions
 
 import { useState, useEffect, useCallback } from 'react';
@@ -34,6 +35,7 @@ const Community = () => {
   const [profileLoading, setProfileLoading] = useState(true);
 
   // Check if user has a community profile
+  // FIXED: Using .maybeSingle() instead of .single() to avoid 406 errors
   const checkProfile = useCallback(async () => {
     if (!user || isGuest) {
       setProfileLoading(false);
@@ -45,13 +47,18 @@ const Community = () => {
         .from('community_profiles')
         .select('id')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle(); // FIXED: Changed from .single() to .maybeSingle()
 
+      if (error) {
+        console.error('Error checking profile:', error);
+      }
+      
       if (data) {
         setHasProfile(true);
       }
     } catch (error) {
-      // No profile yet
+      console.error('Error in checkProfile:', error);
+      // No profile yet - that's okay
     } finally {
       setProfileLoading(false);
     }
@@ -131,32 +138,19 @@ const Community = () => {
     const now = new Date();
     const diffMs = now - date;
     const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
 
     if (diffMins < 1) return 'Just now';
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString();
   };
 
   // Get category info
   const getCategoryInfo = (categoryId) => {
     return CATEGORIES.find(c => c.id === categoryId) || CATEGORIES[0];
-  };
-
-  // Handle create thread
-  const handleCreateThread = () => {
-    if (isGuest || !user) {
-      alert('Please sign in to create a discussion');
-      return;
-    }
-    if (!hasProfile) {
-      navigate('/community/profile/setup');
-      return;
-    }
-    navigate('/community/new');
   };
 
   return (
@@ -165,51 +159,45 @@ const Community = () => {
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#E86B9A]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/hub')}
             className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#E86B9A] 
                        rounded-xl font-display font-bold text-[#E86B9A] hover:bg-[#E86B9A] 
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
-            Home
+            Back
           </button>
+          <img 
+            src="/logo.jpeg" 
+            alt="ATLASassist" 
+            className="w-10 h-10 rounded-lg shadow-sm"
+          />
           <div className="flex-1">
-            <h1 className="text-xl font-display text-[#E86B9A] crayon-text flex items-center gap-2">
-              <Users size={20} />
+            <h1 className="text-lg sm:text-xl font-display text-[#E86B9A] crayon-text flex items-center gap-2">
+              <Users size={24} />
               Community
             </h1>
           </div>
-          
-          {/* Sync Status */}
-          {!isGuest && user ? (
-            <div className="flex items-center gap-1 text-green-600" title="Connected">
-              <Cloud size={16} />
-            </div>
-          ) : (
-            <div className="flex items-center gap-1 text-gray-400" title="Sign in to participate">
-              <CloudOff size={16} />
-            </div>
+          {user && !isGuest && hasProfile && (
+            <button
+              onClick={() => navigate('/community/new')}
+              className="p-2 bg-[#E86B9A] text-white rounded-full hover:bg-pink-600 transition-colors"
+            >
+              <Plus size={20} />
+            </button>
           )}
-
-          <button
-            onClick={handleCreateThread}
-            className="p-2 bg-[#5CB85C] text-white rounded-full border-3 border-green-600
-                       hover:scale-110 transition-transform shadow-sm"
-          >
-            <Plus size={20} />
-          </button>
         </div>
       </header>
 
+      {/* Main Content */}
       <main className="max-w-2xl mx-auto px-4 py-6">
         {/* Welcome Banner */}
-        <div className="bg-gradient-to-r from-pink-100 to-purple-100 rounded-2xl border-3 border-pink-300 p-4 mb-6">
+        <div className="mb-6 p-4 bg-gradient-to-r from-pink-50 to-purple-50 rounded-2xl border-3 border-[#E86B9A]/30">
           <div className="flex items-start gap-3">
-            <div className="text-3xl">💝</div>
+            <Heart size={24} className="text-[#E86B9A] flex-shrink-0 mt-1" />
             <div>
-              <h2 className="font-display text-lg text-purple-700">Welcome to Our Community!</h2>
-              <p className="font-crayon text-sm text-purple-600">
-                A supportive space for parents and caregivers of neurodiverse children. 
+              <h2 className="font-display text-lg text-[#E86B9A]">Welcome to Our Community!</h2>
+              <p className="font-crayon text-sm text-gray-600 mt-1">
                 Share experiences, ask questions, and find encouragement.
               </p>
             </div>
@@ -274,8 +262,8 @@ const Community = () => {
               onClick={() => setSelectedCategory('all')}
               className={`flex-shrink-0 px-4 py-2 rounded-full font-crayon text-sm border-2 transition-all
                 ${selectedCategory === 'all'
-                  ? 'bg-[#E86B9A] border-pink-600 text-white'
-                  : 'bg-white border-gray-300 text-gray-600 hover:border-pink-400'
+                  ? 'bg-[#E86B9A] border-[#E86B9A] text-white'
+                  : 'bg-white border-gray-300 text-gray-600 hover:border-[#E86B9A]'
                 }`}
             >
               All Topics
@@ -285,112 +273,102 @@ const Community = () => {
                 key={cat.id}
                 onClick={() => setSelectedCategory(cat.id)}
                 className={`flex-shrink-0 px-4 py-2 rounded-full font-crayon text-sm border-2 transition-all
+                  flex items-center gap-1
                   ${selectedCategory === cat.id
-                    ? `${cat.color} scale-105`
+                    ? 'text-white'
                     : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
                   }`}
+                style={selectedCategory === cat.id ? { 
+                  backgroundColor: cat.color, 
+                  borderColor: cat.color 
+                } : {}}
               >
-                {cat.emoji} {cat.name}
+                <span>{cat.emoji}</span>
+                {cat.name}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Loading State */}
-        {loading && (
+        {/* Threads List */}
+        {loading ? (
           <div className="text-center py-12">
-            <RefreshCw className="w-8 h-8 text-gray-400 animate-spin mx-auto mb-4" />
+            <RefreshCw size={32} className="mx-auto text-gray-400 animate-spin mb-3" />
             <p className="font-crayon text-gray-500">Loading discussions...</p>
           </div>
-        )}
-
-        {/* Empty State */}
-        {!loading && threads.length === 0 && (
+        ) : threads.length === 0 ? (
           <div className="text-center py-12">
-            <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="font-display text-xl text-gray-500 mb-2">
-              {searchQuery ? 'No discussions found' : 'No discussions yet'}
-            </h3>
-            <p className="font-crayon text-gray-400 mb-4">
-              {searchQuery 
-                ? 'Try a different search term'
-                : 'Be the first to start a conversation!'
-              }
-            </p>
-            {!searchQuery && (
+            <MessageCircle size={48} className="mx-auto text-gray-300 mb-4" />
+            <p className="font-crayon text-gray-500 mb-2">No discussions yet</p>
+            {user && !isGuest && hasProfile && (
               <button
-                onClick={handleCreateThread}
-                className="px-6 py-3 bg-[#E86B9A] text-white rounded-xl border-3 border-pink-600
-                         font-crayon hover:scale-105 transition-transform"
+                onClick={() => navigate('/community/new')}
+                className="px-4 py-2 bg-[#E86B9A] text-white rounded-lg font-crayon text-sm
+                         hover:bg-pink-600 transition-colors"
               >
-                <Plus size={20} className="inline mr-2" />
-                Start a Discussion
+                Start the First Discussion
               </button>
             )}
           </div>
-        )}
-
-        {/* Thread List */}
-        {!loading && threads.length > 0 && (
+        ) : (
           <div className="space-y-3">
             {threads.map(thread => {
               const category = getCategoryInfo(thread.category);
-              const avatar = thread.community_profiles 
-                ? getAvatar(thread.community_profiles.avatar_id)
-                : getAvatar('star');
-              const displayName = thread.community_profiles?.display_name || 'Anonymous';
-
+              const profile = thread.community_profiles;
+              const avatar = profile ? getAvatar(profile.avatar_id) : null;
+              
               return (
                 <button
                   key={thread.id}
                   onClick={() => navigate(`/community/thread/${thread.id}`)}
-                  className="w-full bg-white rounded-2xl border-3 border-gray-200 p-4 text-left
+                  className="w-full bg-white rounded-xl border-3 border-gray-200 p-4 text-left
                            hover:border-[#E86B9A] hover:shadow-md transition-all"
                 >
-                  {/* Pinned Badge */}
-                  {thread.is_pinned && (
-                    <div className="flex items-center gap-1 text-yellow-600 mb-2">
-                      <Sparkles size={14} />
-                      <span className="font-crayon text-xs">Pinned</span>
+                  <div className="flex gap-3">
+                    {/* Avatar */}
+                    <div 
+                      className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: avatar?.color || '#E86B9A' }}
+                    >
+                      <span className="text-lg">{avatar?.emoji || '👤'}</span>
                     </div>
-                  )}
-
-                  {/* Category & Time */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-crayon ${category.color}`}>
-                      {category.emoji} {category.name}
-                    </span>
-                    <span className="text-xs text-gray-400 font-crayon flex items-center gap-1">
-                      <Clock size={12} />
-                      {formatTime(thread.last_activity_at)}
-                    </span>
-                  </div>
-
-                  {/* Title */}
-                  <h3 className="font-display text-gray-800 mb-2 line-clamp-2">
-                    {thread.title}
-                  </h3>
-
-                  {/* Preview */}
-                  <p className="font-crayon text-sm text-gray-500 line-clamp-2 mb-3">
-                    {thread.content}
-                  </p>
-
-                  {/* Footer */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-6 h-6 ${avatar.color} rounded-full flex items-center justify-center text-sm`}>
-                        {avatar.emoji}
+                    
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      {/* Title & Category */}
+                      <div className="flex items-start gap-2 mb-1">
+                        <h3 className="font-display text-sm text-gray-800 flex-1 line-clamp-2">
+                          {thread.is_pinned && <span className="text-[#F5A623]">📌 </span>}
+                          {thread.title}
+                        </h3>
+                        <span 
+                          className="flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-crayon text-white"
+                          style={{ backgroundColor: category.color }}
+                        >
+                          {category.emoji}
+                        </span>
                       </div>
-                      <span className="font-crayon text-xs text-gray-600">{displayName}</span>
+                      
+                      {/* Preview */}
+                      <p className="font-crayon text-xs text-gray-500 line-clamp-1 mb-2">
+                        {thread.content}
+                      </p>
+                      
+                      {/* Meta */}
+                      <div className="flex items-center gap-3 text-xs font-crayon text-gray-400">
+                        <span>{profile?.display_name || 'Anonymous'}</span>
+                        <span className="flex items-center gap-1">
+                          <Clock size={12} />
+                          {formatTime(thread.last_activity_at || thread.created_at)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MessageCircle size={12} />
+                          {thread.reply_count || 0}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3 text-gray-400">
-                      <span className="flex items-center gap-1 text-xs font-crayon">
-                        <MessageCircle size={14} />
-                        {thread.reply_count}
-                      </span>
-                      <ChevronRight size={16} />
-                    </div>
+                    
+                    <ChevronRight size={20} className="text-gray-400 flex-shrink-0 self-center" />
                   </div>
                 </button>
               );
@@ -398,19 +376,17 @@ const Community = () => {
           </div>
         )}
 
-        {/* Community Guidelines */}
-        <div className="mt-8 p-4 bg-blue-50 rounded-2xl border-3 border-blue-200">
-          <h3 className="font-display text-blue-700 mb-2 flex items-center gap-2">
-            <Heart size={18} />
-            Community Guidelines
-          </h3>
-          <ul className="font-crayon text-sm text-blue-600 space-y-1">
-            <li>• Be kind and supportive to all members</li>
-            <li>• Respect privacy - no sharing personal info about others</li>
-            <li>• Share experiences, not medical advice</li>
-            <li>• Report inappropriate content using the flag button</li>
-          </ul>
-        </div>
+        {/* Refresh Button */}
+        {!loading && (
+          <button
+            onClick={loadThreads}
+            className="w-full mt-6 py-3 bg-gray-100 rounded-xl font-crayon text-gray-600
+                     hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+          >
+            <RefreshCw size={16} />
+            Refresh
+          </button>
+        )}
       </main>
     </div>
   );

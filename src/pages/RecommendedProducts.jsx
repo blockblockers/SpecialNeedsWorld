@@ -1,6 +1,6 @@
 // RecommendedProducts.jsx - Curated Product Recommendations
+// FIXED: Removed image placeholder section from cards for cleaner look
 // Assistive technology, sensory tools, and helpful products
-// Part of the Resources & Research hub
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -103,58 +103,30 @@ const PRODUCTS = [
     id: 'compression-vest',
     name: 'Compression Vest',
     category: 'sensory',
-    description: 'Provides proprioceptive input throughout the day. Can be worn under clothing.',
+    description: 'Provides constant deep pressure throughout the day. Discreet under clothing.',
     price: 35,
     priceRange: '$25-50',
     rating: 4.5,
-    reviewCount: 800,
-    tags: ['proprioceptive', 'calming', 'wearable'],
+    reviewCount: 900,
+    tags: ['deep pressure', 'wearable', 'school'],
     ageRange: 'Ages 3+',
-    amazonSearch: 'compression vest kids autism sensory',
-    whyWeRecommend: 'Helps with body awareness and staying regulated during activities.',
+    amazonSearch: 'compression vest kids sensory autism',
+    whyWeRecommend: 'Great for ongoing regulation during school or activities.',
   },
   {
-    id: 'sensory-swing',
-    name: 'Indoor Sensory Swing',
+    id: 'chew-necklace',
+    name: 'Sensory Chew Necklace',
     category: 'sensory',
-    description: 'Provides vestibular input and a cozy retreat. Can hang from doorway or ceiling mount.',
-    price: 40,
-    priceRange: '$30-70',
-    rating: 4.7,
-    reviewCount: 3200,
-    tags: ['vestibular', 'calming', 'movement'],
-    ageRange: 'Ages 3+',
-    amazonSearch: 'sensory swing indoor kids autism',
-    featured: true,
-    whyWeRecommend: 'Swinging provides powerful vestibular input that helps with regulation.',
-  },
-  {
-    id: 'chewelry',
-    name: 'Chewable Sensory Necklace',
-    category: 'sensory',
-    description: 'Safe, food-grade silicone for oral sensory seekers. Reduces chewing on clothes/objects.',
+    description: 'Safe, non-toxic silicone chew for oral sensory seekers. Multiple textures available.',
     price: 12,
     priceRange: '$8-15',
     rating: 4.6,
-    reviewCount: 1500,
-    tags: ['oral sensory', 'chewing', 'wearable'],
+    reviewCount: 3500,
+    tags: ['oral', 'chewing', 'discreet'],
     ageRange: 'Ages 3+',
-    amazonSearch: 'chew necklace sensory kids',
-    whyWeRecommend: 'Provides appropriate oral input for children who need to chew.',
-  },
-  {
-    id: 'body-sock',
-    name: 'Sensory Body Sock',
-    category: 'sensory',
-    description: 'Stretchy fabric provides full-body proprioceptive input. Great for movement activities.',
-    price: 25,
-    priceRange: '$15-35',
-    rating: 4.6,
-    reviewCount: 900,
-    tags: ['proprioceptive', 'movement', 'play'],
-    ageRange: 'Ages 3-12',
-    amazonSearch: 'sensory body sock kids',
-    whyWeRecommend: 'Combines deep pressure with movement for regulating activities.',
+    amazonSearch: 'sensory chew necklace kids',
+    featured: true,
+    whyWeRecommend: 'Redirects chewing to a safe, appropriate outlet.',
   },
   
   // FIDGETS & CALM
@@ -162,381 +134,198 @@ const PRODUCTS = [
     id: 'fidget-cube',
     name: 'Fidget Cube',
     category: 'fidgets',
-    description: 'Six sides of quiet fidgeting options. Great for focus during class or homework.',
+    description: 'Six-sided cube with different tactile activities. Quiet, classroom-friendly.',
     price: 10,
     priceRange: '$8-15',
     rating: 4.5,
-    reviewCount: 5000,
-    tags: ['focus', 'quiet', 'portable'],
+    reviewCount: 12000,
+    tags: ['tactile', 'quiet', 'classroom'],
     ageRange: 'Ages 5+',
-    amazonSearch: 'fidget cube autism',
-    whyWeRecommend: 'Quiet fidgeting can help with focus and self-regulation.',
-  },
-  {
-    id: 'stress-balls',
-    name: 'Sensory Stress Ball Set',
-    category: 'fidgets',
-    description: 'Variety pack with different textures and resistance levels for hand strengthening and calming.',
-    price: 15,
-    priceRange: '$10-20',
-    rating: 4.6,
-    reviewCount: 2200,
-    tags: ['stress relief', 'hand strength', 'variety'],
-    ageRange: 'Ages 3+',
-    amazonSearch: 'stress balls sensory kids variety',
-    whyWeRecommend: 'Squeezing provides proprioceptive input to hands and helps release tension.',
+    amazonSearch: 'fidget cube sensory',
+    whyWeRecommend: 'Multiple sensory inputs in one discreet package.',
   },
   {
     id: 'liquid-motion-timer',
-    name: 'Liquid Motion Bubbler Timer',
+    name: 'Liquid Motion Timer',
     category: 'fidgets',
-    description: 'Mesmerizing visual timer for calming. Great for transitions and waiting.',
+    description: 'Mesmerizing visual timer with colored liquid. Great for calm-down corners.',
     price: 12,
-    priceRange: '$8-20',
+    priceRange: '$10-20',
     rating: 4.7,
-    reviewCount: 1800,
+    reviewCount: 2200,
     tags: ['visual', 'calming', 'timer'],
-    ageRange: 'Ages 3+',
-    amazonSearch: 'liquid motion bubbler timer sensory',
-    featured: true,
-    whyWeRecommend: 'Visual timers help with transitions and the slow motion is calming.',
+    ageRange: 'All ages',
+    amazonSearch: 'liquid motion timer sensory',
+    whyWeRecommend: 'Combines visual stimulation with natural timing for transitions.',
   },
   {
-    id: 'pop-it',
-    name: 'Push Pop Fidget Toy',
+    id: 'pop-it-fidget',
+    name: 'Pop It Fidget Toy',
     category: 'fidgets',
-    description: 'Silicone bubble popping toy. Satisfying tactile and auditory feedback.',
+    description: 'Satisfying bubble-popping sensation. Available in many shapes and sizes.',
     price: 8,
     priceRange: '$5-15',
-    rating: 4.7,
-    reviewCount: 15000,
-    tags: ['tactile', 'portable', 'popular'],
-    ageRange: 'Ages 3+',
-    amazonSearch: 'pop it fidget toy silicone',
-    whyWeRecommend: 'The popping provides satisfying sensory feedback without being distracting.',
-  },
-  {
-    id: 'calm-down-jar',
-    name: 'Calm Down Glitter Jar',
-    category: 'fidgets',
-    description: 'Shake and watch glitter settle. Visual meditation tool for calming.',
-    price: 15,
-    priceRange: '$10-25',
-    rating: 4.5,
-    reviewCount: 600,
-    tags: ['visual', 'calming', 'mindfulness'],
-    ageRange: 'Ages 3+',
-    amazonSearch: 'calm down jar glitter sensory',
-    whyWeRecommend: 'Watching glitter settle can help slow breathing and calm the mind.',
-  },
-  
-  // COMMUNICATION & AAC
-  {
-    id: 'aac-device-basic',
-    name: 'GoTalk Communication Device',
-    category: 'communication',
-    description: 'Durable AAC device with customizable buttons. Records messages for communication.',
-    price: 150,
-    priceRange: '$100-200',
     rating: 4.6,
-    reviewCount: 400,
-    tags: ['AAC', 'speech', 'durable'],
-    ageRange: 'Ages 2+',
-    amazonSearch: 'gotalk aac communication device',
+    reviewCount: 25000,
+    tags: ['tactile', 'auditory', 'popular'],
+    ageRange: 'Ages 3+',
+    amazonSearch: 'pop it fidget toy',
     featured: true,
-    whyWeRecommend: 'Dedicated AAC devices are durable and always available for communication.',
-  },
-  {
-    id: 'pecs-starter',
-    name: 'PECS Communication Book Starter Kit',
-    category: 'communication',
-    description: 'Picture Exchange Communication System starter materials. Includes binder and starter pictures.',
-    price: 40,
-    priceRange: '$30-60',
-    rating: 4.5,
-    reviewCount: 300,
-    tags: ['PECS', 'pictures', 'exchange'],
-    ageRange: 'Ages 2+',
-    amazonSearch: 'PECS communication book autism',
-    whyWeRecommend: 'PECS is an evidence-based approach for building communication skills.',
-  },
-  {
-    id: 'core-board',
-    name: 'Core Vocabulary Communication Board',
-    category: 'communication',
-    description: 'Low-tech communication board with core words. Laminated for durability.',
-    price: 20,
-    priceRange: '$15-30',
-    rating: 4.4,
-    reviewCount: 200,
-    tags: ['core words', 'low-tech', 'portable'],
-    ageRange: 'Ages 2+',
-    amazonSearch: 'core vocabulary board AAC',
-    whyWeRecommend: 'Core vocabulary boards are a great backup and learning tool for AAC.',
-  },
-  {
-    id: 'talking-buttons',
-    name: 'Recordable Talking Buttons (4-pack)',
-    category: 'communication',
-    description: 'Record custom messages. Great for choice-making and simple communication.',
-    price: 25,
-    priceRange: '$20-35',
-    rating: 4.6,
-    reviewCount: 800,
-    tags: ['recordable', 'choices', 'simple'],
-    ageRange: 'Ages 1+',
-    amazonSearch: 'recordable talking buttons communication',
-    whyWeRecommend: 'Simple way to offer choices and practice communication.',
+    whyWeRecommend: 'Affordable, effective, and loved by kids.',
   },
   
   // VISUAL SUPPORTS
   {
-    id: 'visual-schedule-kit',
-    name: 'Visual Schedule Kit with Velcro',
-    category: 'visual',
-    description: 'Magnetic or velcro visual schedule board with picture cards for daily routines.',
-    price: 30,
-    priceRange: '$20-45',
-    rating: 4.7,
-    reviewCount: 1200,
-    tags: ['schedule', 'routine', 'pictures'],
-    ageRange: 'Ages 2+',
-    amazonSearch: 'visual schedule board autism velcro',
-    featured: true,
-    whyWeRecommend: 'Visual schedules are one of the most effective supports for predictability.',
-  },
-  {
-    id: 'time-timer',
+    id: 'visual-timer',
     name: 'Time Timer Visual Timer',
     category: 'visual',
-    description: 'Shows time remaining as disappearing red disk. Helps with transitions and time awareness.',
+    description: 'Shows time passing with a red disk. Makes abstract time concrete and visible.',
     price: 35,
-    priceRange: '$25-45',
+    priceRange: '$30-45',
     rating: 4.8,
-    reviewCount: 3500,
-    tags: ['timer', 'transitions', 'time'],
-    ageRange: 'Ages 3+',
+    reviewCount: 5000,
+    tags: ['time', 'transitions', 'visual'],
+    ageRange: 'All ages',
     amazonSearch: 'time timer visual',
     featured: true,
-    whyWeRecommend: 'Visual representation of time passing helps with transitions and waiting.',
+    whyWeRecommend: 'The gold standard for visual time management. Reduces transition anxiety.',
   },
   {
-    id: 'first-then-board',
-    name: 'First-Then Board',
+    id: 'picture-schedule-cards',
+    name: 'Visual Schedule Picture Cards',
     category: 'visual',
-    description: 'Portable first-then board for motivation and sequencing. Includes blank cards.',
-    price: 18,
-    priceRange: '$12-25',
-    rating: 4.5,
-    reviewCount: 500,
-    tags: ['first-then', 'motivation', 'sequence'],
-    ageRange: 'Ages 2+',
-    amazonSearch: 'first then board autism visual',
-    whyWeRecommend: 'First-then boards are simple but powerful for motivation and compliance.',
-  },
-  {
-    id: 'emotion-cards',
-    name: 'Emotion Picture Cards Set',
-    category: 'visual',
-    description: 'Real photo emotion cards for identifying and discussing feelings.',
+    description: 'Laminated cards with daily routine images. Velcro-compatible.',
     price: 20,
     priceRange: '$15-30',
     rating: 4.6,
-    reviewCount: 700,
-    tags: ['emotions', 'feelings', 'photos'],
-    ageRange: 'Ages 3+',
-    amazonSearch: 'emotion cards autism feelings pictures',
-    whyWeRecommend: 'Visual emotion cards help with emotional literacy and communication.',
-  },
-  {
-    id: 'token-board',
-    name: 'Token Board Reward System',
-    category: 'visual',
-    description: 'Visual token economy board with stars/tokens. Great for motivation.',
-    price: 15,
-    priceRange: '$10-25',
-    rating: 4.5,
-    reviewCount: 400,
-    tags: ['rewards', 'motivation', 'behavior'],
-    ageRange: 'Ages 3+',
-    amazonSearch: 'token board autism reward system',
-    whyWeRecommend: 'Token economies are evidence-based for building motivation and skills.',
+    reviewCount: 1500,
+    tags: ['schedule', 'routine', 'pictures'],
+    ageRange: 'Ages 2+',
+    amazonSearch: 'visual schedule cards autism',
+    whyWeRecommend: 'Essential for establishing predictable routines.',
   },
   
-  // DAILY LIVING
+  // COMMUNICATION & AAC
   {
-    id: 'weighted-utensils',
-    name: 'Weighted Utensils for Kids',
-    category: 'daily-living',
-    description: 'Heavier utensils provide proprioceptive feedback. Helps with grip and control.',
+    id: 'communication-buttons',
+    name: 'Recordable Communication Buttons',
+    category: 'communication',
+    description: 'Set of 4 buttons to record custom messages. Great for choice-making.',
     price: 25,
     priceRange: '$20-35',
-    rating: 4.4,
-    reviewCount: 300,
-    tags: ['eating', 'proprioceptive', 'fine motor'],
-    ageRange: 'Ages 3+',
-    amazonSearch: 'weighted utensils kids sensory',
-    whyWeRecommend: 'Weight provides better awareness and can improve mealtime skills.',
-  },
-  {
-    id: 'adaptive-clothing',
-    name: 'Sensory-Friendly Clothing (Tagless)',
-    category: 'daily-living',
-    description: 'Seamless, tagless clothing for tactile sensitivity. Soft fabrics, flat seams.',
-    price: 25,
-    priceRange: '$15-40',
-    rating: 4.6,
-    reviewCount: 900,
-    tags: ['clothing', 'tactile', 'comfort'],
+    rating: 4.5,
+    reviewCount: 800,
+    tags: ['AAC', 'choices', 'recording'],
     ageRange: 'All ages',
-    amazonSearch: 'sensory friendly clothing kids tagless seamless',
-    whyWeRecommend: 'Clothing issues can cause major daily struggles - these help!',
+    amazonSearch: 'recordable buttons communication',
+    whyWeRecommend: 'Affordable way to introduce AAC concepts.',
   },
   {
-    id: 'potty-watch',
-    name: 'Potty Training Watch',
-    category: 'daily-living',
-    description: 'Vibrating reminder watch for toilet training. Music and lights as prompts.',
-    price: 20,
-    priceRange: '$15-30',
-    rating: 4.3,
-    reviewCount: 1500,
-    tags: ['potty training', 'reminder', 'timer'],
-    ageRange: 'Ages 2+',
-    amazonSearch: 'potty training watch timer kids',
-    whyWeRecommend: 'Consistent prompts are key for toilet training success.',
-  },
-  {
-    id: 'visual-task-cards',
-    name: 'Self-Care Visual Task Cards',
-    category: 'daily-living',
-    description: 'Step-by-step picture cards for brushing teeth, washing hands, getting dressed.',
-    price: 18,
-    priceRange: '$12-25',
+    id: 'pecs-starter-kit',
+    name: 'PECS Communication Kit',
+    category: 'communication',
+    description: 'Picture Exchange Communication System starter set with common symbols.',
+    price: 45,
+    priceRange: '$35-60',
     rating: 4.7,
     reviewCount: 600,
-    tags: ['self-care', 'routine', 'independence'],
+    tags: ['PECS', 'pictures', 'exchange'],
     ageRange: 'Ages 2+',
-    amazonSearch: 'visual task cards self care autism',
-    whyWeRecommend: 'Breaking tasks into steps builds independence.',
+    amazonSearch: 'PECS communication kit',
+    featured: true,
+    whyWeRecommend: 'Evidence-based AAC system with decades of research support.',
   },
   
   // LEARNING & EDUCATION
   {
-    id: 'social-skills-games',
-    name: 'Social Skills Board Games Bundle',
+    id: 'social-skills-game',
+    name: 'Social Skills Board Game',
     category: 'learning',
-    description: 'Games that teach turn-taking, emotions, perspective-taking in fun way.',
-    price: 35,
-    priceRange: '$25-50',
-    rating: 4.6,
-    reviewCount: 800,
-    tags: ['social skills', 'games', 'fun'],
-    ageRange: 'Ages 4+',
-    amazonSearch: 'social skills board games autism kids',
-    featured: true,
-    whyWeRecommend: 'Learning social skills through play is engaging and effective.',
-  },
-  {
-    id: 'zones-curriculum',
-    name: 'Zones of Regulation Curriculum',
-    category: 'learning',
-    description: 'Complete curriculum for teaching emotional regulation. Used in schools worldwide.',
-    price: 50,
-    priceRange: '$40-60',
-    rating: 4.8,
-    reviewCount: 500,
-    tags: ['regulation', 'curriculum', 'emotions'],
-    ageRange: 'Ages 4+',
-    amazonSearch: 'zones of regulation curriculum book',
-    whyWeRecommend: 'Evidence-based program used by thousands of schools and therapists.',
-  },
-  {
-    id: 'social-stories-book',
-    name: 'Social Stories Book Collection',
-    category: 'learning',
-    description: 'Ready-made social stories for common situations. By Carol Gray.',
+    description: 'Fun game teaching conversation, empathy, and social problem-solving.',
     price: 30,
-    priceRange: '$20-40',
-    rating: 4.7,
-    reviewCount: 400,
-    tags: ['social stories', 'book', 'situations'],
-    ageRange: 'Ages 3+',
-    amazonSearch: 'social stories book autism carol gray',
-    whyWeRecommend: 'Social stories are an evidence-based practice for teaching expectations.',
+    priceRange: '$25-40',
+    rating: 4.6,
+    reviewCount: 1200,
+    tags: ['social', 'game', 'learning'],
+    ageRange: 'Ages 6+',
+    amazonSearch: 'social skills board game kids',
+    whyWeRecommend: 'Learning through play is the most effective approach.',
   },
   {
-    id: 'handwriting-program',
-    name: 'Handwriting Without Tears Kit',
+    id: 'emotion-flashcards',
+    name: 'Emotion Recognition Flashcards',
     category: 'learning',
-    description: 'Multi-sensory handwriting program. Includes workbook and manipulatives.',
-    price: 40,
-    priceRange: '$30-50',
+    description: 'Photo cards showing real facial expressions. Includes discussion prompts.',
+    price: 18,
+    priceRange: '$15-25',
     rating: 4.7,
-    reviewCount: 2000,
-    tags: ['handwriting', 'fine motor', 'multi-sensory'],
-    ageRange: 'Ages 4+',
-    amazonSearch: 'handwriting without tears kit',
-    whyWeRecommend: 'Multi-sensory approach works well for different learning styles.',
+    reviewCount: 900,
+    tags: ['emotions', 'faces', 'recognition'],
+    ageRange: 'Ages 3+',
+    amazonSearch: 'emotion flashcards kids autism',
+    whyWeRecommend: 'Real photos help with generalization to real-world faces.',
+  },
+  
+  // DAILY LIVING
+  {
+    id: 'weighted-lap-pad',
+    name: 'Weighted Lap Pad',
+    category: 'daily-living',
+    description: 'Provides calming pressure during seated activities. Great for homework time.',
+    price: 25,
+    priceRange: '$20-35',
+    rating: 4.6,
+    reviewCount: 1100,
+    tags: ['weighted', 'focus', 'school'],
+    ageRange: 'Ages 3+',
+    amazonSearch: 'weighted lap pad kids',
+    whyWeRecommend: 'Helps with focus and body awareness during seated tasks.',
+  },
+  {
+    id: 'seamless-socks',
+    name: 'Seamless Sensory Socks',
+    category: 'daily-living',
+    description: 'No irritating seams. Soft, tag-free design for sensitive feet.',
+    price: 15,
+    priceRange: '$12-20',
+    rating: 4.8,
+    reviewCount: 3000,
+    tags: ['clothing', 'tactile', 'comfort'],
+    ageRange: 'All ages',
+    amazonSearch: 'seamless socks sensory kids',
+    featured: true,
+    whyWeRecommend: 'Small change that makes a big difference in daily comfort.',
   },
   
   // BOOKS & GUIDES
   {
-    id: 'uniquely-human',
-    name: 'Uniquely Human by Barry Prizant',
+    id: 'zones-regulation-book',
+    name: 'The Zones of Regulation',
     category: 'books',
-    description: 'A different way of seeing autism. Compassionate, strength-based approach.',
-    price: 18,
-    priceRange: '$15-20',
-    rating: 4.8,
-    reviewCount: 2500,
-    tags: ['autism', 'understanding', 'strengths'],
-    ageRange: 'Parents/Educators',
-    amazonSearch: 'uniquely human barry prizant book',
+    description: 'Curriculum for self-regulation. Teaches identification and management of feelings.',
+    price: 50,
+    priceRange: '$45-60',
+    rating: 4.9,
+    reviewCount: 2000,
+    tags: ['curriculum', 'regulation', 'school'],
+    ageRange: 'Ages 4+',
+    amazonSearch: 'zones of regulation book',
     featured: true,
-    whyWeRecommend: 'Essential reading for understanding autism from a neurodiversity perspective.',
+    whyWeRecommend: 'Widely used evidence-based curriculum for emotional regulation.',
   },
   {
-    id: 'thinking-in-pictures',
-    name: 'Thinking in Pictures by Temple Grandin',
+    id: 'social-thinking-book',
+    name: 'Social Thinking Books',
     category: 'books',
-    description: 'Autobiography by Temple Grandin explaining how she thinks and perceives.',
-    price: 16,
-    priceRange: '$12-18',
+    description: 'Series teaching social awareness and flexible thinking skills.',
+    price: 25,
+    priceRange: '$20-35',
     rating: 4.7,
-    reviewCount: 3000,
-    tags: ['autism', 'autobiography', 'understanding'],
-    ageRange: 'Teens/Adults',
-    amazonSearch: 'thinking in pictures temple grandin',
-    whyWeRecommend: 'First-hand perspective from a successful autistic adult.',
-  },
-  {
-    id: 'raising-human-beings',
-    name: 'Raising Human Beings by Ross Greene',
-    category: 'books',
-    description: 'Collaborative problem-solving approach to parenting. Works for all kids.',
-    price: 17,
-    priceRange: '$14-20',
-    rating: 4.8,
-    reviewCount: 1500,
-    tags: ['parenting', 'behavior', 'collaborative'],
-    ageRange: 'Parents',
-    amazonSearch: 'raising human beings ross greene',
-    whyWeRecommend: 'Collaborative Problem Solving is an evidence-based approach to behavior.',
-  },
-  {
-    id: 'neurotribes',
-    name: 'NeuroTribes by Steve Silberman',
-    category: 'books',
-    description: 'History of autism and the neurodiversity movement. Pulitzer Prize-worthy.',
-    price: 18,
-    priceRange: '$15-20',
-    rating: 4.8,
-    reviewCount: 4000,
-    tags: ['autism', 'history', 'neurodiversity'],
-    ageRange: 'Adults',
-    amazonSearch: 'neurotribes steve silberman',
-    whyWeRecommend: 'Understanding the history helps understand the present.',
+    reviewCount: 800,
+    tags: ['social', 'thinking', 'skills'],
+    ageRange: 'Ages 5+',
+    amazonSearch: 'social thinking michelle garcia winner',
+    whyWeRecommend: 'Excellent framework for understanding social expectations.',
   },
   
   // APPS & TECHNOLOGY
@@ -544,7 +333,7 @@ const PRODUCTS = [
     id: 'proloquo2go',
     name: 'Proloquo2Go (AAC App)',
     category: 'apps',
-    description: 'Symbol-based AAC app for iPad/iPhone. Industry-leading with customization.',
+    description: 'Comprehensive AAC app for iPad. Highly customizable symbol-based communication.',
     price: 250,
     priceRange: '$250',
     rating: 4.7,
@@ -553,20 +342,6 @@ const PRODUCTS = [
     ageRange: 'Ages 2+',
     link: 'https://www.assistiveware.com/products/proloquo2go',
     whyWeRecommend: 'Gold standard AAC app with robust vocabulary and customization.',
-  },
-  {
-    id: 'touchchat',
-    name: 'TouchChat (AAC App)',
-    category: 'apps',
-    description: 'Full-featured AAC app with multiple vocabulary options. iOS and Android.',
-    price: 300,
-    priceRange: '$150-300',
-    rating: 4.6,
-    reviewCount: 500,
-    tags: ['AAC', 'communication', 'vocabulary'],
-    ageRange: 'Ages 2+',
-    link: 'https://touchchatapp.com/',
-    whyWeRecommend: 'Excellent AAC option with WordPower vocabulary.',
   },
   {
     id: 'choiceworks',
@@ -582,117 +357,93 @@ const PRODUCTS = [
     link: 'https://apps.apple.com/app/choiceworks/id486210964',
     whyWeRecommend: 'Affordable, easy-to-use visual schedule app.',
   },
-  {
-    id: 'calm-app',
-    name: 'Calm (Meditation App)',
-    category: 'apps',
-    description: 'Guided meditations and sleep stories. Kids section available.',
-    price: 70,
-    priceRange: '$70/year',
-    rating: 4.8,
-    reviewCount: 50000,
-    tags: ['calm', 'meditation', 'sleep'],
-    ageRange: 'Ages 6+',
-    link: 'https://www.calm.com/',
-    whyWeRecommend: 'Great for teaching calming and mindfulness skills.',
-  },
 ];
 
 // ============================================
-// PRODUCT CARD COMPONENT
+// PRODUCT CARD COMPONENT - NO IMAGE SECTION
 // ============================================
 const ProductCard = ({ product, isFavorite, onToggleFavorite }) => {
   const category = CATEGORIES.find(c => c.id === product.category);
   
   const handleBuyClick = () => {
-    // Generate Amazon search URL
     const searchUrl = product.link || 
       `https://www.amazon.com/s?k=${encodeURIComponent(product.amazonSearch)}`;
     window.open(searchUrl, '_blank');
   };
   
   return (
-    <div className="bg-white rounded-2xl border-3 border-gray-200 overflow-hidden hover:shadow-md transition-all">
-      {/* Image Placeholder / Category Color Block */}
-      <div 
-        className="h-32 flex items-center justify-center relative"
-        style={{ backgroundColor: `${category?.color}15` }}
-      >
-        {(() => {
-          const Icon = category?.icon || ShoppingBag;
-          return <Icon size={48} style={{ color: category?.color }} className="opacity-40" />;
-        })()}
-        
-        {/* Featured Badge */}
-        {product.featured && (
-          <span className="absolute top-2 left-2 px-2 py-0.5 bg-yellow-400 text-yellow-900 
-                         text-xs font-display rounded-full flex items-center gap-1">
-            <Star size={10} fill="currentColor" /> Featured
+    <div className="bg-white rounded-2xl border-3 border-gray-200 overflow-hidden hover:shadow-md transition-all p-4">
+      {/* Header with Category & Favorite */}
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span 
+            className="px-2 py-1 rounded-lg text-xs font-crayon text-white flex items-center gap-1"
+            style={{ backgroundColor: category?.color }}
+          >
+            {(() => {
+              const Icon = category?.icon || ShoppingBag;
+              return <Icon size={12} />;
+            })()}
+            {category?.name}
           </span>
-        )}
-        
-        {/* Favorite Button */}
+          {product.featured && (
+            <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-crayon rounded-lg flex items-center gap-1">
+              <Star size={10} fill="currentColor" /> Featured
+            </span>
+          )}
+        </div>
         <button
           onClick={(e) => { e.stopPropagation(); onToggleFavorite(product.id); }}
-          className={`absolute top-2 right-2 p-2 rounded-full bg-white/80 transition-colors ${
-            isFavorite ? 'text-red-500' : 'text-gray-400 hover:text-red-400'
+          className={`p-2 rounded-full transition-colors ${
+            isFavorite ? 'bg-red-100 text-red-500' : 'bg-gray-100 text-gray-400 hover:text-red-400'
           }`}
         >
           <Heart size={18} fill={isFavorite ? 'currentColor' : 'none'} />
         </button>
       </div>
       
-      {/* Content */}
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <h3 className="font-display text-sm text-gray-800 leading-tight">
-            {product.name}
-          </h3>
-        </div>
-        
-        <p className="font-crayon text-xs text-gray-500 mb-2 line-clamp-2">
-          {product.description}
+      {/* Product Name */}
+      <h3 className="font-display text-base text-gray-800 leading-tight mb-2">
+        {product.name}
+      </h3>
+      
+      {/* Description */}
+      <p className="font-crayon text-sm text-gray-500 mb-3 line-clamp-2">
+        {product.description}
+      </p>
+      
+      {/* Rating */}
+      <div className="flex items-center gap-2 mb-3">
+        <span className="flex items-center gap-1 text-sm font-crayon text-yellow-600">
+          <Star size={14} fill="currentColor" />
+          {product.rating}
+        </span>
+        <span className="text-sm font-crayon text-gray-400">
+          ({product.reviewCount.toLocaleString()} reviews)
+        </span>
+      </div>
+      
+      {/* Why We Recommend */}
+      {product.whyWeRecommend && (
+        <p className="text-xs font-crayon text-gray-600 italic mb-3 p-2 bg-green-50 rounded-lg border border-green-200">
+          💡 {product.whyWeRecommend}
         </p>
-        
-        {/* Meta */}
-        <div className="flex items-center gap-2 mb-2 flex-wrap">
-          <span 
-            className="px-2 py-0.5 rounded-full text-xs font-crayon text-white"
-            style={{ backgroundColor: category?.color }}
-          >
-            {category?.name}
-          </span>
-          <span className="flex items-center gap-0.5 text-xs font-crayon text-yellow-600">
-            <Star size={12} fill="currentColor" />
-            {product.rating}
-          </span>
-          <span className="text-xs font-crayon text-gray-400">
-            ({product.reviewCount.toLocaleString()})
-          </span>
+      )}
+      
+      {/* Price & CTA */}
+      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+        <div>
+          <span className="font-display text-lg text-gray-800">{product.priceRange}</span>
+          <span className="font-crayon text-xs text-gray-400 block">{product.ageRange}</span>
         </div>
-        
-        {/* Why We Recommend */}
-        {product.whyWeRecommend && (
-          <p className="text-xs font-crayon text-gray-600 italic mb-3 p-2 bg-green-50 rounded-lg border border-green-200">
-            💡 {product.whyWeRecommend}
-          </p>
-        )}
-        
-        {/* Price & CTA */}
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="font-display text-lg text-gray-800">{product.priceRange}</span>
-            <span className="font-crayon text-xs text-gray-400 block">{product.ageRange}</span>
-          </div>
-          <button
-            onClick={handleBuyClick}
-            className="px-4 py-2 rounded-xl font-display text-sm text-white
-                     hover:opacity-90 transition-opacity flex items-center gap-1"
-            style={{ backgroundColor: category?.color }}
-          >
-            View <ExternalLink size={14} />
-          </button>
-        </div>
+        <button
+          onClick={handleBuyClick}
+          className="px-4 py-2 rounded-xl font-display text-sm text-white
+                   hover:opacity-90 transition-opacity flex items-center gap-1"
+          style={{ backgroundColor: category?.color }}
+        >
+          View <ExternalLink size={14} />
+        </button>
       </div>
     </div>
   );
@@ -769,20 +520,24 @@ const RecommendedProducts = () => {
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#F5A623]">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#8E6BBF]">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/resources')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F5A623] 
-                       rounded-xl font-display font-bold text-[#F5A623] hover:bg-[#F5A623] 
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#8E6BBF] 
+                       rounded-xl font-display font-bold text-[#8E6BBF] hover:bg-[#8E6BBF] 
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
             Back
           </button>
-          <img src="/logo.jpeg" alt="ATLASassist" className="w-10 h-10 rounded-lg shadow-sm" />
+          <img 
+            src="/logo.jpeg" 
+            alt="ATLASassist" 
+            className="w-10 h-10 rounded-lg shadow-sm"
+          />
           <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-display text-[#F5A623] crayon-text flex items-center gap-2">
+            <h1 className="text-lg sm:text-xl font-display text-[#8E6BBF] crayon-text flex items-center gap-2">
               <ShoppingBag size={24} />
               Recommended Products
             </h1>
@@ -792,20 +547,7 @@ const RecommendedProducts = () => {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 py-6">
-        {/* Affiliate Disclosure */}
-        <div className="mb-6 p-4 bg-blue-50 rounded-2xl border-2 border-blue-200 flex items-start gap-3">
-          <Info size={20} className="text-blue-500 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="font-crayon text-sm text-blue-800">
-              <strong>Affiliate Disclosure:</strong> Some links may be affiliate links. 
-              This means we may earn a small commission if you purchase through our links, 
-              at no extra cost to you. This helps support ATLASassist. We only recommend 
-              products we genuinely believe in.
-            </p>
-          </div>
-        </div>
-        
-        {/* Search */}
+        {/* Search Bar */}
         <div className="relative mb-4">
           <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
@@ -813,7 +555,7 @@ const RecommendedProducts = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search products..."
-            className="w-full pl-12 pr-4 py-3 rounded-xl border-3 border-gray-200 focus:border-[#F5A623] 
+            className="w-full pl-12 pr-4 py-3 rounded-xl border-3 border-gray-200 focus:border-[#8E6BBF] 
                      outline-none font-crayon transition-colors"
           />
           {searchQuery && (
@@ -825,142 +567,131 @@ const RecommendedProducts = () => {
             </button>
           )}
         </div>
-        
-        {/* Filter Row */}
-        <div className="flex items-center justify-between mb-4">
-          {/* Category Pills - Scrollable */}
-          <div className="flex gap-2 overflow-x-auto pb-2 flex-1">
-            {CATEGORIES.map(cat => (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-crayon text-sm whitespace-nowrap
-                          transition-all ${
-                            selectedCategory === cat.id 
-                              ? 'text-white shadow-md' 
-                              : 'bg-white border-2 border-gray-200 text-gray-600'
-                          }`}
-                style={{
-                  backgroundColor: selectedCategory === cat.id ? cat.color : undefined
-                }}
-              >
-                {(() => {
-                  const Icon = cat.icon;
-                  return <Icon size={14} />;
-                })()}
-                {cat.name}
-              </button>
-            ))}
-          </div>
+
+        {/* Filter Toggle */}
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`px-4 py-2 rounded-xl font-crayon text-sm border-2 transition-all
+                      flex items-center gap-2
+                      ${showFilters 
+                        ? 'bg-[#8E6BBF] border-[#8E6BBF] text-white' 
+                        : 'bg-white border-gray-200 text-gray-600'
+                      }`}
+          >
+            <Filter size={16} />
+            Filters
+            {showFilters ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+          
+          <button
+            onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+            className={`px-4 py-2 rounded-xl font-crayon text-sm border-2 transition-all
+                      flex items-center gap-2
+                      ${showFavoritesOnly 
+                        ? 'bg-red-500 border-red-500 text-white' 
+                        : 'bg-white border-gray-200 text-gray-600'
+                      }`}
+          >
+            <Heart size={16} fill={showFavoritesOnly ? 'currentColor' : 'none'} />
+            Favorites ({favorites.length})
+          </button>
         </div>
-        
-        {/* Secondary Filters */}
-        <div className="flex items-center gap-2 mb-4">
-          {/* Price Filter */}
-          <div className="relative">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 px-3 py-2 bg-white border-2 border-gray-200 rounded-xl font-crayon text-sm"
-            >
-              <DollarSign size={14} />
-              {PRICE_RANGES.find(p => p.id === selectedPriceRange)?.name}
-              <ChevronDown size={14} />
-            </button>
+
+        {/* Filters Panel */}
+        {showFilters && (
+          <div className="bg-white rounded-xl border-3 border-gray-200 p-4 mb-4 space-y-4">
+            {/* Category Filter */}
+            <div>
+              <label className="font-display text-sm text-gray-700 mb-2 block">Category</label>
+              <div className="flex flex-wrap gap-2">
+                {CATEGORIES.map(cat => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`px-3 py-1.5 rounded-full font-crayon text-xs transition-all
+                              ${selectedCategory === cat.id 
+                                ? 'text-white' 
+                                : 'bg-gray-100 text-gray-600'
+                              }`}
+                    style={selectedCategory === cat.id ? { backgroundColor: cat.color } : {}}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+            </div>
             
-            {showFilters && (
-              <div className="absolute top-full left-0 mt-1 bg-white border-2 border-gray-200 rounded-xl shadow-lg z-10 py-1">
+            {/* Price Filter */}
+            <div>
+              <label className="font-display text-sm text-gray-700 mb-2 block">Price Range</label>
+              <div className="flex flex-wrap gap-2">
                 {PRICE_RANGES.map(range => (
                   <button
                     key={range.id}
-                    onClick={() => { setSelectedPriceRange(range.id); setShowFilters(false); }}
-                    className={`w-full px-4 py-2 text-left font-crayon text-sm hover:bg-gray-50 ${
-                      selectedPriceRange === range.id ? 'text-[#F5A623]' : 'text-gray-600'
-                    }`}
+                    onClick={() => setSelectedPriceRange(range.id)}
+                    className={`px-3 py-1.5 rounded-full font-crayon text-xs transition-all
+                              ${selectedPriceRange === range.id 
+                                ? 'bg-[#5CB85C] text-white' 
+                                : 'bg-gray-100 text-gray-600'
+                              }`}
                   >
                     {range.name}
                   </button>
                 ))}
               </div>
-            )}
-          </div>
-          
-          {/* Favorites Toggle */}
-          <button
-            onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl font-crayon text-sm transition-colors ${
-              showFavoritesOnly 
-                ? 'bg-red-100 text-red-600 border-2 border-red-300' 
-                : 'bg-white border-2 border-gray-200 text-gray-600'
-            }`}
-          >
-            <Heart size={14} fill={showFavoritesOnly ? 'currentColor' : 'none'} />
-            Favorites ({favorites.length})
-          </button>
-        </div>
-        
-        {/* Featured Products (only when not filtering) */}
-        {!searchQuery && selectedCategory === 'all' && !showFavoritesOnly && (
-          <div className="mb-6">
-            <h2 className="font-display text-gray-700 mb-3 flex items-center gap-2">
-              <Star size={18} className="text-yellow-500" fill="currentColor" />
-              Staff Picks
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {featuredProducts.slice(0, 4).map(product => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  isFavorite={favorites.includes(product.id)}
-                  onToggleFavorite={toggleFavorite}
-                />
-              ))}
             </div>
           </div>
         )}
-        
-        {/* Product Grid */}
-        <div>
-          <h2 className="font-display text-gray-700 mb-3">
-            {showFavoritesOnly ? 'My Favorites' : 
-             selectedCategory === 'all' ? 'All Products' : 
-             CATEGORIES.find(c => c.id === selectedCategory)?.name}
-            <span className="font-crayon text-sm text-gray-400 ml-2">
-              ({filteredProducts.length} products)
-            </span>
-          </h2>
-          
-          {filteredProducts.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredProducts.map(product => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  isFavorite={favorites.includes(product.id)}
-                  onToggleFavorite={toggleFavorite}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <ShoppingBag size={48} className="mx-auto text-gray-300 mb-3" />
-              <p className="font-crayon text-gray-500">No products found</p>
-              <p className="font-crayon text-sm text-gray-400">Try a different search or filter</p>
-            </div>
-          )}
-        </div>
-        
+
+        {/* Results Count */}
+        <p className="font-crayon text-sm text-gray-500 mb-4">
+          Showing {filteredProducts.length} product{filteredProducts.length !== 1 ? 's' : ''}
+        </p>
+
+        {/* Products Grid */}
+        {filteredProducts.length === 0 ? (
+          <div className="text-center py-12">
+            <ShoppingBag size={48} className="mx-auto text-gray-300 mb-4" />
+            <p className="font-crayon text-gray-500">No products match your filters</p>
+            <button
+              onClick={() => {
+                setSelectedCategory('all');
+                setSelectedPriceRange('all');
+                setShowFavoritesOnly(false);
+                setSearchQuery('');
+              }}
+              className="mt-4 px-4 py-2 bg-gray-200 rounded-lg font-crayon text-sm text-gray-600
+                       hover:bg-gray-300 transition-colors"
+            >
+              Clear Filters
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredProducts.map(product => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                isFavorite={favorites.includes(product.id)}
+                onToggleFavorite={toggleFavorite}
+              />
+            ))}
+          </div>
+        )}
+
         {/* Disclaimer */}
-        <div className="mt-8 p-4 bg-gray-50 rounded-2xl">
-          <h3 className="font-display text-sm text-gray-600 mb-2 flex items-center gap-2">
-            <AlertCircle size={16} />
-            Product Recommendations Disclaimer
-          </h3>
-          <p className="font-crayon text-xs text-gray-500">
-            These recommendations are based on research, user reviews, and professional input. 
-            However, every individual is different. What works for one person may not work for another. 
-            Always consult with therapists and professionals for personalized recommendations. 
-            Prices and availability may vary.
-          </p>
+        <div className="mt-8 p-4 bg-gray-50 rounded-xl border-2 border-gray-200">
+          <div className="flex gap-2">
+            <Info size={16} className="text-gray-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-crayon text-xs text-gray-500">
+                <strong>Disclaimer:</strong> Product recommendations are based on research and community feedback. 
+                ATLASassist does not receive compensation for product mentions. 
+                Prices and availability may vary. Always consult with healthcare providers before making purchases.
+              </p>
+            </div>
+          </div>
         </div>
       </main>
     </div>
