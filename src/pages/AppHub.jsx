@@ -1,5 +1,5 @@
-// AppHub.jsx - Main navigation hub for ATLASassist
-// Kid-friendly crayon theme with colorful app buttons
+// AppHub.jsx - Updated Main navigation hub for ATLASassist v2.0
+// Reorganized with new hubs: Emotional Wellness, Planning & Documents, expanded Resources
 
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -10,27 +10,32 @@ import {
   Gamepad2, 
   Palette, 
   BookOpen,
-  ClipboardList,
+  Users,
   LogOut,
   Star,
   Sparkles,
   Cloud,
   Smartphone,
   Settings,
-  Users
+  HeartHandshake,
+  FileText,
+  FolderOpen,
+  Library
 } from 'lucide-react';
 import { useIsAppInstalled } from '../components/PWAInstallPrompt';
 import PushNotificationPrompt from '../components/PushNotificationPrompt';
 import { useAuth } from '../App';
 
-// App category data - colors matched to logo
+// ============================================
+// REORGANIZED APP CATEGORIES - v2.0
+// ============================================
 const appCategories = [
   {
     id: 'visual-schedule',
     name: 'Visual Schedule',
     description: 'Plan your day with pictures!',
     icon: Calendar,
-    color: 'bg-[#E63B2E]',  // Red like hand in logo
+    color: 'bg-[#E63B2E]',
     borderColor: 'border-red-700',
     hoverRotate: 'hover:rotate-2',
     path: '/visual-schedule',
@@ -41,7 +46,7 @@ const appCategories = [
     name: 'Point to Talk',
     description: 'Say what you need!',
     icon: MessageCircle,
-    color: 'bg-[#F5A623]',  // Orange like sun
+    color: 'bg-[#F5A623]',
     borderColor: 'border-orange-600',
     hoverRotate: 'hover:-rotate-2',
     path: '/point-to-talk',
@@ -49,32 +54,44 @@ const appCategories = [
   },
   {
     id: 'tools',
-    name: 'Tools',
+    name: 'Daily Tools',
     description: 'Helpful everyday tools!',
     icon: Wrench,
-    color: 'bg-[#F8D14A]',  // Yellow like sun center
+    color: 'bg-[#F8D14A]',
     borderColor: 'border-yellow-600',
     hoverRotate: 'hover:rotate-1',
     path: '/tools',
     emoji: '🔧',
   },
   {
-    id: 'services',
-    name: 'Services & Trackers',
-    description: 'Track appointments & goals!',
-    icon: ClipboardList,
-    color: 'bg-[#20B2AA]',  // Teal
+    id: 'wellness',
+    name: 'Emotional Wellness',
+    description: 'Tools to understand feelings',
+    icon: HeartHandshake,
+    color: 'bg-[#20B2AA]',
     borderColor: 'border-teal-600',
     hoverRotate: 'hover:-rotate-1',
-    path: '/services',
-    emoji: '📋',
+    path: '/wellness',
+    emoji: '💚',
+    isNew: true,
+  },
+  {
+    id: 'care-team',
+    name: 'My Care Team',
+    description: 'Your support network!',
+    icon: Users,
+    color: 'bg-[#008B8B]',
+    borderColor: 'border-teal-700',
+    hoverRotate: 'hover:rotate-1',
+    path: '/care-team',
+    emoji: '👥',
   },
   {
     id: 'health',
-    name: 'Health',
-    description: 'Stay healthy & happy!',
+    name: 'Health & Wellness',
+    description: 'Track your body & health!',
     icon: Heart,
-    color: 'bg-[#E86B9A]',  // Pink
+    color: 'bg-[#E86B9A]',
     borderColor: 'border-pink-600',
     hoverRotate: 'hover:-rotate-1',
     path: '/health',
@@ -85,7 +102,7 @@ const appCategories = [
     name: 'Games',
     description: 'Fun games to play!',
     icon: Gamepad2,
-    color: 'bg-[#5CB85C]',  // Green like land/grass
+    color: 'bg-[#5CB85C]',
     borderColor: 'border-green-600',
     hoverRotate: 'hover:rotate-2',
     path: '/games',
@@ -93,24 +110,36 @@ const appCategories = [
   },
   {
     id: 'activities',
-    name: 'Activities',
-    description: 'Things to do & make!',
+    name: 'Activities & Learning',
+    description: 'Create, learn & explore!',
     icon: Palette,
-    color: 'bg-[#4A9FD4]',  // Blue like ocean
+    color: 'bg-[#4A9FD4]',
     borderColor: 'border-blue-600',
     hoverRotate: 'hover:-rotate-2',
     path: '/activities',
     emoji: '🎨',
   },
   {
-    id: 'knowledge',
-    name: 'US & State Resources',
-    description: 'Laws, rights & services info!',
-    icon: BookOpen,
-    color: 'bg-[#8E6BBF]',  // Purple
-    borderColor: 'border-purple-600',
+    id: 'planning',
+    name: 'Planning & Documents',
+    description: 'Important documents & planning',
+    icon: FileText,
+    color: 'bg-[#CD853F]',
+    borderColor: 'border-amber-700',
     hoverRotate: 'hover:rotate-1',
-    path: '/knowledge',
+    path: '/planning',
+    emoji: '📋',
+    isNew: true,
+  },
+  {
+    id: 'resources',
+    name: 'Resources & Research',
+    description: 'Laws, research & printables!',
+    icon: Library,
+    color: 'bg-[#8E6BBF]',
+    borderColor: 'border-purple-600',
+    hoverRotate: 'hover:-rotate-1',
+    path: '/resources',
     emoji: '📚',
   },
   {
@@ -118,11 +147,11 @@ const appCategories = [
     name: 'Community',
     description: 'Connect with others!',
     icon: Users,
-    color: 'bg-[#E86B9A]',  // Pink
-    borderColor: 'border-pink-700',
-    hoverRotate: 'hover:-rotate-1',
+    color: 'bg-[#FF7F7F]',
+    borderColor: 'border-red-400',
+    hoverRotate: 'hover:rotate-1',
     path: '/community',
-    emoji: '👥',
+    emoji: '🤝',
   },
 ];
 
@@ -163,49 +192,45 @@ const AppHub = () => {
           {/* Sun rays */}
           <div className="absolute inset-0 flex items-center justify-center">
             {[...Array(8)].map((_, i) => (
-              <div 
-                key={i} 
-                className="absolute w-1 h-4 bg-[#F5A623] rounded-full"
-                style={{ 
-                  transform: `rotate(${i * 45}deg) translateY(-140%)`,
+              <div
+                key={i}
+                className="absolute w-1 h-6 bg-[#F5A623] rounded-full"
+                style={{
+                  transform: `rotate(${i * 45}deg) translateY(-20px)`,
+                  opacity: 0.6,
                 }}
               />
             ))}
           </div>
         </div>
-        
-        {/* Clouds - light blue like in logo */}
-        <FloatingDecoration Icon={Cloud} className="top-12 left-8 text-[#87CEEB] w-12 h-12 opacity-80" delay="0s" fill={true} />
-        <FloatingDecoration Icon={Cloud} className="top-24 right-32 text-[#87CEEB] w-10 h-10 opacity-70" delay="0.5s" fill={true} />
-        <FloatingDecoration Icon={Cloud} className="top-16 left-1/3 text-[#87CEEB] w-8 h-8 opacity-60" delay="0.3s" fill={true} />
-        
-        {/* Small decorative elements */}
-        <FloatingDecoration Icon={Star} className="bottom-32 right-8 text-[#F8D14A] w-6 h-6 opacity-70" delay="0.8s" fill={true} />
-        <FloatingDecoration Icon={Sparkles} className="bottom-40 left-12 text-[#F5A623] w-6 h-6 opacity-60" delay="1s" />
+
+        {/* Floating decorations */}
+        <FloatingDecoration Icon={Star} className="top-32 left-8 text-[#F8D14A] w-6 h-6" delay="0.5s" fill />
+        <FloatingDecoration Icon={Sparkles} className="bottom-40 right-12 text-[#E86B9A] w-8 h-8" delay="1s" />
+        <FloatingDecoration Icon={Star} className="top-48 right-1/4 text-[#4A9FD4] w-5 h-5" delay="1.5s" fill />
+        <FloatingDecoration Icon={Cloud} className="top-20 left-1/3 text-white w-12 h-12" delay="2s" fill />
+        <FloatingDecoration Icon={Star} className="bottom-32 left-16 text-[#5CB85C] w-4 h-4" delay="0.8s" fill />
       </div>
 
+      {/* PWA Install Prompt */}
+      {!isAppInstalled && (
+        <div className="fixed bottom-4 left-4 right-4 z-50 max-w-md mx-auto">
+          <PushNotificationPrompt />
+        </div>
+      )}
+
       {/* Header */}
-      <header className="relative z-10 pt-6 pb-4 px-4">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#4A9FD4]">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           {/* Logo and Greeting */}
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <img 
-                src="/logo.jpeg" 
-                alt="ATLASassist" 
-                className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl shadow-crayon"
-              />
-              {/* Installed indicator */}
-              {isAppInstalled && (
-                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#5CB85C] rounded-full 
-                              flex items-center justify-center border-2 border-white shadow-sm"
-                     title="App installed">
-                  <Smartphone size={10} className="text-white" />
-                </div>
-              )}
-            </div>
+            <img 
+              src="/logo.jpeg" 
+              alt="ATLASassist" 
+              className="w-12 h-12 rounded-xl shadow-crayon"
+            />
             <div>
-              <h1 className="text-xl sm:text-2xl font-display text-[#4A9FD4] crayon-text">
+              <h1 className="text-lg sm:text-xl font-display text-[#4A9FD4] crayon-text">
                 Hi, {firstName}! 👋
               </h1>
               <p className="text-gray-600 font-crayon text-sm">
@@ -245,7 +270,7 @@ const AppHub = () => {
       <main className="relative z-10 px-4 pb-8">
         <div className="max-w-4xl mx-auto">
           {/* Title and Tagline */}
-          <div className="text-center mb-6">
+          <div className="text-center mb-6 mt-4">
             <h2 className="font-display mb-1">
               <span className="text-2xl sm:text-3xl rainbow-text crayon-text">ATLAS</span>
               <span className="text-xl sm:text-2xl text-[#4A9FD4] crayon-text">assist</span>
@@ -258,99 +283,57 @@ const AppHub = () => {
             </p>
           </div>
           
-          {/* App Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {appCategories.map((app, index) => {
-              const IconComponent = app.icon;
-              return (
-                <button
-                  key={app.id}
-                  onClick={() => handleAppClick(app.path)}
-                  className={`
-                    ${app.color} ${app.textColor || 'text-white'}
-                    p-6 sm:p-8 rounded-3xl
-                    border-4 ${app.borderColor}
-                    shadow-crayon-lg
-                    transform transition-all duration-200
-                    hover:-translate-y-2 ${app.hoverRotate}
-                    hover:shadow-[8px_8px_0px_rgba(0,0,0,0.3)]
-                    active:translate-y-1 active:shadow-crayon-pressed
-                    focus:outline-none focus-visible:ring-4 focus-visible:ring-offset-4
-                    group
-                  `}
-                  style={{ 
-                    borderRadius: index % 2 === 0 
-                      ? '255px 15px 225px 15px/15px 225px 15px 255px'
-                      : '15px 255px 15px 225px/225px 15px 255px 15px',
-                    animationDelay: `${index * 0.1}s`
-                  }}
-                >
-                  {/* Icon */}
-                  <div className="flex items-center justify-center mb-4">
-                    <div className="relative">
-                      <IconComponent 
-                        size={48} 
-                        className="transform group-hover:scale-110 transition-transform"
-                      />
-                      <span className="absolute -top-2 -right-2 text-2xl">
-                        {app.emoji}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Title */}
-                  <h2 className="text-xl sm:text-2xl font-display mb-2 crayon-text">
+          {/* App Grid - Responsive */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+            {appCategories.map((app) => (
+              <button
+                key={app.id}
+                onClick={() => handleAppClick(app.path)}
+                className={`relative group ${app.color} ${app.borderColor} border-4 rounded-2xl p-4 sm:p-5
+                           shadow-crayon hover:shadow-crayon-lg transition-all duration-200 
+                           ${app.hoverRotate} hover:scale-105 active:scale-95
+                           flex flex-col items-center gap-2 text-white`}
+                style={{
+                  borderRadius: '20px 40px 20px 40px / 40px 20px 40px 20px',
+                }}
+              >
+                {/* NEW Badge */}
+                {app.isNew && (
+                  <span className="absolute -top-2 -right-2 bg-[#E63B2E] text-white text-xs font-display 
+                                   px-2 py-0.5 rounded-full shadow-md animate-pulse">
+                    NEW
+                  </span>
+                )}
+                
+                {/* Icon */}
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/20 rounded-xl flex items-center justify-center
+                               group-hover:bg-white/30 transition-colors">
+                  <span className="text-2xl sm:text-3xl">{app.emoji}</span>
+                </div>
+                
+                {/* Text */}
+                <div className="text-center">
+                  <h3 className="font-display text-sm sm:text-base leading-tight">
                     {app.name}
-                  </h2>
-
-                  {/* Description */}
-                  <p className={`text-sm sm:text-base font-crayon ${app.textColor ? 'text-gray-700' : 'text-white/90'}`}>
+                  </h3>
+                  <p className="font-crayon text-xs text-white/80 mt-1 hidden sm:block">
                     {app.description}
                   </p>
-                </button>
-              );
-            })}
+                </div>
+              </button>
+            ))}
           </div>
 
-          {/* Guest Mode Notice */}
-          {user?.isGuest && (
-            <div 
-              className="mt-8 p-4 bg-white border-4 border-dashed border-crayon-orange rounded-2xl text-center"
-              style={{ borderRadius: '255px 15px 225px 15px/15px 225px 15px 255px' }}
-            >
-              <p className="font-crayon text-gray-600">
-                🌟 <strong>You're exploring as a guest!</strong> Your progress won't be saved.
-              </p>
-              <button 
-                onClick={() => navigate('/')}
-                className="mt-2 text-crayon-blue hover:text-crayon-purple font-crayon underline"
-              >
-                Create an account to save your work
-              </button>
-            </div>
-          )}
+          {/* Quick Stats or Tips */}
+          <div className="mt-8 p-4 bg-white/80 rounded-2xl border-3 border-[#4A9FD4]/30 shadow-sm">
+            <p className="text-center text-gray-600 font-crayon text-sm">
+              💚 <span className="text-[#4A9FD4] font-display">New:</span> Check out{' '}
+              <span className="text-[#20B2AA] font-display">Emotional Wellness</span> for 
+              calming tools and ways to understand your feelings!
+            </p>
+          </div>
         </div>
       </main>
-
-      {/* Push Notification Prompt */}
-      <PushNotificationPrompt user={user} />
-
-      {/* Footer */}
-      <footer className="relative z-10 text-center py-6 px-4">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <img 
-            src="/logo.jpeg" 
-            alt="" 
-            className="w-8 h-8 rounded-md"
-          />
-          <p className="text-gray-700 font-display text-lg crayon-text">
-            ATLASassist
-          </p>
-        </div>
-        <p className="text-crayon-purple font-display text-sm italic">
-          For Finn, and for people like him. 💜
-        </p>
-      </footer>
     </div>
   );
 };

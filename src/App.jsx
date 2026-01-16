@@ -1,5 +1,13 @@
+// App.jsx - ATLASassist v2.0
+// Complete routing with reorganized hub structure
+// Updated: January 2025 - All Phase 1 & 2 features enabled
+
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect, createContext, useContext } from 'react';
+
+// ============================================
+// PAGE IMPORTS - Existing
+// ============================================
 import EntryAuthScreen from './pages/EntryAuthScreen';
 import AppHub from './pages/AppHub';
 import VisualSchedule from './pages/VisualSchedule';
@@ -46,12 +54,45 @@ import Community from './pages/Community';
 import CommunityProfileSetup from './pages/CommunityProfileSetup';
 import CommunityNewThread from './pages/CommunityNewThread';
 import CommunityThread from './pages/CommunityThread';
+
+// ============================================
+// PAGE IMPORTS - New v2.0 Hubs
+// ============================================
+import EmotionalWellnessHub from './pages/EmotionalWellnessHub';
+import PlanningHub from './pages/PlanningHub';
+import ResourcesHub from './pages/ResourcesHub';
+
+// ============================================
+// PAGE IMPORTS - New v2.0 Features (Phase 1 & 2)
+// ============================================
+// Emotional Wellness Features
+import EmotionChart from './pages/EmotionChart';
+import CopingSkillsChart from './pages/CopingSkillsChart';
+import CirclesOfControl from './pages/CirclesOfControl';
+import GrowthMindset from './pages/GrowthMindset';
+
+// Planning & Documents Features
+import StudentProfile from './pages/StudentProfile';
+import FileOfLife from './pages/FileOfLife';
+import PersonCenteredPlan from './pages/PersonCenteredPlan';
+import MemorandumOfIntent from './pages/MemorandumOfIntent';
+
+// Resources & Research Features
+import PrintablesLibrary from './pages/PrintablesLibrary';
+import ResearchHub from './pages/ResearchHub';
+import RecommendedProducts from './pages/RecommendedProducts';
+
+// ============================================
+// COMPONENT IMPORTS
+// ============================================
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { ToastProvider } from './components/ThemedToast';
 import { supabase, isSupabaseConfigured } from './services/supabase';
 import { initNotifications } from './services/notifications';
 
-// Create Auth Context for managing authentication state
+// ============================================
+// AUTH CONTEXT
+// ============================================
 export const AuthContext = createContext(null);
 
 export const useAuth = () => {
@@ -62,831 +103,229 @@ export const useAuth = () => {
   return context;
 };
 
+// Format Supabase user to app user format
+const formatSupabaseUser = (supabaseUser) => {
+  if (!supabaseUser) return null;
+  return {
+    id: supabaseUser.id,
+    email: supabaseUser.email,
+    displayName: supabaseUser.user_metadata?.full_name || 
+                 supabaseUser.user_metadata?.name || 
+                 supabaseUser.email?.split('@')[0] || 
+                 'Friend',
+    photoURL: supabaseUser.user_metadata?.avatar_url || null,
+    provider: supabaseUser.app_metadata?.provider || 'email',
+  };
+};
+
 // Auth Provider component
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [authMode, setAuthMode] = useState('checking'); // checking, supabase, local
+  const [authMode, setAuthMode] = useState('checking');
 
   useEffect(() => {
-    // Determine auth mode and initialize
     const initAuth = async () => {
       if (isSupabaseConfigured()) {
-        // Supabase mode - use real authentication
         setAuthMode('supabase');
         
-        // Get initial session
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
           setUser(formatSupabaseUser(session.user));
         }
         
-        // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, session) => {
-            console.log('Auth event:', event);
-            
             if (session?.user) {
               setUser(formatSupabaseUser(session.user));
+              
+              if (event === 'SIGNED_IN') {
+                setTimeout(() => {
+                  initNotifications().catch(console.error);
+                }, 2000);
+              }
             } else {
               setUser(null);
-            }
-            
-            // Handle specific events
-            if (event === 'SIGNED_OUT') {
-              setUser(null);
-              localStorage.removeItem('snw_user');
             }
           }
         );
         
         setLoading(false);
-        
-        // Cleanup subscription on unmount
-        return () => {
-          subscription?.unsubscribe();
-        };
+        return () => subscription.unsubscribe();
       } else {
-        // Local mode - use localStorage (guest mode only)
-        setAuthMode('local');
-        
-        const storedUser = localStorage.getItem('snw_user');
-        if (storedUser) {
+        setAuthMode('guest');
+        const savedGuest = localStorage.getItem('snw_guest_user');
+        if (savedGuest) {
           try {
-            setUser(JSON.parse(storedUser));
+            setUser(JSON.parse(savedGuest));
           } catch (e) {
-            localStorage.removeItem('snw_user');
+            console.error('Error parsing guest user:', e);
           }
         }
         setLoading(false);
       }
-      
-      // Initialize notification system
-      initNotifications();
     };
 
     initAuth();
   }, []);
 
-  // Format Supabase user to our app's user format
-  const formatSupabaseUser = (supabaseUser) => {
-    return {
-      id: supabaseUser.id,
-      email: supabaseUser.email,
-      displayName: supabaseUser.user_metadata?.full_name || 
-                   supabaseUser.user_metadata?.name ||
-                   supabaseUser.email?.split('@')[0] || 
-                   'User',
-      avatarUrl: supabaseUser.user_metadata?.avatar_url || 
-                 supabaseUser.user_metadata?.picture,
-      isGuest: false,
-      provider: supabaseUser.app_metadata?.provider || 'email',
-    };
-  };
-
-  // Sign in with Google OAuth
-  const signInWithGoogle = async () => {
-    if (!isSupabaseConfigured()) {
-      return { error: { message: 'Supabase not configured. Please set up environment variables.' } };
-    }
-
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/hub`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-        },
-      });
-
-      if (error) throw error;
-      return { data, error: null };
-    } catch (error) {
-      console.error('Google sign-in error:', error);
-      return { error: { message: error.message || 'Failed to sign in with Google' } };
-    }
-  };
-
-  // Sign in with email/password
-  const signIn = async (email, password) => {
-    if (!isSupabaseConfigured()) {
-      return { error: { message: 'Supabase not configured. Use guest mode for now.' } };
-    }
-
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-      return { data, error: null };
-    } catch (error) {
-      console.error('Sign-in error:', error);
-      
-      // Provide user-friendly error messages
-      let message = error.message;
-      if (message.includes('Invalid login credentials')) {
-        message = 'Incorrect email or password. Please try again.';
-      } else if (message.includes('Email not confirmed')) {
-        message = 'Please check your email and click the confirmation link.';
-      }
-      
-      return { error: { message } };
-    }
-  };
-
-  // Sign up with email/password
-  const signUp = async (email, password, displayName) => {
-    if (!isSupabaseConfigured()) {
-      return { error: { message: 'Supabase not configured. Use guest mode for now.' } };
-    }
-
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: displayName,
-          },
-          emailRedirectTo: `${window.location.origin}/hub`,
-        },
-      });
-
-      if (error) throw error;
-
-      // Check if email confirmation is required
-      if (data?.user && !data?.session) {
-        return { 
-          data, 
-          error: null,
-          message: 'Please check your email to confirm your account!',
-          requiresConfirmation: true,
-        };
-      }
-
-      return { data, error: null };
-    } catch (error) {
-      console.error('Sign-up error:', error);
-      
-      let message = error.message;
-      if (message.includes('already registered')) {
-        message = 'This email is already registered. Try signing in instead.';
-      }
-      
-      return { error: { message } };
-    }
-  };
-
-  // Reset password
-  const resetPassword = async (email) => {
-    if (!isSupabaseConfigured()) {
-      return { error: { message: 'Supabase not configured.' } };
-    }
-
-    try {
-      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-
-      if (error) throw error;
-      return { data, error: null };
-    } catch (error) {
-      console.error('Password reset error:', error);
-      return { error: { message: error.message } };
-    }
-  };
-
-  // Guest mode login (works without Supabase)
-  const signInAsGuest = () => {
+  const signInAsGuest = (name = 'Friend') => {
     const guestUser = {
-      id: 'guest-' + Date.now(),
-      displayName: 'Guest User',
+      id: `guest_${Date.now()}`,
       email: null,
-      isGuest: true,
+      displayName: name,
+      photoURL: null,
+      provider: 'guest',
     };
+    localStorage.setItem('snw_guest_user', JSON.stringify(guestUser));
     setUser(guestUser);
-    localStorage.setItem('snw_user', JSON.stringify(guestUser));
-    return { data: guestUser, error: null };
   };
 
-  // Sign out
   const signOut = async () => {
-    if (isSupabaseConfigured() && !user?.isGuest) {
-      try {
-        await supabase.auth.signOut();
-      } catch (error) {
-        console.error('Sign-out error:', error);
-      }
+    if (authMode === 'supabase') {
+      await supabase.auth.signOut();
+    } else {
+      localStorage.removeItem('snw_guest_user');
     }
-    
     setUser(null);
-    localStorage.removeItem('snw_user');
   };
 
   const value = {
     user,
     loading,
     authMode,
-    signIn,
-    signUp,
-    signInWithGoogle,
     signInAsGuest,
     signOut,
-    resetPassword,
     isAuthenticated: !!user,
-    isSupabaseConfigured: isSupabaseConfigured(),
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };
 
-// Protected Route component
+// ============================================
+// PROTECTED ROUTE COMPONENT
+// ============================================
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FFFEF5] flex items-center justify-center">
         <div className="text-center">
-          <img 
-            src="/logo.jpeg" 
-            alt="ATLASassist" 
-            className="w-20 h-20 rounded-2xl shadow-crayon mx-auto mb-4 animate-bounce-soft"
-          />
-          <div className="text-2xl font-display text-[#4A9FD4]">
-            Loading...
-          </div>
+          <div className="w-16 h-16 border-4 border-[#4A9FD4] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="font-crayon text-gray-600">Loading...</p>
         </div>
       </div>
     );
   }
 
-  if (!isAuthenticated) {
+  if (!user) {
     return <Navigate to="/" replace />;
   }
 
   return children;
 };
 
-function App() {
-  return (
-    <ToastProvider>
-      <AuthProvider>
-        <Router>
-        <Routes>
-          {/* Entry/Auth Screen */}
-          <Route path="/" element={<EntryAuthScreen />} />
-          
-          {/* Main App Hub - Protected */}
-          <Route 
-            path="/hub" 
-            element={
-              <ProtectedRoute>
-                <AppHub />
-              </ProtectedRoute>
-            } 
-          />
-          
-          {/* Visual Schedule - Protected */}
-          <Route 
-            path="/visual-schedule" 
-            element={
-              <ProtectedRoute>
-                <VisualSchedule />
-              </ProtectedRoute>
-            } 
-          />
-          
-          {/* Tools and Point to Talk */}
-          <Route 
-            path="/point-to-talk" 
-            element={
-              <ProtectedRoute>
-                <PointToTalk />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/tools" 
-            element={
-              <ProtectedRoute>
-                <Tools />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/tools/point-to-talk" 
-            element={
-              <ProtectedRoute>
-                <PointToTalk />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/tools/milestones" 
-            element={
-              <ProtectedRoute>
-                <MilestoneGuide />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/tools/timer" 
-            element={
-              <ProtectedRoute>
-                <VisualTimer />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/tools/first-then" 
-            element={
-              <ProtectedRoute>
-                <FirstThen />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/tools/calm-down" 
-            element={
-              <ProtectedRoute>
-                <CalmDown />
-              </ProtectedRoute>
-            } 
-          />
-          
-          {/* Services & Trackers */}
-          <Route 
-            path="/services" 
-            element={
-              <ProtectedRoute>
-                <Services />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/services/appointments" 
-            element={
-              <ProtectedRoute>
-                <AppointmentTracker />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/services/goals" 
-            element={
-              <ProtectedRoute>
-                <GoalTracker />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/services/team" 
-            element={
-              <ProtectedRoute>
-                <MyTeam />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/services/notes" 
-            element={
-              <ProtectedRoute>
-                <QuickNotes />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/services/reminders" 
-            element={
-              <ProtectedRoute>
-                <Reminders />
-              </ProtectedRoute>
-            } 
-          />
-          
-          {/* Health & Nutrition */}
-          <Route 
-            path="/health" 
-            element={
-              <ProtectedRoute>
-                <Health />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/health/nutrition" 
-            element={
-              <ProtectedRoute>
-                <Nutrition />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/health/feelings" 
-            element={
-              <ProtectedRoute>
-                <FeelingsTracker />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/health/water" 
-            element={
-              <ProtectedRoute>
-                <WaterTracker />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/health/sleep" 
-            element={
-              <ProtectedRoute>
-                <SleepTracker />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/health/exercise" 
-            element={
-              <ProtectedRoute>
-                <MoveExercise />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/health/ot" 
-            element={
-              <ProtectedRoute>
-                <OTExercises />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/health/choices" 
-            element={
-              <ProtectedRoute>
-                <HealthyChoices />
-              </ProtectedRoute>
-            } 
-          />
-          
-          {/* New Tool Routes */}
-          <Route 
-            path="/tools/soundboard" 
-            element={
-              <ProtectedRoute>
-                <SoundBoard />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/tools/counter" 
-            element={
-              <ProtectedRoute>
-                <Counter />
-              </ProtectedRoute>
-            } 
-          />
-          
-          {/* New Service Routes */}
-          <Route 
-            path="/services/routines" 
-            element={
-              <ProtectedRoute>
-                <DailyRoutines />
-              </ProtectedRoute>
-            } 
-          />
-          
-          {/* Community Routes */}
-          <Route 
-            path="/community" 
-            element={
-              <ProtectedRoute>
-                <Community />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/community/profile/setup" 
-            element={
-              <ProtectedRoute>
-                <CommunityProfileSetup />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/community/new" 
-            element={
-              <ProtectedRoute>
-                <CommunityNewThread />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/community/thread/:threadId" 
-            element={
-              <ProtectedRoute>
-                <CommunityThread />
-              </ProtectedRoute>
-            } 
-          />
-          
-          {/* Settings */}
-          <Route 
-            path="/settings" 
-            element={
-              <ProtectedRoute>
-                <Settings />
-              </ProtectedRoute>
-            } 
-          />
-          
-          {/* Games Routes */}
-          <Route 
-            path="/games" 
-            element={
-              <ProtectedRoute>
-                <Games />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/games/matching" 
-            element={
-              <ProtectedRoute>
-                <MatchingGame />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/games/emotions" 
-            element={
-              <ProtectedRoute>
-                <EmotionMatch />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/games/bubbles" 
-            element={
-              <ProtectedRoute>
-                <BubblePop />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/games/sorting" 
-            element={
-              <ProtectedRoute>
-                <ColorSort />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/games/shapes" 
-            element={
-              <ProtectedRoute>
-                <ShapeMatch />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/games/puzzles" 
-            element={
-              <ProtectedRoute>
-                <SimplePuzzles />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/games/pattern" 
-            element={
-              <ProtectedRoute>
-                <PatternSequence />
-              </ProtectedRoute>
-            } 
-          />
-          
-          {/* Activities Routes */}
-          <Route 
-            path="/activities" 
-            element={
-              <ProtectedRoute>
-                <Activities />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/activities/social-stories" 
-            element={
-              <ProtectedRoute>
-                <SocialStories />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/activities/coloring" 
-            element={
-              <ProtectedRoute>
-                <ColoringBook />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/activities/pronunciation" 
-            element={
-              <ProtectedRoute>
-                <PronunciationPractice />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/activities/sensory-breaks" 
-            element={
-              <ProtectedRoute>
-                <SensoryBreaks />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/activities/choice-board" 
-            element={
-              <ProtectedRoute>
-                <ChoiceBoard />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/knowledge" 
-            element={
-              <ProtectedRoute>
-                <Knowledge />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/knowledge/:regionId" 
-            element={
-              <ProtectedRoute>
-                <Knowledge />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/knowledge/:regionId/:slug" 
-            element={
-              <ProtectedRoute>
-                <Knowledge />
-              </ProtectedRoute>
-            } 
-          />
-          
-          {/* Password Reset Route */}
-          <Route 
-            path="/reset-password" 
-            element={<ResetPassword />} 
-          />
-          
-          {/* Catch-all redirect */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-        
-        {/* PWA Install Prompt - Shows on all pages */}
-        <PWAInstallPrompt />
-      </Router>
-    </AuthProvider>
-    </ToastProvider>
-  );
-}
-
-// Coming Soon placeholder component
-const ComingSoon = ({ title }) => {
-  return (
-    <div className="min-h-screen bg-[#FFFEF5] flex flex-col items-center justify-center p-6">
-      <img 
-        src="/logo.jpeg" 
-        alt="ATLASassist" 
-        className="w-24 h-24 rounded-2xl shadow-crayon mb-6"
-      />
-      <h1 className="text-4xl font-display text-crayon-purple mb-4 crayon-text">
-        {title}
-      </h1>
-      <p className="text-xl font-crayon text-gray-600 mb-8">
-        Coming Soon! 🎨
-      </p>
-      <a 
-        href="/hub" 
-        className="crayon-button bg-crayon-blue text-white"
-      >
-        ← Back to Hub
-      </a>
-    </div>
-  );
-};
-
-// Password Reset component
+// ============================================
+// RESET PASSWORD COMPONENT
+// ============================================
 const ResetPassword = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+    setError('');
+
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
-    
+
     if (password.length < 6) {
       setError('Password must be at least 6 characters');
       return;
     }
 
     setLoading(true);
-    setError('');
 
     try {
       const { error } = await supabase.auth.updateUser({ password });
-      
       if (error) throw error;
-      
-      setMessage('Password updated successfully! Redirecting...');
-      setTimeout(() => {
-        window.location.href = '/hub';
-      }, 2000);
+      setSuccess(true);
     } catch (err) {
-      setError(err.message || 'Failed to update password');
+      setError(err.message || 'Failed to reset password');
     } finally {
       setLoading(false);
     }
   };
 
+  if (success) {
+    return (
+      <div className="min-h-screen bg-[#FFFEF5] flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl p-8 shadow-lg max-w-md w-full text-center">
+          <div className="text-5xl mb-4">✅</div>
+          <h1 className="font-display text-2xl text-[#5CB85C] mb-4">Password Updated!</h1>
+          <p className="font-crayon text-gray-600 mb-6">
+            Your password has been successfully reset.
+          </p>
+          <a
+            href="/"
+            className="block w-full py-3 bg-[#4A9FD4] text-white rounded-xl font-display hover:bg-blue-600 transition-colors"
+          >
+            Go to Login
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-[#FFFEF5] flex flex-col items-center justify-center p-6">
-      <img 
-        src="/logo.jpeg" 
-        alt="ATLASassist" 
-        className="w-24 h-24 rounded-2xl shadow-crayon mb-6"
-      />
-      <h1 className="text-3xl font-display text-[#4A9FD4] mb-6 crayon-text">
-        Reset Password
-      </h1>
-      
-      <div className="w-full max-w-md bg-white p-6 rounded-2xl shadow-crayon border-4 border-[#4A9FD4]">
-        {message && (
-          <div className="mb-4 p-3 bg-green-100 border-2 border-green-500 rounded-xl text-green-700 font-crayon">
-            {message}
-          </div>
-        )}
-        
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 border-2 border-red-500 rounded-xl text-red-700 font-crayon">
-            {error}
-          </div>
-        )}
+    <div className="min-h-screen bg-[#FFFEF5] flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl p-8 shadow-lg max-w-md w-full">
+        <h1 className="font-display text-2xl text-[#4A9FD4] mb-6 text-center">Reset Password</h1>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="New Password"
-            className="w-full px-4 py-3 border-3 border-gray-300 rounded-xl font-crayon
-                     focus:border-[#4A9FD4] focus:outline-none"
-            required
-            minLength={6}
-          />
+          <div>
+            <label className="block font-crayon text-gray-600 mb-1">New Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#4A9FD4] outline-none font-crayon"
+              placeholder="Enter new password"
+              required
+            />
+          </div>
           
-          <input
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="Confirm Password"
-            className="w-full px-4 py-3 border-3 border-gray-300 rounded-xl font-crayon
-                     focus:border-[#4A9FD4] focus:outline-none"
-            required
-          />
+          <div>
+            <label className="block font-crayon text-gray-600 mb-1">Confirm Password</label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#4A9FD4] outline-none font-crayon"
+              placeholder="Confirm new password"
+              required
+            />
+          </div>
+          
+          {error && (
+            <p className="text-red-500 font-crayon text-sm text-center">{error}</p>
+          )}
           
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-[#5CB85C] text-white rounded-xl font-crayon text-lg
-                     hover:bg-green-600 transition-all disabled:opacity-50"
+            className="w-full py-3 bg-[#4A9FD4] text-white rounded-xl font-display hover:bg-blue-600 transition-colors disabled:opacity-50"
           >
             {loading ? 'Updating...' : 'Update Password'}
           </button>
@@ -895,5 +334,670 @@ const ResetPassword = () => {
     </div>
   );
 };
+
+// ============================================
+// COMING SOON PLACEHOLDER
+// ============================================
+const ComingSoon = ({ title }) => {
+  return (
+    <div className="min-h-screen bg-[#FFFEF5] flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl p-8 shadow-lg max-w-md w-full text-center">
+        <div className="text-6xl mb-4">🚧</div>
+        <h1 className="font-display text-2xl text-[#F5A623] mb-4">{title}</h1>
+        <p className="font-crayon text-gray-600 mb-6">
+          This feature is coming soon! We're working hard to bring you something amazing.
+        </p>
+        <a
+          href="/hub"
+          className="inline-block px-6 py-3 bg-[#4A9FD4] text-white rounded-xl font-display hover:bg-blue-600 transition-colors"
+        >
+          Back to Hub
+        </a>
+      </div>
+    </div>
+  );
+};
+
+// ============================================
+// MAIN APP COMPONENT
+// ============================================
+function App() {
+  return (
+    <ToastProvider>
+      <AuthProvider>
+        <Router>
+          <Routes>
+            {/* ============================================ */}
+            {/* AUTH & ENTRY */}
+            {/* ============================================ */}
+            <Route path="/" element={<EntryAuthScreen />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            
+            {/* ============================================ */}
+            {/* MAIN HUB */}
+            {/* ============================================ */}
+            <Route 
+              path="/hub" 
+              element={
+                <ProtectedRoute>
+                  <AppHub />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* ============================================ */}
+            {/* VISUAL SCHEDULE (Top-level) */}
+            {/* ============================================ */}
+            <Route 
+              path="/visual-schedule" 
+              element={
+                <ProtectedRoute>
+                  <VisualSchedule />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* ============================================ */}
+            {/* POINT TO TALK (Top-level) */}
+            {/* ============================================ */}
+            <Route 
+              path="/point-to-talk" 
+              element={
+                <ProtectedRoute>
+                  <PointToTalk />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* ============================================ */}
+            {/* DAILY TOOLS HUB */}
+            {/* ============================================ */}
+            <Route 
+              path="/tools" 
+              element={
+                <ProtectedRoute>
+                  <Tools />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/tools/timer" 
+              element={
+                <ProtectedRoute>
+                  <VisualTimer />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/tools/first-then" 
+              element={
+                <ProtectedRoute>
+                  <FirstThen />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/tools/counter" 
+              element={
+                <ProtectedRoute>
+                  <Counter />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/tools/soundboard" 
+              element={
+                <ProtectedRoute>
+                  <SoundBoard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/tools/routines" 
+              element={
+                <ProtectedRoute>
+                  <DailyRoutines />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/tools/milestones" 
+              element={
+                <ProtectedRoute>
+                  <MilestoneGuide />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/tools/point-to-talk" 
+              element={
+                <ProtectedRoute>
+                  <PointToTalk />
+                </ProtectedRoute>
+              } 
+            />
+            {/* Legacy: Calm Down moved to Wellness */}
+            <Route 
+              path="/tools/calm-down" 
+              element={<Navigate to="/wellness/calm-down" replace />}
+            />
+            
+            {/* ============================================ */}
+            {/* EMOTIONAL WELLNESS HUB */}
+            {/* ============================================ */}
+            <Route 
+              path="/wellness" 
+              element={
+                <ProtectedRoute>
+                  <EmotionalWellnessHub />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/wellness/calm-down" 
+              element={
+                <ProtectedRoute>
+                  <CalmDown />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/wellness/sensory-breaks" 
+              element={
+                <ProtectedRoute>
+                  <SensoryBreaks />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/wellness/feelings" 
+              element={
+                <ProtectedRoute>
+                  <FeelingsTracker />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/wellness/emotion-chart" 
+              element={
+                <ProtectedRoute>
+                  <EmotionChart />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/wellness/coping-skills" 
+              element={
+                <ProtectedRoute>
+                  <CopingSkillsChart />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/wellness/circles-control" 
+              element={
+                <ProtectedRoute>
+                  <CirclesOfControl />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/wellness/growth-mindset" 
+              element={
+                <ProtectedRoute>
+                  <GrowthMindset />
+                </ProtectedRoute>
+              } 
+            />
+            {/* Legacy redirects */}
+            <Route 
+              path="/coping/*" 
+              element={<Navigate to="/wellness" replace />}
+            />
+            
+            {/* ============================================ */}
+            {/* MY CARE TEAM HUB (Renamed from Services) */}
+            {/* ============================================ */}
+            <Route 
+              path="/care-team" 
+              element={
+                <ProtectedRoute>
+                  <Services />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/care-team/appointments" 
+              element={
+                <ProtectedRoute>
+                  <AppointmentTracker />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/care-team/goals" 
+              element={
+                <ProtectedRoute>
+                  <GoalTracker />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/care-team/team" 
+              element={
+                <ProtectedRoute>
+                  <MyTeam />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/care-team/notes" 
+              element={
+                <ProtectedRoute>
+                  <QuickNotes />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/care-team/reminders" 
+              element={
+                <ProtectedRoute>
+                  <Reminders />
+                </ProtectedRoute>
+              } 
+            />
+            {/* Legacy: Services redirects to Care Team */}
+            <Route 
+              path="/services" 
+              element={<Navigate to="/care-team" replace />}
+            />
+            <Route 
+              path="/services/appointments" 
+              element={<Navigate to="/care-team/appointments" replace />}
+            />
+            <Route 
+              path="/services/goals" 
+              element={<Navigate to="/care-team/goals" replace />}
+            />
+            <Route 
+              path="/services/team" 
+              element={<Navigate to="/care-team/team" replace />}
+            />
+            <Route 
+              path="/services/notes" 
+              element={<Navigate to="/care-team/notes" replace />}
+            />
+            <Route 
+              path="/services/reminders" 
+              element={<Navigate to="/care-team/reminders" replace />}
+            />
+            <Route 
+              path="/services/routines" 
+              element={<Navigate to="/tools/routines" replace />}
+            />
+            
+            {/* ============================================ */}
+            {/* HEALTH & WELLNESS HUB */}
+            {/* ============================================ */}
+            <Route 
+              path="/health" 
+              element={
+                <ProtectedRoute>
+                  <Health />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/health/nutrition" 
+              element={
+                <ProtectedRoute>
+                  <Nutrition />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/health/water" 
+              element={
+                <ProtectedRoute>
+                  <WaterTracker />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/health/sleep" 
+              element={
+                <ProtectedRoute>
+                  <SleepTracker />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/health/exercise" 
+              element={
+                <ProtectedRoute>
+                  <MoveExercise />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/health/ot" 
+              element={
+                <ProtectedRoute>
+                  <OTExercises />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/health/choices" 
+              element={
+                <ProtectedRoute>
+                  <HealthyChoices />
+                </ProtectedRoute>
+              } 
+            />
+            {/* Legacy: Feelings moved to Wellness */}
+            <Route 
+              path="/health/feelings" 
+              element={<Navigate to="/wellness/feelings" replace />}
+            />
+            
+            {/* ============================================ */}
+            {/* GAMES HUB */}
+            {/* ============================================ */}
+            <Route 
+              path="/games" 
+              element={
+                <ProtectedRoute>
+                  <Games />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/games/matching" 
+              element={
+                <ProtectedRoute>
+                  <MatchingGame />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/games/emotions" 
+              element={
+                <ProtectedRoute>
+                  <EmotionMatch />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/games/bubbles" 
+              element={
+                <ProtectedRoute>
+                  <BubblePop />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/games/sorting" 
+              element={
+                <ProtectedRoute>
+                  <ColorSort />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/games/shapes" 
+              element={
+                <ProtectedRoute>
+                  <ShapeMatch />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/games/puzzles" 
+              element={
+                <ProtectedRoute>
+                  <SimplePuzzles />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/games/pattern" 
+              element={
+                <ProtectedRoute>
+                  <PatternSequence />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* ============================================ */}
+            {/* ACTIVITIES & LEARNING HUB */}
+            {/* ============================================ */}
+            <Route 
+              path="/activities" 
+              element={
+                <ProtectedRoute>
+                  <Activities />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/activities/choice-board" 
+              element={
+                <ProtectedRoute>
+                  <ChoiceBoard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/activities/social-stories" 
+              element={
+                <ProtectedRoute>
+                  <SocialStories />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/activities/pronunciation" 
+              element={
+                <ProtectedRoute>
+                  <PronunciationPractice />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/activities/coloring" 
+              element={
+                <ProtectedRoute>
+                  <ColoringBook />
+                </ProtectedRoute>
+              } 
+            />
+            {/* Legacy: Sensory Breaks moved to Wellness */}
+            <Route 
+              path="/activities/sensory-breaks" 
+              element={<Navigate to="/wellness/sensory-breaks" replace />}
+            />
+            
+            {/* ============================================ */}
+            {/* PLANNING & DOCUMENTS HUB */}
+            {/* ============================================ */}
+            <Route 
+              path="/planning" 
+              element={
+                <ProtectedRoute>
+                  <PlanningHub />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/planning/student-profile" 
+              element={
+                <ProtectedRoute>
+                  <StudentProfile />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/planning/file-of-life" 
+              element={
+                <ProtectedRoute>
+                  <FileOfLife />
+                </ProtectedRoute>
+              } 
+            />
+            {/* Person-Centered Plan */}
+            <Route 
+              path="/planning/person-centered" 
+              element={
+                <ProtectedRoute>
+                  <PersonCenteredPlan />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/planning/memo-intent" 
+              element={
+                <ProtectedRoute>
+                  <MemorandumOfIntent />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* ============================================ */}
+            {/* RESOURCES & RESEARCH HUB */}
+            {/* ============================================ */}
+            <Route 
+              path="/resources" 
+              element={
+                <ProtectedRoute>
+                  <ResourcesHub />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/resources/laws" 
+              element={
+                <ProtectedRoute>
+                  <Knowledge />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/resources/laws/:regionId" 
+              element={
+                <ProtectedRoute>
+                  <Knowledge />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/resources/laws/:regionId/:slug" 
+              element={
+                <ProtectedRoute>
+                  <Knowledge />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/resources/printables" 
+              element={
+                <ProtectedRoute>
+                  <PrintablesLibrary />
+                </ProtectedRoute>
+              } 
+            />
+            {/* Research Hub */}
+            <Route 
+              path="/resources/research" 
+              element={
+                <ProtectedRoute>
+                  <ResearchHub />
+                </ProtectedRoute>
+              } 
+            />
+            {/* Recommended Products */}
+            <Route 
+              path="/resources/products" 
+              element={
+                <ProtectedRoute>
+                  <RecommendedProducts />
+                </ProtectedRoute>
+              } 
+            />
+            {/* Legacy: Knowledge redirects to Resources */}
+            <Route 
+              path="/knowledge" 
+              element={<Navigate to="/resources/laws" replace />}
+            />
+            <Route 
+              path="/knowledge/:regionId" 
+              element={<Navigate to="/resources/laws" replace />}
+            />
+            <Route 
+              path="/knowledge/:regionId/:slug" 
+              element={<Navigate to="/resources/laws" replace />}
+            />
+            
+            {/* ============================================ */}
+            {/* COMMUNITY HUB */}
+            {/* ============================================ */}
+            <Route 
+              path="/community" 
+              element={
+                <ProtectedRoute>
+                  <Community />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/community/profile/setup" 
+              element={
+                <ProtectedRoute>
+                  <CommunityProfileSetup />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/community/new" 
+              element={
+                <ProtectedRoute>
+                  <CommunityNewThread />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/community/thread/:threadId" 
+              element={
+                <ProtectedRoute>
+                  <CommunityThread />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* ============================================ */}
+            {/* SETTINGS */}
+            {/* ============================================ */}
+            <Route 
+              path="/settings" 
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* ============================================ */}
+            {/* CATCH-ALL REDIRECT */}
+            {/* ============================================ */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+          
+          {/* PWA Install Prompt */}
+          <PWAInstallPrompt />
+        </Router>
+      </AuthProvider>
+    </ToastProvider>
+  );
+}
 
 export default App;
