@@ -1,6 +1,6 @@
 // Activities.jsx - Activities hub for ATLASassist
-// Contains creative and learning activities
-// FIXED: All items are now ready (no coming soon)
+// UPDATED: Added Music & Sounds, Photo Journal, Reward Chart
+// REMOVED: Puzzles per user request
 
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -8,15 +8,13 @@ import {
   BookOpen, 
   Palette, 
   Music, 
-  Puzzle,
   Camera,
   Sparkles,
-  Heart,
   Star,
   Mic
 } from 'lucide-react';
 
-// Activity apps - ALL READY
+// Activity apps - All working apps
 const activityApps = [
   {
     id: 'sensory-breaks',
@@ -68,6 +66,7 @@ const activityApps = [
     path: '/activities/coloring',
     ready: true,
   },
+  // NEW APPS
   {
     id: 'music',
     name: 'Music & Sounds',
@@ -76,16 +75,6 @@ const activityApps = [
     color: '#87CEEB',
     emoji: '🎵',
     path: '/activities/music',
-    ready: true,
-  },
-  {
-    id: 'puzzles',
-    name: 'Puzzles',
-    description: 'Simple puzzles and matching games',
-    icon: Puzzle,
-    color: '#F5A623',
-    emoji: '🧩',
-    path: '/games/puzzles',
     ready: true,
   },
   {
@@ -108,22 +97,17 @@ const activityApps = [
     path: '/activities/rewards',
     ready: true,
   },
+  // NOTE: Puzzles removed per user request
 ];
 
 const Activities = () => {
   const navigate = useNavigate();
 
-  const handleAppClick = (app) => {
-    if (app.ready) {
-      navigate(app.path);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#4A9FD4]">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/hub')}
             className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#4A9FD4] 
@@ -138,76 +122,44 @@ const Activities = () => {
             alt="ATLASassist" 
             className="w-10 h-10 rounded-lg shadow-sm"
           />
-          <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-display text-[#4A9FD4] crayon-text flex items-center gap-2">
-              🎨 Activities
-            </h1>
-          </div>
+          <h1 className="text-xl sm:text-2xl font-display text-[#4A9FD4] crayon-text flex items-center gap-2">
+            🎨 Activities
+          </h1>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-2xl mx-auto px-4 py-6">
+      <main className="max-w-4xl mx-auto px-4 py-6">
         <p className="text-center text-gray-600 font-crayon mb-6">
-          Fun things to do and make! Tap to explore.
+          Fun things to do and create!
         </p>
 
-        {/* Apps List */}
-        <div className="space-y-3">
-          {activityApps.map((app, index) => {
-            const IconComponent = app.icon;
-            return (
-              <button
-                key={app.id}
-                onClick={() => handleAppClick(app)}
-                disabled={!app.ready}
-                className={`
-                  w-full p-4 rounded-2xl border-4 text-white
-                  transition-all duration-200 shadow-crayon text-left
-                  ${app.ready 
-                    ? 'hover:-translate-y-1 hover:shadow-crayon-lg cursor-pointer' 
-                    : 'opacity-60 cursor-not-allowed'
-                  }
-                `}
-                style={{ 
-                  backgroundColor: app.ready ? app.color : '#E5E5E5',
-                  borderColor: app.ready ? app.color : '#CCCCCC',
-                  borderRadius: index % 2 === 0 
-                    ? '255px 15px 225px 15px/15px 225px 15px 255px'
-                    : '15px 255px 15px 225px/225px 15px 255px 15px',
-                }}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                    <IconComponent size={28} className="text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-display text-lg text-white flex items-center gap-2">
-                      {app.emoji} {app.name}
-                    </h3>
-                    <p className="font-crayon text-sm text-white/80 mt-1">
-                      {app.description}
-                    </p>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Info Box */}
-        <div className="mt-8 p-4 bg-[#8E6BBF]/10 rounded-2xl border-3 border-[#8E6BBF]/30">
-          <div className="flex items-start gap-3">
-            <Sparkles size={24} className="text-[#8E6BBF] flex-shrink-0 mt-1" />
-            <div>
-              <h3 className="font-display text-[#8E6BBF]">About Social Stories</h3>
-              <p className="font-crayon text-sm text-gray-600 mt-1">
-                Social Stories help explain everyday situations in a simple, visual way. 
-                Just type what you'd like a story about, and we'll create a personalized 
-                story with pictures to help understand and prepare!
+        {/* Activity Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {activityApps.map((app) => (
+            <button
+              key={app.id}
+              onClick={() => navigate(app.path)}
+              className="p-6 rounded-2xl border-4 text-left transition-all transform
+                       hover:-translate-y-1 hover:shadow-crayon-lg cursor-pointer"
+              style={{ 
+                backgroundColor: app.color,
+                borderColor: app.color,
+              }}
+            >
+              {/* Emoji Badge */}
+              <span className="text-4xl mb-3 block">{app.emoji}</span>
+              
+              {/* Name */}
+              <h2 className="text-xl font-display text-white mb-1">
+                {app.name}
+              </h2>
+              
+              {/* Description */}
+              <p className="text-white/80 font-crayon text-sm">
+                {app.description}
               </p>
-            </div>
-          </div>
+            </button>
+          ))}
         </div>
       </main>
     </div>

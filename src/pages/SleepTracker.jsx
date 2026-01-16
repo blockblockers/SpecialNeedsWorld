@@ -1,6 +1,6 @@
 // SleepTracker.jsx - Track sleep patterns
-// Simple logging of bedtime and wake time
-// Now with schedule integration for reminders!
+// FIXED: Back button navigates to /health (not /activities)
+// FIXED: Updated back button styling to match other pages (border-4, rounded-xl)
 
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -34,7 +34,7 @@ const SleepTracker = () => {
   
   // Schedule integration state
   const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [reminderType, setReminderType] = useState('bedtime'); // 'bedtime' or 'waketime'
+  const [reminderType, setReminderType] = useState('bedtime');
 
   // Sleep reminder presets
   const SLEEP_REMINDERS = {
@@ -71,7 +71,13 @@ const SleepTracker = () => {
     }
   }, []);
 
-  // Load selected date's data into form
+  // Save entries
+  const saveEntries = (newEntries) => {
+    setEntries(newEntries);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newEntries));
+  };
+
+  // Load form data for selected date
   useEffect(() => {
     const entry = entries[selectedDate];
     if (entry) {
@@ -85,73 +91,6 @@ const SleepTracker = () => {
     }
   }, [selectedDate, entries]);
 
-  // Save entries
-  const saveEntries = (newEntries) => {
-    setEntries(newEntries);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newEntries));
-  };
-
-  // Save current entry
-  const saveEntry = () => {
-    if (!formData.bedtime && !formData.waketime && !formData.quality) return;
-    
-    const newEntries = {
-      ...entries,
-      [selectedDate]: {
-        ...formData,
-        updatedAt: new Date().toISOString(),
-      },
-    };
-    saveEntries(newEntries);
-  };
-
-  // Delete entry
-  const deleteEntry = () => {
-    if (confirm('Delete this sleep entry?')) {
-      const newEntries = { ...entries };
-      delete newEntries[selectedDate];
-      saveEntries(newEntries);
-      setFormData({ bedtime: '', waketime: '', quality: '' });
-    }
-  };
-
-  // Schedule reminder handler - Updated to work with new AddToScheduleModal
-  const handleScheduleSuccess = ({ date, time, activityId }) => {
-    const reminder = SLEEP_REMINDERS[reminderType];
-    setShowScheduleModal(false);
-    alert(`"${reminder.name}" added to your Visual Schedule for ${date}!`);
-  };
-
-  // Open schedule modal
-  const openScheduleModal = (type) => {
-    setReminderType(type);
-    setShowScheduleModal(true);
-  };
-
-  // Calculate sleep duration
-  const calculateDuration = () => {
-    if (!formData.bedtime || !formData.waketime) return null;
-    
-    const [bedHour, bedMin] = formData.bedtime.split(':').map(Number);
-    const [wakeHour, wakeMin] = formData.waketime.split(':').map(Number);
-    
-    let bedMinutes = bedHour * 60 + bedMin;
-    let wakeMinutes = wakeHour * 60 + wakeMin;
-    
-    // If wake time is before bed time, assume it's the next day
-    if (wakeMinutes < bedMinutes) {
-      wakeMinutes += 24 * 60;
-    }
-    
-    const durationMinutes = wakeMinutes - bedMinutes;
-    const hours = Math.floor(durationMinutes / 60);
-    const minutes = durationMinutes % 60;
-    
-    return { hours, minutes, total: durationMinutes };
-  };
-
-  const duration = calculateDuration();
-
   // Navigate dates
   const changeDate = (delta) => {
     const date = new Date(selectedDate);
@@ -159,7 +98,7 @@ const SleepTracker = () => {
     setSelectedDate(date.toISOString().split('T')[0]);
   };
 
-  // Format date for display
+  // Format date
   const formatDate = (dateStr) => {
     const date = new Date(dateStr + 'T00:00:00');
     const today = new Date();
@@ -167,8 +106,8 @@ const SleepTracker = () => {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
     
-    if (date.getTime() === today.getTime()) return 'Last Night';
-    if (date.getTime() === yesterday.getTime()) return '2 Nights Ago';
+    if (date.getTime() === today.getTime()) return 'Today';
+    if (date.getTime() === yesterday.getTime()) return 'Yesterday';
     return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   };
 
@@ -180,11 +119,11 @@ const SleepTracker = () => {
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
       const entry = entries[dateStr];
-      
+      const quality = entry?.quality ? SLEEP_QUALITY.find(q => q.id === entry.quality) : null;
       summary.push({
         date: dateStr,
         day: date.toLocaleDateString('en-US', { weekday: 'short' }),
-        quality: entry?.quality,
+        quality,
         hasData: !!entry,
       });
     }
@@ -202,7 +141,6 @@ const SleepTracker = () => {
   const handleChange = (field, value) => {
     setFormData(prev => {
       const updated = { ...prev, [field]: value };
-      // Auto-save after a short delay
       setTimeout(() => {
         if (!updated.bedtime && !updated.waketime && !updated.quality) return;
         const newEntries = {
@@ -218,20 +156,71 @@ const SleepTracker = () => {
     });
   };
 
+  // Delete entry
+  const handleDelete = () => {
+    if (!entries[selectedDate]) return;
+    if (!confirm('Delete this sleep entry?')) return;
+    
+    const newEntries = { ...entries };
+    delete newEntries[selectedDate];
+    saveEntries(newEntries);
+    setFormData({ bedtime: '', waketime: '', quality: '' });
+  };
+
+  // Calculate sleep duration
+  const getSleepDuration = () => {
+    if (!formData.bedtime || !formData.waketime) return null;
+    
+    const [bedHour, bedMin] = formData.bedtime.split(':').map(Number);
+    const [wakeHour, wakeMin] = formData.waketime.split(':').map(Number);
+    
+    let bedMinutes = bedHour * 60 + bedMin;
+    let wakeMinutes = wakeHour * 60 + wakeMin;
+    
+    if (wakeMinutes < bedMinutes) {
+      wakeMinutes += 24 * 60;
+    }
+    
+    const totalMinutes = wakeMinutes - bedMinutes;
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    
+    return { hours, mins, total: totalMinutes };
+  };
+
+  // Schedule reminder handlers
+  const openScheduleModal = (type) => {
+    setReminderType(type);
+    setShowScheduleModal(true);
+  };
+
+  const handleScheduleSuccess = () => {
+    setShowScheduleModal(false);
+  };
+
+  const duration = getSleepDuration();
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-purple-50">
-      {/* Header */}
+      {/* Header - FIXED: Navigation and styling */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b-4 border-[#8E6BBF]">
         <div className="max-w-md mx-auto px-4 py-3 flex items-center gap-3">
+          {/* FIXED: Navigate to /health, not /activities */}
+          {/* FIXED: Updated styling - border-4, rounded-xl (not border-3, rounded-full) */}
           <button
-            onClick={() => navigate('/activities')}
-            className="flex items-center gap-1 px-3 py-1.5 bg-white border-3 border-[#8E6BBF]
-                       rounded-full font-crayon text-sm text-[#8E6BBF] hover:bg-[#8E6BBF]
+            onClick={() => navigate('/health')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#8E6BBF] 
+                       rounded-xl font-display font-bold text-[#8E6BBF] hover:bg-[#8E6BBF] 
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
             Back
           </button>
+          <img 
+            src="/logo.jpeg" 
+            alt="ATLASassist" 
+            className="w-10 h-10 rounded-lg shadow-sm"
+          />
           <div className="flex-1">
             <h1 className="text-lg sm:text-xl font-display text-[#8E6BBF] crayon-text">
               😴 Sleep Tracker
@@ -291,101 +280,107 @@ const SleepTracker = () => {
         </div>
 
         {/* Sleep Entry Form */}
-        <div className="bg-white rounded-3xl border-4 border-[#8E6BBF] p-6 mb-6 shadow-crayon">
+        <div className="bg-white rounded-2xl border-3 border-purple-200 p-6 mb-6">
           {/* Bedtime */}
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-2">
-              <label className="flex items-center gap-2 font-crayon text-gray-700">
-                <Moon className="text-indigo-500" size={20} />
-                Bedtime
-              </label>
+            <label className="flex items-center gap-2 font-display text-gray-700 mb-2">
+              <Moon size={20} className="text-indigo-500" />
+              Bedtime
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="time"
+                value={formData.bedtime}
+                onChange={(e) => handleChange('bedtime', e.target.value)}
+                className="flex-1 px-4 py-3 border-3 border-gray-200 rounded-xl font-crayon text-lg
+                         focus:border-purple-400 focus:outline-none"
+              />
               <button
                 onClick={() => openScheduleModal('bedtime')}
-                className="flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-600 rounded-lg 
-                         font-crayon text-xs hover:bg-indigo-200 transition-colors"
-                title="Schedule bedtime reminder"
+                className="px-3 py-2 bg-purple-100 border-2 border-purple-300 rounded-xl
+                         text-purple-600 hover:bg-purple-200 transition-colors"
+                title="Add bedtime reminder to schedule"
               >
-                <CalendarPlus size={14} />
-                Schedule
+                <CalendarPlus size={20} />
               </button>
             </div>
-            <input
-              type="time"
-              value={formData.bedtime}
-              onChange={(e) => handleChange('bedtime', e.target.value)}
-              className="w-full p-4 border-3 border-indigo-200 rounded-xl font-crayon text-2xl text-center
-                       focus:border-indigo-400 focus:outline-none bg-indigo-50"
-            />
           </div>
 
-          {/* Wake time */}
+          {/* Wake Time */}
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-2">
-              <label className="flex items-center gap-2 font-crayon text-gray-700">
-                <Sun className="text-yellow-500" size={20} />
-                Wake Time
-              </label>
+            <label className="flex items-center gap-2 font-display text-gray-700 mb-2">
+              <Sun size={20} className="text-yellow-500" />
+              Wake Time
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="time"
+                value={formData.waketime}
+                onChange={(e) => handleChange('waketime', e.target.value)}
+                className="flex-1 px-4 py-3 border-3 border-gray-200 rounded-xl font-crayon text-lg
+                         focus:border-purple-400 focus:outline-none"
+              />
               <button
                 onClick={() => openScheduleModal('waketime')}
-                className="flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded-lg 
-                         font-crayon text-xs hover:bg-yellow-200 transition-colors"
-                title="Schedule wake up reminder"
+                className="px-3 py-2 bg-yellow-100 border-2 border-yellow-300 rounded-xl
+                         text-yellow-600 hover:bg-yellow-200 transition-colors"
+                title="Add wake time reminder to schedule"
               >
-                <CalendarPlus size={14} />
-                Schedule
+                <CalendarPlus size={20} />
               </button>
             </div>
-            <input
-              type="time"
-              value={formData.waketime}
-              onChange={(e) => handleChange('waketime', e.target.value)}
-              className="w-full p-4 border-3 border-yellow-200 rounded-xl font-crayon text-2xl text-center
-                       focus:border-yellow-400 focus:outline-none bg-yellow-50"
-            />
           </div>
 
-          {/* Duration display */}
+          {/* Duration Display */}
           {duration && (
-            <div className="mb-6 p-4 bg-purple-50 rounded-xl border-3 border-purple-200 text-center">
-              <Clock className="inline-block text-purple-500 mb-1" size={20} />
-              <p className="font-display text-purple-700 text-2xl">
-                {duration.hours}h {duration.minutes}m
-              </p>
-              <p className="font-crayon text-purple-500 text-sm">total sleep</p>
+            <div className="mb-6 p-4 bg-indigo-50 rounded-xl text-center">
+              <span className="font-crayon text-gray-600">Sleep Duration</span>
+              <div className="font-display text-3xl text-indigo-600 mt-1">
+                {duration.hours}h {duration.mins}m
+              </div>
+              <div className="mt-2">
+                {duration.total >= 480 ? (
+                  <span className="text-green-600 font-crayon">✓ Great! 8+ hours</span>
+                ) : duration.total >= 420 ? (
+                  <span className="text-yellow-600 font-crayon">Good - 7+ hours</span>
+                ) : (
+                  <span className="text-orange-600 font-crayon">Try for more sleep</span>
+                )}
+              </div>
             </div>
           )}
 
           {/* Sleep Quality */}
           <div>
-            <label className="block font-crayon text-gray-700 mb-2">How did you sleep?</label>
-            <div className="flex justify-between gap-2">
-              {SLEEP_QUALITY.map(quality => (
+            <label className="font-display text-gray-700 mb-3 block">
+              How did you sleep?
+            </label>
+            <div className="grid grid-cols-5 gap-2">
+              {SLEEP_QUALITY.map((quality) => (
                 <button
                   key={quality.id}
                   onClick={() => handleChange('quality', quality.id)}
-                  className={`flex-1 p-3 rounded-xl border-3 transition-all
+                  className={`p-3 rounded-xl border-3 flex flex-col items-center gap-1
                     ${formData.quality === quality.id 
-                      ? `${quality.color} scale-105` 
-                      : 'bg-gray-50 border-gray-200 hover:border-gray-400'
+                      ? quality.color 
+                      : 'border-gray-200 hover:border-gray-300'
                     }`}
                 >
-                  <span className="text-3xl block">{quality.emoji}</span>
+                  <span className="text-2xl">{quality.emoji}</span>
+                  <span className="font-crayon text-xs text-gray-600 hidden sm:block">
+                    {quality.label.split(' ')[0]}
+                  </span>
                 </button>
               ))}
             </div>
-            {formData.quality && (
-              <p className="text-center font-crayon text-gray-600 mt-2">
-                {getQualityInfo(formData.quality)?.label}
-              </p>
-            )}
           </div>
 
-          {/* Delete button */}
+          {/* Delete Button */}
           {entries[selectedDate] && (
             <button
-              onClick={deleteEntry}
-              className="mt-4 w-full py-2 bg-red-50 text-red-500 rounded-xl border-2 border-red-200
-                       font-crayon text-sm hover:bg-red-100 flex items-center justify-center gap-2"
+              onClick={handleDelete}
+              className="mt-6 w-full py-2 text-red-500 font-crayon flex items-center justify-center gap-2
+                       hover:bg-red-50 rounded-xl transition-colors"
             >
               <Trash2 size={16} />
               Delete Entry
@@ -393,28 +388,23 @@ const SleepTracker = () => {
           )}
         </div>
 
-        {/* Week Summary */}
-        <div className="bg-white rounded-2xl border-3 border-gray-300 p-4">
-          <h3 className="font-display text-gray-700 mb-3 flex items-center gap-2">
-            <Moon size={18} className="text-indigo-400" />
-            This Week
-          </h3>
-          <div className="flex justify-between">
-            {weekSummary.map(day => {
-              const quality = day.quality ? getQualityInfo(day.quality) : null;
+        {/* Week Overview */}
+        <div className="bg-white rounded-2xl border-3 border-purple-200 p-4 mb-6">
+          <h3 className="font-display text-gray-700 mb-3 text-center">This Week</h3>
+          <div className="grid grid-cols-7 gap-1">
+            {weekSummary.map((day) => {
               const isSelected = day.date === selectedDate;
-              
               return (
                 <button
                   key={day.date}
                   onClick={() => setSelectedDate(day.date)}
-                  className={`flex flex-col items-center p-2 rounded-xl transition-all
-                    ${isSelected ? 'bg-purple-100 border-2 border-purple-400' : ''}
+                  className={`p-2 rounded-lg text-center transition-all
+                    ${isSelected ? 'bg-purple-100 border-2 border-purple-400' : 'hover:bg-gray-50'}
                   `}
                 >
-                  <span className="text-xs font-crayon text-gray-500">{day.day.charAt(0)}</span>
-                  <span className="text-2xl mt-1">
-                    {quality ? quality.emoji : day.hasData ? '📝' : '○'}
+                  <span className="block font-crayon text-xs text-gray-500">{day.day}</span>
+                  <span className="block text-lg mt-1">
+                    {day.quality ? day.quality.emoji : day.hasData ? '📝' : '○'}
                   </span>
                 </button>
               );
@@ -423,14 +413,15 @@ const SleepTracker = () => {
         </div>
 
         {/* Tips */}
-        <div className="mt-6 p-4 bg-indigo-50 rounded-2xl border-3 border-indigo-200">
+        <div className="p-4 bg-indigo-50 rounded-2xl border-3 border-indigo-200">
           <p className="text-center text-gray-600 font-crayon text-sm">
-            💡 <strong>Tip:</strong> Regular sleep schedules help us feel our best! Try to go to bed and wake up at the same time each day.
+            💡 <strong>Tip:</strong> Regular sleep schedules help us feel our best! 
+            Try to go to bed and wake up at the same time each day.
           </p>
         </div>
       </main>
 
-      {/* Add to Schedule Modal - Using new API */}
+      {/* Add to Schedule Modal */}
       <AddToScheduleModal
         isOpen={showScheduleModal}
         onClose={() => setShowScheduleModal(false)}

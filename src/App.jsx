@@ -1,6 +1,9 @@
 // App.jsx - ATLASassist v2.0 with LAZY LOADING
 // Uses React.lazy() for code splitting - only loads pages when needed
 // This dramatically reduces initial bundle size and improves load time
+// UPDATED: Added Music & Sounds, Photo Journal, Reward Chart
+// FIXED: Game routes to match Games.jsx paths
+// FIXED: HealthyChoices route to match Health.jsx path
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect, createContext, useContext, lazy, Suspense } from 'react';
@@ -77,6 +80,10 @@ const SocialStories = lazy(() => import('./pages/SocialStories'));
 const ColoringBook = lazy(() => import('./pages/ColoringBook'));
 const PronunciationPractice = lazy(() => import('./pages/PronunciationPractice'));
 const ChoiceBoard = lazy(() => import('./pages/ChoiceBoard'));
+// NEW: Activities apps
+const MusicSounds = lazy(() => import('./pages/MusicSounds'));
+const PhotoJournal = lazy(() => import('./pages/PhotoJournal'));
+const RewardChart = lazy(() => import('./pages/RewardChart'));
 
 // Planning Hub
 const PlanningHub = lazy(() => import('./pages/PlanningHub'));
@@ -507,10 +514,6 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            
-            {/* ============================================ */}
-            {/* SETTINGS */}
-            {/* ============================================ */}
             <Route 
               path="/settings" 
               element={
@@ -521,22 +524,18 @@ function App() {
             />
             
             {/* ============================================ */}
-            {/* VISUAL SCHEDULE */}
+            {/* CORE FEATURES */}
             {/* ============================================ */}
             <Route 
-              path="/visual-schedule" 
+              path="/schedule" 
               element={
                 <ProtectedRoute>
                   <VisualSchedule />
                 </ProtectedRoute>
               } 
             />
-            
-            {/* ============================================ */}
-            {/* POINT TO TALK */}
-            {/* ============================================ */}
             <Route 
-              path="/point-to-talk" 
+              path="/talk" 
               element={
                 <ProtectedRoute>
                   <PointToTalk />
@@ -545,7 +544,7 @@ function App() {
             />
             
             {/* ============================================ */}
-            {/* DAILY TOOLS HUB */}
+            {/* TOOLS HUB */}
             {/* ============================================ */}
             <Route 
               path="/tools" 
@@ -603,24 +602,12 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            <Route 
-              path="/tools/point-to-talk" 
-              element={
-                <ProtectedRoute>
-                  <PointToTalk />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/tools/calm-down" 
-              element={<Navigate to="/wellness/calm-down" replace />}
-            />
             
             {/* ============================================ */}
             {/* EMOTIONAL WELLNESS HUB */}
             {/* ============================================ */}
             <Route 
-              path="/wellness" 
+              path="/emotional-wellness" 
               element={
                 <ProtectedRoute>
                   <EmotionalWellnessHub />
@@ -628,7 +615,7 @@ function App() {
               } 
             />
             <Route 
-              path="/wellness/calm-down" 
+              path="/emotional-wellness/calm-down" 
               element={
                 <ProtectedRoute>
                   <CalmDown />
@@ -636,7 +623,7 @@ function App() {
               } 
             />
             <Route 
-              path="/wellness/sensory-breaks" 
+              path="/emotional-wellness/sensory-breaks" 
               element={
                 <ProtectedRoute>
                   <SensoryBreaks />
@@ -644,7 +631,7 @@ function App() {
               } 
             />
             <Route 
-              path="/wellness/feelings" 
+              path="/emotional-wellness/feelings" 
               element={
                 <ProtectedRoute>
                   <FeelingsTracker />
@@ -652,7 +639,7 @@ function App() {
               } 
             />
             <Route 
-              path="/wellness/emotion-chart" 
+              path="/emotional-wellness/emotion-chart" 
               element={
                 <ProtectedRoute>
                   <EmotionChart />
@@ -660,7 +647,7 @@ function App() {
               } 
             />
             <Route 
-              path="/wellness/coping-skills" 
+              path="/emotional-wellness/coping-skills" 
               element={
                 <ProtectedRoute>
                   <CopingSkillsChart />
@@ -668,7 +655,7 @@ function App() {
               } 
             />
             <Route 
-              path="/wellness/circles-control" 
+              path="/emotional-wellness/circles-of-control" 
               element={
                 <ProtectedRoute>
                   <CirclesOfControl />
@@ -676,7 +663,7 @@ function App() {
               } 
             />
             <Route 
-              path="/wellness/growth-mindset" 
+              path="/emotional-wellness/growth-mindset" 
               element={
                 <ProtectedRoute>
                   <GrowthMindset />
@@ -687,14 +674,6 @@ function App() {
             {/* ============================================ */}
             {/* CARE TEAM / SERVICES HUB */}
             {/* ============================================ */}
-            <Route 
-              path="/care-team" 
-              element={
-                <ProtectedRoute>
-                  <Services />
-                </ProtectedRoute>
-              } 
-            />
             <Route 
               path="/services" 
               element={
@@ -740,6 +719,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Reminders />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/services/routines" 
+              element={
+                <ProtectedRoute>
+                  <DailyRoutines />
                 </ProtectedRoute>
               } 
             />
@@ -796,15 +783,16 @@ function App() {
               } 
             />
             <Route 
-              path="/health/ot-exercises" 
+              path="/health/ot" 
               element={
                 <ProtectedRoute>
                   <OTExercises />
                 </ProtectedRoute>
               } 
             />
+            {/* FIXED: Changed from /health/healthy-choices to /health/choices */}
             <Route 
-              path="/health/healthy-choices" 
+              path="/health/choices" 
               element={
                 <ProtectedRoute>
                   <HealthyChoices />
@@ -814,6 +802,7 @@ function App() {
             
             {/* ============================================ */}
             {/* GAMES HUB */}
+            {/* FIXED: Routes now match Games.jsx paths */}
             {/* ============================================ */}
             <Route 
               path="/games" 
@@ -831,32 +820,36 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            {/* FIXED: /games/emotion-match -> /games/emotions */}
             <Route 
-              path="/games/emotion-match" 
+              path="/games/emotions" 
               element={
                 <ProtectedRoute>
                   <EmotionMatch />
                 </ProtectedRoute>
               } 
             />
+            {/* FIXED: /games/bubble-pop -> /games/bubbles */}
             <Route 
-              path="/games/bubble-pop" 
+              path="/games/bubbles" 
               element={
                 <ProtectedRoute>
                   <BubblePop />
                 </ProtectedRoute>
               } 
             />
+            {/* FIXED: /games/color-sort -> /games/sorting */}
             <Route 
-              path="/games/color-sort" 
+              path="/games/sorting" 
               element={
                 <ProtectedRoute>
                   <ColorSort />
                 </ProtectedRoute>
               } 
             />
+            {/* FIXED: /games/shape-match -> /games/shapes */}
             <Route 
-              path="/games/shape-match" 
+              path="/games/shapes" 
               element={
                 <ProtectedRoute>
                   <ShapeMatch />
@@ -871,8 +864,9 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            {/* FIXED: /games/patterns -> /games/pattern */}
             <Route 
-              path="/games/patterns" 
+              path="/games/pattern" 
               element={
                 <ProtectedRoute>
                   <PatternSequence />
@@ -928,6 +922,33 @@ function App() {
               element={
                 <ProtectedRoute>
                   <ChoiceBoard />
+                </ProtectedRoute>
+              } 
+            />
+            {/* NEW: Music & Sounds */}
+            <Route 
+              path="/activities/music" 
+              element={
+                <ProtectedRoute>
+                  <MusicSounds />
+                </ProtectedRoute>
+              } 
+            />
+            {/* NEW: Photo Journal */}
+            <Route 
+              path="/activities/photo-journal" 
+              element={
+                <ProtectedRoute>
+                  <PhotoJournal />
+                </ProtectedRoute>
+              } 
+            />
+            {/* NEW: Reward Chart */}
+            <Route 
+              path="/activities/rewards" 
+              element={
+                <ProtectedRoute>
+                  <RewardChart />
                 </ProtectedRoute>
               } 
             />
