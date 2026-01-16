@@ -1,5 +1,6 @@
 // CopingSkillsChart.jsx - Personalized Coping Strategies Tool
 // Part of the Emotional Wellness hub
+// UPDATED: Added Visual Schedule integration for scheduling coping breaks
 // Helps users build their own toolkit of strategies for different emotions
 
 import { useState, useEffect, useRef } from 'react';
@@ -26,9 +27,22 @@ import {
   Image,
   Volume2,
   HelpCircle,
-  Download
+  Download,
+  CalendarPlus,
+  Clock,
+  Bell
 } from 'lucide-react';
 import { getPictogramUrl } from '../services/arasaac';
+import { 
+  addCopingBreak, 
+  addCopingRoutine,
+  getToday, 
+  getTomorrow,
+  formatDateDisplay,
+  formatTimeDisplay,
+  SCHEDULE_SOURCES,
+  SOURCE_COLORS 
+} from '../services/scheduleHelper';
 
 // ============================================
 // STORAGE KEY
@@ -47,6 +61,19 @@ const EMOTIONS = [
   { id: 'overwhelmed', name: 'Overwhelmed', color: '#EC4899', bgColor: '#FDF2F8', arasaacId: 11325, emoji: '😵' },
   { id: 'lonely', name: 'Lonely', color: '#64748B', bgColor: '#F1F5F9', arasaacId: 11331, emoji: '😔' },
   { id: 'excited', name: 'Too Excited', color: '#E86B9A', bgColor: '#FDEBF0', arasaacId: 11319, emoji: '🤪' },
+];
+
+// ============================================
+// CATEGORIES
+// ============================================
+const CATEGORIES = [
+  { id: 'breathing', name: 'Breathing', icon: '🌬️', color: '#87CEEB' },
+  { id: 'movement', name: 'Movement', icon: '🏃', color: '#5CB85C' },
+  { id: 'sensory', name: 'Sensory', icon: '✋', color: '#E86B9A' },
+  { id: 'mental', name: 'Thinking', icon: '🧠', color: '#8E6BBF' },
+  { id: 'social', name: 'Social', icon: '👥', color: '#F5A623' },
+  { id: 'creative', name: 'Creative', icon: '🎨', color: '#4A9FD4' },
+  { id: 'custom', name: 'My Own', icon: '⭐', color: '#20B2AA' },
 ];
 
 // ============================================
@@ -98,366 +125,455 @@ const DEFAULT_STRATEGIES = [
   // Social
   { id: 'talk', name: 'Talk to Someone', category: 'social', icon: '💬', arasaacId: 6457,
     description: 'Tell a trusted person how you feel' },
-  { id: 'ask-help', name: 'Ask for Help', category: 'social', icon: '🙋', arasaacId: 6521,
-    description: 'It\'s okay to ask an adult for help' },
-  { id: 'be-alone', name: 'Take Alone Time', category: 'social', icon: '🚪', arasaacId: 2554,
+  { id: 'ask-help', name: 'Ask for Help', category: 'social', icon: '🙋', arasaacId: 6462,
+    description: 'It\'s okay to need help - ask someone you trust' },
+  { id: 'alone-time', name: 'Take Alone Time', category: 'social', icon: '🚪', arasaacId: 4871,
     description: 'Go to a quiet place by yourself for a few minutes' },
   
   // Creative
-  { id: 'draw', name: 'Draw or Color', category: 'creative', icon: '🎨', arasaacId: 3262,
-    description: 'Draw your feelings or color a picture' },
-  { id: 'write', name: 'Write or Journal', category: 'creative', icon: '✏️', arasaacId: 6454,
-    description: 'Write down how you feel or what happened' },
-  { id: 'music', name: 'Listen to Music', category: 'creative', icon: '🎵', arasaacId: 3811,
-    description: 'Put on calming music or your favorite songs' },
-  { id: 'sing', name: 'Sing a Song', category: 'creative', icon: '🎤', arasaacId: 3811,
-    description: 'Sing your favorite song out loud' },
-  
-  // Physical comfort
-  { id: 'drink-water', name: 'Drink Water', category: 'comfort', icon: '🥤', arasaacId: 32355,
-    description: 'Have a drink of cool water' },
-  { id: 'snack', name: 'Have a Healthy Snack', category: 'comfort', icon: '🍎', arasaacId: 2360,
-    description: 'Eat something healthy if you\'re hungry' },
-  { id: 'rest', name: 'Rest or Nap', category: 'comfort', icon: '😴', arasaacId: 5006,
-    description: 'Lie down and rest your body' },
-  { id: 'cozy-spot', name: 'Go to a Cozy Spot', category: 'comfort', icon: '🛋️', arasaacId: 5001,
-    description: 'Find your favorite comfortable place' },
-];
-
-// Category metadata
-const CATEGORIES = [
-  { id: 'breathing', name: 'Breathing', icon: Wind, color: '#87CEEB' },
-  { id: 'movement', name: 'Movement', icon: PersonStanding, color: '#5CB85C' },
-  { id: 'sensory', name: 'Sensory', icon: Sparkles, color: '#8E6BBF' },
-  { id: 'mental', name: 'Mental', icon: Sparkles, color: '#F5A623' },
-  { id: 'social', name: 'Social', icon: MessageCircle, color: '#4A9FD4' },
-  { id: 'creative', name: 'Creative', icon: Pencil, color: '#E86B9A' },
-  { id: 'comfort', name: 'Comfort', icon: Heart, color: '#E63B2E' },
-  { id: 'custom', name: 'My Own', icon: Star, color: '#F8D14A' },
+  { id: 'draw', name: 'Draw or Color', category: 'creative', icon: '🎨', arasaacId: 5547,
+    description: 'Express yourself through art - draw how you feel' },
+  { id: 'music', name: 'Listen to Music', category: 'creative', icon: '🎵', arasaacId: 3098,
+    description: 'Put on calming music or your favorite song' },
+  { id: 'write', name: 'Write It Down', category: 'creative', icon: '✏️', arasaacId: 5548,
+    description: 'Write about how you feel in a journal' },
+  { id: 'sing', name: 'Sing a Song', category: 'creative', icon: '🎤', arasaacId: 3090,
+    description: 'Sing your favorite song - loud or soft!' },
 ];
 
 // ============================================
 // SPEAK FUNCTION
 // ============================================
 const speak = (text) => {
-  if (!('speechSynthesis' in window)) return;
-  speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = 0.85;
-  speechSynthesis.speak(utterance);
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    window.speechSynthesis.speak(utterance);
+  }
+};
+
+// ============================================
+// SCHEDULE COPING BREAKS MODAL
+// ============================================
+const ScheduleBreaksModal = ({ isOpen, onClose, userStrategies, allStrategies }) => {
+  const [scheduleType, setScheduleType] = useState('single'); // 'single' or 'routine'
+  const [selectedDate, setSelectedDate] = useState(getToday());
+  const [selectedTime, setSelectedTime] = useState('10:00');
+  const [selectedStrategy, setSelectedStrategy] = useState(null);
+  const [routineBreaks, setRoutineBreaks] = useState([
+    { time: '10:00', strategyId: null },
+    { time: '14:00', strategyId: null },
+    { time: '16:00', strategyId: null },
+  ]);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState(null);
+  
+  if (!isOpen) return null;
+  
+  const handleAddSingleBreak = () => {
+    if (!selectedStrategy) {
+      setError('Please select a coping strategy');
+      return;
+    }
+    
+    const strategy = allStrategies.find(s => s.id === selectedStrategy);
+    if (!strategy) {
+      setError('Strategy not found');
+      return;
+    }
+    
+    const result = addCopingBreak({
+      date: selectedDate,
+      time: selectedTime,
+      skillName: strategy.name,
+      emoji: strategy.icon,
+      notify: true,
+    });
+    
+    if (result.success) {
+      setSuccess(true);
+      setTimeout(() => {
+        onClose();
+        setSuccess(false);
+        setSelectedStrategy(null);
+      }, 1500);
+    } else {
+      setError(result.error);
+    }
+  };
+  
+  const handleAddRoutine = () => {
+    const validBreaks = routineBreaks.filter(b => b.strategyId);
+    if (validBreaks.length === 0) {
+      setError('Please select at least one strategy');
+      return;
+    }
+    
+    const skills = validBreaks.map(b => {
+      const strategy = allStrategies.find(s => s.id === b.strategyId);
+      return {
+        time: b.time,
+        name: strategy?.name || 'Coping Break',
+        emoji: strategy?.icon || '🧘',
+      };
+    });
+    
+    const result = addCopingRoutine(selectedDate, skills);
+    
+    if (result.success || result.count > 0) {
+      setSuccess(true);
+      setTimeout(() => {
+        onClose();
+        setSuccess(false);
+      }, 1500);
+    } else {
+      setError('Failed to add routine');
+    }
+  };
+  
+  const updateRoutineBreak = (index, field, value) => {
+    setRoutineBreaks(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+  
+  const addRoutineBreak = () => {
+    setRoutineBreaks(prev => [...prev, { time: '12:00', strategyId: null }]);
+  };
+  
+  const removeRoutineBreak = (index) => {
+    setRoutineBreaks(prev => prev.filter((_, i) => i !== index));
+  };
+  
+  const timeOptions = [
+    '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
+    '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'
+  ];
+  
+  if (success) {
+    return (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl p-8 text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Check size={32} className="text-green-600" />
+          </div>
+          <h3 className="font-display text-xl text-green-600">Added to Schedule!</h3>
+          <p className="font-crayon text-gray-500 mt-2">
+            Check your Visual Schedule for coping break reminders
+          </p>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+        {/* Header */}
+        <div className="sticky top-0 bg-[#20B2AA] text-white p-4 flex items-center gap-3 rounded-t-2xl">
+          <CalendarPlus size={24} />
+          <h3 className="font-display text-xl flex-1">Schedule Coping Breaks</h3>
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-white/20 rounded-full transition-colors"
+          >
+            <X size={24} />
+          </button>
+        </div>
+        
+        {/* Content */}
+        <div className="p-4 space-y-4">
+          {/* Type Selection */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setScheduleType('single')}
+              className={`flex-1 py-3 rounded-xl font-display text-sm border-2 transition-all
+                        ${scheduleType === 'single' 
+                          ? 'bg-[#20B2AA] text-white border-[#20B2AA]' 
+                          : 'bg-white text-gray-600 border-gray-200'}`}
+            >
+              One Break
+            </button>
+            <button
+              onClick={() => setScheduleType('routine')}
+              className={`flex-1 py-3 rounded-xl font-display text-sm border-2 transition-all
+                        ${scheduleType === 'routine' 
+                          ? 'bg-[#20B2AA] text-white border-[#20B2AA]' 
+                          : 'bg-white text-gray-600 border-gray-200'}`}
+            >
+              Daily Routine
+            </button>
+          </div>
+          
+          {/* Date Selection */}
+          <div>
+            <label className="block font-crayon text-gray-600 mb-2">Which day?</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setSelectedDate(getToday())}
+                className={`flex-1 py-2 rounded-xl font-crayon text-sm border-2 transition-all
+                          ${selectedDate === getToday() 
+                            ? 'bg-[#20B2AA]/20 border-[#20B2AA] text-[#20B2AA]' 
+                            : 'bg-white border-gray-200 text-gray-600'}`}
+              >
+                Today
+              </button>
+              <button
+                onClick={() => setSelectedDate(getTomorrow())}
+                className={`flex-1 py-2 rounded-xl font-crayon text-sm border-2 transition-all
+                          ${selectedDate === getTomorrow() 
+                            ? 'bg-[#20B2AA]/20 border-[#20B2AA] text-[#20B2AA]' 
+                            : 'bg-white border-gray-200 text-gray-600'}`}
+              >
+                Tomorrow
+              </button>
+            </div>
+          </div>
+          
+          {/* Single Break Mode */}
+          {scheduleType === 'single' && (
+            <>
+              {/* Time Selection */}
+              <div>
+                <label className="block font-crayon text-gray-600 mb-2">What time?</label>
+                <select
+                  value={selectedTime}
+                  onChange={(e) => setSelectedTime(e.target.value)}
+                  className="w-full p-3 border-2 border-gray-200 rounded-xl font-crayon focus:border-[#20B2AA] outline-none"
+                >
+                  {timeOptions.map(time => (
+                    <option key={time} value={time}>{formatTimeDisplay(time)}</option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* Strategy Selection */}
+              <div>
+                <label className="block font-crayon text-gray-600 mb-2">Which coping strategy?</label>
+                <div className="max-h-48 overflow-y-auto space-y-2 border-2 border-gray-100 rounded-xl p-2">
+                  {allStrategies.slice(0, 20).map(strategy => (
+                    <button
+                      key={strategy.id}
+                      onClick={() => setSelectedStrategy(strategy.id)}
+                      className={`w-full p-3 rounded-xl border-2 flex items-center gap-3 text-left transition-all
+                                ${selectedStrategy === strategy.id 
+                                  ? 'bg-[#20B2AA]/20 border-[#20B2AA]' 
+                                  : 'bg-white border-gray-100 hover:border-gray-200'}`}
+                    >
+                      <span className="text-2xl">{strategy.icon}</span>
+                      <div>
+                        <p className="font-display text-sm">{strategy.name}</p>
+                        <p className="font-crayon text-xs text-gray-400">
+                          {CATEGORIES.find(c => c.id === strategy.category)?.name}
+                        </p>
+                      </div>
+                      {selectedStrategy === strategy.id && (
+                        <Check size={18} className="text-[#20B2AA] ml-auto" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+          
+          {/* Routine Mode */}
+          {scheduleType === 'routine' && (
+            <div>
+              <label className="block font-crayon text-gray-600 mb-2">
+                Plan your coping breaks for the day:
+              </label>
+              <div className="space-y-3">
+                {routineBreaks.map((brk, index) => (
+                  <div key={index} className="flex gap-2 items-center">
+                    <select
+                      value={brk.time}
+                      onChange={(e) => updateRoutineBreak(index, 'time', e.target.value)}
+                      className="w-24 p-2 border-2 border-gray-200 rounded-lg font-crayon text-sm focus:border-[#20B2AA] outline-none"
+                    >
+                      {timeOptions.map(time => (
+                        <option key={time} value={time}>{formatTimeDisplay(time)}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={brk.strategyId || ''}
+                      onChange={(e) => updateRoutineBreak(index, 'strategyId', e.target.value || null)}
+                      className="flex-1 p-2 border-2 border-gray-200 rounded-lg font-crayon text-sm focus:border-[#20B2AA] outline-none"
+                    >
+                      <option value="">Select strategy...</option>
+                      {allStrategies.slice(0, 20).map(strategy => (
+                        <option key={strategy.id} value={strategy.id}>
+                          {strategy.icon} {strategy.name}
+                        </option>
+                      ))}
+                    </select>
+                    {routineBreaks.length > 1 && (
+                      <button
+                        onClick={() => removeRoutineBreak(index)}
+                        className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  onClick={addRoutineBreak}
+                  className="w-full py-2 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 font-crayon
+                           hover:border-[#20B2AA] hover:text-[#20B2AA] transition-colors"
+                >
+                  <Plus size={16} className="inline mr-1" />
+                  Add another break
+                </button>
+              </div>
+            </div>
+          )}
+          
+          {/* Preview */}
+          <div className="p-3 bg-gray-50 rounded-xl">
+            <p className="font-crayon text-sm text-gray-600">
+              <Bell size={14} className="inline mr-1 text-[#20B2AA]" />
+              {scheduleType === 'single' 
+                ? `You'll get a reminder at ${formatTimeDisplay(selectedTime)} on ${formatDateDisplay(selectedDate)} to use your coping skill.`
+                : `You'll get ${routineBreaks.filter(b => b.strategyId).length} coping break reminders on ${formatDateDisplay(selectedDate)}.`
+              }
+            </p>
+          </div>
+          
+          {error && (
+            <p className="text-red-500 font-crayon text-sm text-center">{error}</p>
+          )}
+          
+          {/* Add Button */}
+          <button
+            onClick={scheduleType === 'single' ? handleAddSingleBreak : handleAddRoutine}
+            className="w-full py-3 bg-[#20B2AA] text-white rounded-xl font-display
+                     hover:bg-[#1A9590] transition-colors"
+          >
+            <CalendarPlus size={18} className="inline mr-2" />
+            Add to Visual Schedule
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 // ============================================
 // STRATEGY CARD COMPONENT
 // ============================================
-const StrategyCard = ({ strategy, isSelected, isFavorite, onToggle, onFavorite, onSpeak, compact = false }) => {
-  const [imageLoaded, setImageLoaded] = useState(false);
-  
+const StrategyCard = ({ strategy, isSelected, isFavorite, onToggle, onToggleFavorite, onSpeak }) => {
   return (
     <div
-      className={`relative rounded-xl border-3 transition-all ${
-        compact ? 'p-2' : 'p-3'
-      } ${
+      className={`relative p-3 rounded-xl border-3 transition-all ${
         isSelected 
-          ? 'border-green-500 bg-green-50 shadow-md' 
-          : 'border-gray-200 bg-white hover:border-gray-300'
+          ? 'bg-green-50 border-green-400' 
+          : 'bg-white border-gray-200 hover:border-gray-300'
       }`}
     >
-      <div className="flex items-start gap-2">
+      <div className="flex items-start gap-3">
         {/* Checkbox */}
         <button
-          onClick={() => onToggle(strategy.id)}
-          className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center
-                     transition-colors ${
-                       isSelected 
-                         ? 'bg-green-500 border-green-500 text-white' 
-                         : 'border-gray-300 hover:border-green-400'
-                     }`}
+          onClick={onToggle}
+          className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 mt-1
+                    ${isSelected 
+                      ? 'bg-green-500 border-green-500 text-white' 
+                      : 'border-gray-300'}`}
         >
           {isSelected && <Check size={14} />}
         </button>
         
-        {/* Icon/Image */}
-        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden">
-          {strategy.arasaacId ? (
-            <img
-              src={getPictogramUrl(strategy.arasaacId)}
-              alt={strategy.name}
-              className={`w-full h-full object-contain p-0.5 transition-opacity ${
-                imageLoaded ? 'opacity-100' : 'opacity-0'
-              }`}
-              onLoad={() => setImageLoaded(true)}
-            />
-          ) : strategy.customImage ? (
-            <img
-              src={strategy.customImage}
-              alt={strategy.name}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <span className="text-xl">{strategy.icon}</span>
-          )}
-        </div>
+        {/* Icon */}
+        {strategy.arasaacId ? (
+          <img
+            src={getPictogramUrl(strategy.arasaacId)}
+            alt={strategy.name}
+            className="w-12 h-12 object-contain flex-shrink-0"
+          />
+        ) : (
+          <span className="text-3xl">{strategy.icon}</span>
+        )}
         
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <h4 className="font-display text-sm text-gray-800 leading-tight">
-            {strategy.name}
-          </h4>
-          {!compact && strategy.description && (
-            <p className="font-crayon text-xs text-gray-500 mt-0.5 line-clamp-2">
-              {strategy.description}
-            </p>
+          <div className="flex items-center gap-2">
+            <h4 className="font-display text-gray-800">{strategy.name}</h4>
+            <button
+              onClick={onToggleFavorite}
+              className={`p-1 rounded transition-colors ${
+                isFavorite ? 'text-yellow-500' : 'text-gray-300 hover:text-yellow-400'
+              }`}
+            >
+              <Star size={16} fill={isFavorite ? 'currentColor' : 'none'} />
+            </button>
+          </div>
+          {strategy.description && (
+            <p className="font-crayon text-sm text-gray-500 mt-1">{strategy.description}</p>
           )}
         </div>
         
-        {/* Actions */}
-        <div className="flex flex-col gap-1">
-          <button
-            onClick={() => onFavorite(strategy.id)}
-            className={`p-1 rounded-full transition-colors ${
-              isFavorite ? 'text-yellow-500' : 'text-gray-300 hover:text-yellow-400'
-            }`}
-          >
-            <Star size={16} fill={isFavorite ? 'currentColor' : 'none'} />
-          </button>
-          <button
-            onClick={() => onSpeak(strategy.name + '. ' + (strategy.description || ''))}
-            className="p-1 rounded-full text-gray-300 hover:text-blue-500 transition-colors"
-          >
-            <Volume2 size={16} />
-          </button>
-        </div>
+        {/* Speak Button */}
+        <button
+          onClick={() => onSpeak(strategy.name + '. ' + (strategy.description || ''))}
+          className="p-2 text-gray-400 hover:text-[#4A9FD4] hover:bg-blue-50 rounded-lg transition-colors flex-shrink-0"
+        >
+          <Volume2 size={18} />
+        </button>
       </div>
     </div>
   );
 };
 
 // ============================================
-// ADD CUSTOM STRATEGY MODAL
+// INFO MODAL
 // ============================================
-const AddStrategyModal = ({ onClose, onSave }) => {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [icon, setIcon] = useState('⭐');
-  const [customImage, setCustomImage] = useState(null);
-  const fileInputRef = useRef(null);
-  
-  const commonIcons = ['⭐', '💪', '🧘', '🎯', '✨', '🌈', '🦋', '🌟', '💚', '🔥', '🎵', '📚', '🏃', '🤝'];
-  
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setCustomImage(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-  
-  const handleSave = () => {
-    if (!name.trim()) return;
-    
-    onSave({
-      id: `custom_${Date.now()}`,
-      name: name.trim(),
-      description: description.trim(),
-      icon,
-      customImage,
-      category: 'custom',
-      isCustom: true,
-    });
-    onClose();
-  };
+const InfoModal = ({ isOpen, onClose }) => {
+  if (!isOpen) return null;
   
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-xl text-[#5CB85C]">Add Your Own Strategy</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100">
-            <X size={20} className="text-gray-400" />
+          <h2 className="font-display text-xl text-[#5CB85C]">How to Use</h2>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full">
+            <X size={24} className="text-gray-400" />
           </button>
         </div>
         
-        <div className="space-y-4">
-          {/* Name */}
-          <div>
-            <label className="block font-crayon text-sm text-gray-600 mb-1">
-              What's your strategy? *
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Hug my teddy bear"
-              className="w-full px-4 py-3 rounded-xl border-3 border-gray-200 focus:border-[#5CB85C] outline-none font-crayon"
-              maxLength={50}
-            />
+        <div className="space-y-4 font-crayon text-gray-600">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">1️⃣</span>
+            <p>Click "Edit My Chart" to build your personal coping toolkit</p>
           </div>
-          
-          {/* Description */}
-          <div>
-            <label className="block font-crayon text-sm text-gray-600 mb-1">
-              How does it help? (optional)
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="e.g., Makes me feel safe and calm"
-              className="w-full px-4 py-3 rounded-xl border-3 border-gray-200 focus:border-[#5CB85C] outline-none font-crayon resize-none"
-              rows={2}
-              maxLength={100}
-            />
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">2️⃣</span>
+            <p>Pick a feeling, then choose strategies that help YOU</p>
           </div>
-          
-          {/* Icon Selection */}
-          <div>
-            <label className="block font-crayon text-sm text-gray-600 mb-1">
-              Pick an icon
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {commonIcons.map((emoji) => (
-                <button
-                  key={emoji}
-                  onClick={() => setIcon(emoji)}
-                  className={`w-10 h-10 rounded-lg text-xl flex items-center justify-center transition-all
-                            ${icon === emoji 
-                              ? 'bg-[#5CB85C] scale-110 shadow-md' 
-                              : 'bg-gray-100 hover:bg-gray-200'
-                            }`}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">3️⃣</span>
+            <p>Star ⭐ your favorites for quick access</p>
           </div>
-          
-          {/* Custom Image */}
-          <div>
-            <label className="block font-crayon text-sm text-gray-600 mb-1">
-              Or add a photo (optional)
-            </label>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleImageUpload}
-              accept="image/*"
-              className="hidden"
-            />
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-dashed border-gray-300 
-                         hover:border-[#5CB85C] transition-colors font-crayon text-sm text-gray-500"
-              >
-                <Camera size={18} />
-                {customImage ? 'Change Photo' : 'Add Photo'}
-              </button>
-              {customImage && (
-                <div className="relative">
-                  <img src={customImage} alt="Preview" className="w-12 h-12 rounded-lg object-cover" />
-                  <button
-                    onClick={() => setCustomImage(null)}
-                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full 
-                             flex items-center justify-center"
-                  >
-                    <X size={12} />
-                  </button>
-                </div>
-              )}
-            </div>
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">4️⃣</span>
+            <p>When you feel that emotion, find your strategies in "My Chart"</p>
+          </div>
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">📅</span>
+            <p><strong>NEW!</strong> Schedule coping breaks throughout your day to practice staying calm!</p>
           </div>
         </div>
         
-        {/* Save Button */}
         <button
-          onClick={handleSave}
-          disabled={!name.trim()}
-          className="w-full mt-6 py-3 bg-[#5CB85C] text-white font-display rounded-xl
-                   hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={onClose}
+          className="w-full mt-6 py-3 bg-[#5CB85C] text-white rounded-xl font-display"
         >
-          Add Strategy
+          Got it!
         </button>
       </div>
-    </div>
-  );
-};
-
-// ============================================
-// EMOTION SECTION COMPONENT
-// ============================================
-const EmotionSection = ({ 
-  emotion, 
-  selectedStrategies, 
-  favorites,
-  onToggleStrategy, 
-  onToggleFavorite,
-  isExpanded,
-  onToggleExpand 
-}) => {
-  const emotionStrategies = selectedStrategies.filter(s => 
-    s.emotions?.includes(emotion.id)
-  );
-  
-  return (
-    <div 
-      className="rounded-2xl border-3 overflow-hidden"
-      style={{ borderColor: emotion.color }}
-    >
-      {/* Header */}
-      <button
-        onClick={onToggleExpand}
-        className="w-full p-4 flex items-center gap-3 transition-colors"
-        style={{ backgroundColor: emotion.bgColor }}
-      >
-        <img
-          src={getPictogramUrl(emotion.arasaacId)}
-          alt={emotion.name}
-          className="w-10 h-10 object-contain bg-white rounded-lg p-1"
-        />
-        <div className="flex-1 text-left">
-          <h3 className="font-display" style={{ color: emotion.color }}>
-            When I feel {emotion.name}...
-          </h3>
-          <p className="font-crayon text-xs text-gray-500">
-            {emotionStrategies.length} strategies selected
-          </p>
-        </div>
-        {isExpanded ? (
-          <ChevronDown size={24} style={{ color: emotion.color }} />
-        ) : (
-          <ChevronRight size={24} style={{ color: emotion.color }} />
-        )}
-      </button>
-      
-      {/* Content */}
-      {isExpanded && (
-        <div className="p-4 bg-white space-y-2">
-          {emotionStrategies.length > 0 ? (
-            emotionStrategies.map(strategy => (
-              <div 
-                key={strategy.id}
-                className="flex items-center gap-2 p-2 rounded-xl bg-gray-50"
-              >
-                <span className="text-xl">{strategy.icon}</span>
-                <span className="flex-1 font-crayon text-sm">{strategy.name}</span>
-                <button
-                  onClick={() => onToggleFavorite(strategy.id)}
-                  className={`p-1 ${favorites.includes(strategy.id) ? 'text-yellow-500' : 'text-gray-300'}`}
-                >
-                  <Star size={16} fill={favorites.includes(strategy.id) ? 'currentColor' : 'none'} />
-                </button>
-              </div>
-            ))
-          ) : (
-            <p className="text-center font-crayon text-gray-400 py-4">
-              No strategies selected yet. Tap "Edit My Chart" to add some!
-            </p>
-          )}
-        </div>
-      )}
     </div>
   );
 };
@@ -467,17 +583,16 @@ const EmotionSection = ({
 // ============================================
 const CopingSkillsChart = () => {
   const navigate = useNavigate();
-  
-  // State
-  const [view, setView] = useState('chart'); // chart, edit, browse
-  const [userStrategies, setUserStrategies] = useState([]); // User's selected strategies with emotion mappings
-  const [customStrategies, setCustomStrategies] = useState([]); // User-created strategies
+  const [view, setView] = useState('chart'); // 'chart' or 'edit'
+  const [userStrategies, setUserStrategies] = useState([]);
   const [favorites, setFavorites] = useState([]);
-  const [expandedEmotions, setExpandedEmotions] = useState(['angry']); // Default expanded
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [showAddModal, setShowAddModal] = useState(false);
   const [editingEmotion, setEditingEmotion] = useState(null);
   const [showInfo, setShowInfo] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  
+  // Combine default and user strategies
+  const allStrategies = [...DEFAULT_STRATEGIES, ...userStrategies.filter(s => s.isCustom)];
   
   // Load saved data
   useEffect(() => {
@@ -485,8 +600,7 @@ const CopingSkillsChart = () => {
     if (saved) {
       try {
         const data = JSON.parse(saved);
-        setUserStrategies(data.userStrategies || []);
-        setCustomStrategies(data.customStrategies || []);
+        setUserStrategies(data.strategies || []);
         setFavorites(data.favorites || []);
       } catch (e) {
         console.error('Error loading coping skills:', e);
@@ -495,84 +609,64 @@ const CopingSkillsChart = () => {
   }, []);
   
   // Save data
-  useEffect(() => {
-    const data = { userStrategies, customStrategies, favorites };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }, [userStrategies, customStrategies, favorites]);
+  const saveData = (strategies, favs) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      strategies,
+      favorites: favs,
+    }));
+  };
   
-  // All available strategies (default + custom)
-  const allStrategies = [...DEFAULT_STRATEGIES, ...customStrategies];
-  
-  // Get strategies for current category filter
-  const filteredStrategies = selectedCategory === 'all' 
-    ? allStrategies 
-    : allStrategies.filter(s => s.category === selectedCategory);
-  
-  // Toggle strategy for an emotion
-  const toggleStrategyForEmotion = (strategyId, emotionId) => {
-    setUserStrategies(prev => {
-      const existing = prev.find(s => s.id === strategyId);
-      if (existing) {
-        const newEmotions = existing.emotions.includes(emotionId)
-          ? existing.emotions.filter(e => e !== emotionId)
-          : [...existing.emotions, emotionId];
-        
+  const toggleStrategy = (strategyId, emotionId) => {
+    const existing = userStrategies.find(s => s.id === strategyId);
+    let updated;
+    
+    if (existing) {
+      // Update emotions array
+      const emotions = existing.emotions || [];
+      if (emotions.includes(emotionId)) {
+        const newEmotions = emotions.filter(e => e !== emotionId);
         if (newEmotions.length === 0) {
-          return prev.filter(s => s.id !== strategyId);
+          updated = userStrategies.filter(s => s.id !== strategyId);
+        } else {
+          updated = userStrategies.map(s => 
+            s.id === strategyId ? { ...s, emotions: newEmotions } : s
+          );
         }
-        return prev.map(s => s.id === strategyId ? { ...s, emotions: newEmotions } : s);
       } else {
-        const strategy = allStrategies.find(s => s.id === strategyId);
-        if (strategy) {
-          return [...prev, { ...strategy, emotions: [emotionId] }];
-        }
+        updated = userStrategies.map(s => 
+          s.id === strategyId ? { ...s, emotions: [...emotions, emotionId] } : s
+        );
       }
-      return prev;
-    });
+    } else {
+      // Add new strategy with this emotion
+      const strategy = DEFAULT_STRATEGIES.find(s => s.id === strategyId);
+      if (strategy) {
+        updated = [...userStrategies, { ...strategy, emotions: [emotionId] }];
+      } else {
+        return;
+      }
+    }
+    
+    setUserStrategies(updated);
+    saveData(updated, favorites);
   };
   
-  // Toggle favorite
   const toggleFavorite = (strategyId) => {
-    setFavorites(prev => 
-      prev.includes(strategyId) 
-        ? prev.filter(id => id !== strategyId)
-        : [...prev, strategyId]
-    );
+    const updated = favorites.includes(strategyId)
+      ? favorites.filter(id => id !== strategyId)
+      : [...favorites, strategyId];
+    setFavorites(updated);
+    saveData(userStrategies, updated);
   };
   
-  // Add custom strategy
-  const addCustomStrategy = (strategy) => {
-    setCustomStrategies(prev => [...prev, strategy]);
+  const getStrategiesForEmotion = (emotionId) => {
+    return userStrategies.filter(s => s.emotions?.includes(emotionId));
   };
   
-  // Delete custom strategy
-  const deleteCustomStrategy = (strategyId) => {
-    setCustomStrategies(prev => prev.filter(s => s.id !== strategyId));
-    setUserStrategies(prev => prev.filter(s => s.id !== strategyId));
-    setFavorites(prev => prev.filter(id => id !== strategyId));
-  };
-  
-  // Toggle emotion expansion
-  const toggleEmotionExpand = (emotionId) => {
-    setExpandedEmotions(prev => 
-      prev.includes(emotionId)
-        ? prev.filter(id => id !== emotionId)
-        : [...prev, emotionId]
-    );
-  };
-  
-  // Handle print
   const handlePrint = () => {
     window.print();
   };
   
-  // Check if strategy is selected for current editing emotion
-  const isStrategySelectedForEmotion = (strategyId) => {
-    if (!editingEmotion) return false;
-    const userStrategy = userStrategies.find(s => s.id === strategyId);
-    return userStrategy?.emotions?.includes(editingEmotion) || false;
-  };
-
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
@@ -599,6 +693,13 @@ const CopingSkillsChart = () => {
           </div>
           
           {/* Actions */}
+          <button
+            onClick={() => setShowScheduleModal(true)}
+            className="p-2 rounded-full hover:bg-[#20B2AA]/10 print:hidden"
+            title="Schedule coping breaks"
+          >
+            <CalendarPlus size={22} className="text-[#20B2AA]" />
+          </button>
           <button
             onClick={() => setShowInfo(true)}
             className="p-2 rounded-full hover:bg-gray-100 print:hidden"
@@ -639,10 +740,27 @@ const CopingSkillsChart = () => {
             Edit My Chart
           </button>
         </div>
+        
+        {/* Schedule Coping Breaks Card */}
+        <div className="p-4 bg-gradient-to-r from-[#20B2AA]/20 to-[#5CB85C]/20 rounded-2xl border-3 border-[#20B2AA]/30 mb-6 print:hidden">
+          <h3 className="font-display text-gray-700 mb-2 flex items-center gap-2">
+            <CalendarPlus size={18} className="text-[#20B2AA]" />
+            Schedule Coping Breaks
+          </h3>
+          <p className="font-crayon text-sm text-gray-600 mb-3">
+            Add reminders to your Visual Schedule to practice coping skills throughout the day!
+          </p>
+          <button
+            onClick={() => setShowScheduleModal(true)}
+            className="px-4 py-2 bg-[#20B2AA] text-white rounded-xl font-display text-sm
+                     hover:bg-[#1A9590] transition-colors"
+          >
+            <CalendarPlus size={16} className="inline mr-2" />
+            Schedule Breaks
+          </button>
+        </div>
 
-        {/* ============================================ */}
-        {/* CHART VIEW */}
-        {/* ============================================ */}
+        {/* Chart View */}
         {view === 'chart' && (
           <div className="space-y-4">
             <p className="text-center font-crayon text-gray-600 mb-4">
@@ -677,18 +795,45 @@ const CopingSkillsChart = () => {
             )}
             
             {/* Emotion Sections */}
-            {EMOTIONS.map(emotion => (
-              <EmotionSection
-                key={emotion.id}
-                emotion={emotion}
-                selectedStrategies={userStrategies}
-                favorites={favorites}
-                onToggleStrategy={toggleStrategyForEmotion}
-                onToggleFavorite={toggleFavorite}
-                isExpanded={expandedEmotions.includes(emotion.id)}
-                onToggleExpand={() => toggleEmotionExpand(emotion.id)}
-              />
-            ))}
+            {EMOTIONS.map(emotion => {
+              const strategies = getStrategiesForEmotion(emotion.id);
+              if (strategies.length === 0) return null;
+              
+              return (
+                <div 
+                  key={emotion.id}
+                  className="p-4 rounded-2xl border-3"
+                  style={{ backgroundColor: emotion.bgColor, borderColor: emotion.color }}
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <img
+                      src={getPictogramUrl(emotion.arasaacId)}
+                      alt={emotion.name}
+                      className="w-10 h-10 object-contain"
+                    />
+                    <h3 className="font-display" style={{ color: emotion.color }}>
+                      When I feel {emotion.name}...
+                    </h3>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2">
+                    {strategies.map(strategy => (
+                      <button
+                        key={strategy.id}
+                        onClick={() => speak(strategy.name + '. ' + (strategy.description || ''))}
+                        className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border-2 
+                                 hover:scale-105 transition-transform"
+                        style={{ borderColor: emotion.color }}
+                      >
+                        <span className="text-lg">{strategy.icon}</span>
+                        <span className="font-crayon text-sm">{strategy.name}</span>
+                        <Volume2 size={14} className="text-gray-400" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
             
             {/* Empty State */}
             {userStrategies.length === 0 && (
@@ -708,12 +853,9 @@ const CopingSkillsChart = () => {
           </div>
         )}
 
-        {/* ============================================ */}
-        {/* EDIT VIEW */}
-        {/* ============================================ */}
+        {/* Edit View */}
         {view === 'edit' && (
           <div className="space-y-4">
-            {/* Step 1: Select Emotion */}
             {!editingEmotion ? (
               <>
                 <p className="text-center font-crayon text-gray-600 mb-4">
@@ -750,9 +892,12 @@ const CopingSkillsChart = () => {
               </>
             ) : (
               <>
-                {/* Step 2: Select Strategies for Emotion */}
                 {(() => {
                   const emotion = EMOTIONS.find(e => e.id === editingEmotion);
+                  const filteredStrategies = selectedCategory === 'all' 
+                    ? DEFAULT_STRATEGIES 
+                    : DEFAULT_STRATEGIES.filter(s => s.category === selectedCategory);
+                  
                   return (
                     <>
                       <div 
@@ -798,43 +943,34 @@ const CopingSkillsChart = () => {
                             onClick={() => setSelectedCategory(cat.id)}
                             className={`px-3 py-1.5 rounded-full text-sm font-crayon whitespace-nowrap
                                       ${selectedCategory === cat.id 
-                                        ? 'text-white' 
+                                        ? 'bg-[#5CB85C] text-white' 
                                         : 'bg-gray-100 text-gray-600'
                                       }`}
-                            style={{
-                              backgroundColor: selectedCategory === cat.id ? cat.color : undefined
-                            }}
                           >
-                            {cat.name}
+                            {cat.icon} {cat.name}
                           </button>
                         ))}
                       </div>
                       
-                      {/* Strategy List */}
-                      <div className="space-y-2">
-                        {filteredStrategies.map(strategy => (
-                          <StrategyCard
-                            key={strategy.id}
-                            strategy={strategy}
-                            isSelected={isStrategySelectedForEmotion(strategy.id)}
-                            isFavorite={favorites.includes(strategy.id)}
-                            onToggle={() => toggleStrategyForEmotion(strategy.id, editingEmotion)}
-                            onFavorite={toggleFavorite}
-                            onSpeak={speak}
-                          />
-                        ))}
+                      {/* Strategies List */}
+                      <div className="space-y-3">
+                        {filteredStrategies.map(strategy => {
+                          const userStrategy = userStrategies.find(s => s.id === strategy.id);
+                          const isSelected = userStrategy?.emotions?.includes(editingEmotion);
+                          
+                          return (
+                            <StrategyCard
+                              key={strategy.id}
+                              strategy={strategy}
+                              isSelected={isSelected}
+                              isFavorite={favorites.includes(strategy.id)}
+                              onToggle={() => toggleStrategy(strategy.id, editingEmotion)}
+                              onToggleFavorite={() => toggleFavorite(strategy.id)}
+                              onSpeak={speak}
+                            />
+                          );
+                        })}
                       </div>
-                      
-                      {/* Add Custom Button */}
-                      <button
-                        onClick={() => setShowAddModal(true)}
-                        className="w-full py-4 border-3 border-dashed border-gray-300 rounded-xl
-                                 font-display text-gray-500 hover:border-[#5CB85C] hover:text-[#5CB85C]
-                                 transition-colors flex items-center justify-center gap-2"
-                      >
-                        <Plus size={20} />
-                        Add My Own Strategy
-                      </button>
                     </>
                   );
                 })()}
@@ -842,79 +978,17 @@ const CopingSkillsChart = () => {
             )}
           </div>
         )}
-
-        {/* Attribution */}
-        <div className="mt-6 text-center print:hidden">
-          <a 
-            href="https://arasaac.org" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-xs text-gray-400 hover:text-gray-600"
-          >
-            Pictograms by ARASAAC (CC BY-NC-SA)
-          </a>
-        </div>
       </main>
 
-      {/* Add Strategy Modal */}
-      {showAddModal && (
-        <AddStrategyModal
-          onClose={() => setShowAddModal(false)}
-          onSave={addCustomStrategy}
-        />
-      )}
-
-      {/* Info Modal */}
-      {showInfo && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display text-xl text-[#5CB85C]">How to Use</h2>
-              <button onClick={() => setShowInfo(false)} className="p-2 rounded-full hover:bg-gray-100">
-                <X size={20} className="text-gray-400" />
-              </button>
-            </div>
-            <div className="space-y-3 font-crayon text-gray-600">
-              <p>
-                <strong>1. Build your chart:</strong> Tap "Edit My Chart" and pick a feeling.
-              </p>
-              <p>
-                <strong>2. Choose strategies:</strong> Check the boxes next to strategies that help you when you feel that way.
-              </p>
-              <p>
-                <strong>3. Add favorites:</strong> Tap the star ⭐ on your most helpful strategies.
-              </p>
-              <p>
-                <strong>4. Make it yours:</strong> Add your own custom strategies with the "+" button.
-              </p>
-              <p>
-                <strong>5. Print it:</strong> Print your chart to hang up at home or school!
-              </p>
-              <p className="text-sm text-gray-400 italic">
-                Tip: You can assign the same strategy to multiple feelings!
-              </p>
-            </div>
-            <button
-              onClick={() => setShowInfo(false)}
-              className="w-full mt-4 py-3 bg-[#5CB85C] text-white rounded-xl font-display"
-            >
-              Got it!
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Print Styles */}
-      <style>{`
-        @media print {
-          header, button, .print\\:hidden {
-            display: none !important;
-          }
-          body {
-            background: white !important;
-          }
-        }
-      `}</style>
+      {/* Modals */}
+      <InfoModal isOpen={showInfo} onClose={() => setShowInfo(false)} />
+      
+      <ScheduleBreaksModal
+        isOpen={showScheduleModal}
+        onClose={() => setShowScheduleModal(false)}
+        userStrategies={userStrategies}
+        allStrategies={allStrategies}
+      />
     </div>
   );
 };

@@ -1,5 +1,6 @@
 // AppHub.jsx - Updated Main navigation hub for ATLASassist v2.0
 // Reorganized with new hubs: Emotional Wellness, Planning & Documents, expanded Resources
+// v3: Removed "NEW" badges, restored Finn footer
 
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -73,7 +74,6 @@ const appCategories = [
     hoverRotate: 'hover:-rotate-1',
     path: '/wellness',
     emoji: '💚',
-    isNew: true,
   },
   {
     id: 'care-team',
@@ -129,7 +129,6 @@ const appCategories = [
     hoverRotate: 'hover:rotate-1',
     path: '/planning',
     emoji: '📋',
-    isNew: true,
   },
   {
     id: 'resources',
@@ -151,7 +150,7 @@ const appCategories = [
     borderColor: 'border-red-400',
     hoverRotate: 'hover:rotate-1',
     path: '/community',
-    emoji: '🤝',
+    emoji: '💬',
   },
 ];
 
@@ -179,14 +178,14 @@ const AppHub = () => {
   };
 
   // Get display name or default
-  const displayName = user?.displayName || 'Friend';
+  const displayName = user?.displayName || user?.user_metadata?.display_name || 'Friend';
   const firstName = displayName.split(' ')[0];
 
   return (
-    <div className="min-h-screen bg-[#FFFEF5] relative overflow-hidden">
-      {/* Background Decorations - matching logo style */}
+    <div className="min-h-screen bg-[#FFFEF5] relative overflow-hidden flex flex-col">
+      {/* Background Decorations */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {/* Sun - top right like in logo */}
+        {/* Sun - top right */}
         <div className="absolute top-8 right-8 w-16 h-16 sm:w-20 sm:h-20">
           <div className="w-full h-full rounded-full bg-[#F8D14A] animate-pulse" style={{ boxShadow: '0 0 30px #F5A623' }}></div>
           {/* Sun rays */}
@@ -194,9 +193,10 @@ const AppHub = () => {
             {[...Array(8)].map((_, i) => (
               <div
                 key={i}
-                className="absolute w-1 h-6 bg-[#F5A623] rounded-full"
+                className="absolute w-1 h-6 bg-[#F5A623] origin-center"
                 style={{
-                  transform: `rotate(${i * 45}deg) translateY(-20px)`,
+                  transform: `rotate(${i * 45}deg) translateY(-30px)`,
+                  borderRadius: '10px',
                   opacity: 0.6,
                 }}
               />
@@ -267,7 +267,7 @@ const AppHub = () => {
       </header>
 
       {/* Main Content - App Grid */}
-      <main className="relative z-10 px-4 pb-8">
+      <main className="relative z-10 px-4 pb-8 flex-1">
         <div className="max-w-4xl mx-auto">
           {/* Title and Tagline */}
           <div className="text-center mb-6 mt-4">
@@ -297,14 +297,6 @@ const AppHub = () => {
                   borderRadius: '20px 40px 20px 40px / 40px 20px 40px 20px',
                 }}
               >
-                {/* NEW Badge */}
-                {app.isNew && (
-                  <span className="absolute -top-2 -right-2 bg-[#E63B2E] text-white text-xs font-display 
-                                   px-2 py-0.5 rounded-full shadow-md animate-pulse">
-                    NEW
-                  </span>
-                )}
-                
                 {/* Icon */}
                 <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/20 rounded-xl flex items-center justify-center
                                group-hover:bg-white/30 transition-colors">
@@ -324,16 +316,45 @@ const AppHub = () => {
             ))}
           </div>
 
-          {/* Quick Stats or Tips */}
-          <div className="mt-8 p-4 bg-white/80 rounded-2xl border-3 border-[#4A9FD4]/30 shadow-sm">
-            <p className="text-center text-gray-600 font-crayon text-sm">
-              💚 <span className="text-[#4A9FD4] font-display">New:</span> Check out{' '}
-              <span className="text-[#20B2AA] font-display">Emotional Wellness</span> for 
-              calming tools and ways to understand your feelings!
-            </p>
-          </div>
+          {/* Guest Mode Notice */}
+          {user?.isGuest && (
+            <div 
+              className="mt-8 p-4 bg-white border-4 border-dashed border-crayon-orange rounded-2xl text-center"
+              style={{ borderRadius: '255px 15px 225px 15px/15px 225px 15px 255px' }}
+            >
+              <p className="font-crayon text-gray-600">
+                🌟 <strong>You're exploring as a guest!</strong> Your progress won't be saved.
+              </p>
+              <button 
+                onClick={() => navigate('/')}
+                className="mt-2 text-crayon-blue hover:text-crayon-purple font-crayon underline"
+              >
+                Create an account to save your work
+              </button>
+            </div>
+          )}
         </div>
       </main>
+
+      {/* Push Notification Prompt */}
+      <PushNotificationPrompt user={user} />
+
+      {/* Footer - For Finn */}
+      <footer className="relative z-10 text-center py-6 px-4">
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <img 
+            src="/logo.jpeg" 
+            alt="" 
+            className="w-8 h-8 rounded-md"
+          />
+          <p className="text-gray-700 font-display text-lg crayon-text">
+            ATLASassist
+          </p>
+        </div>
+        <p className="text-crayon-purple font-display text-sm italic">
+          For Finn, and for people like him. 💜
+        </p>
+      </footer>
     </div>
   );
 };
