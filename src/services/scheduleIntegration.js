@@ -51,6 +51,7 @@ export {
   addWaketimeToSchedule,
   addChoiceToSchedule,
   addHealthyChoiceReminderToSchedule,
+  addCopingStrategyToSchedule, // NEW: Added for CopingSkillsChart
 } from './scheduleHelper';
 
 // Default export for backward compatibility
