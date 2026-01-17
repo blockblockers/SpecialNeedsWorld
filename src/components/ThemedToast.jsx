@@ -1,14 +1,12 @@
 // ThemedToast.jsx - Themed notification component for ATLASassist
-// Replaces standard browser alerts with kid-friendly styled notifications
-// UPDATED: Added celebration toast type
+// Includes: success, error, warning, info, schedule, and CELEBRATION toast types
 
 import { useState, useEffect, createContext, useContext, useCallback } from 'react';
-import { X, Check, AlertCircle, Info, Calendar, CheckCircle, PartyPopper, Sparkles } from 'lucide-react';
+import { X, Check, AlertCircle, Info, Calendar, CheckCircle, Star } from 'lucide-react';
 
-// Toast Context for global access
 const ToastContext = createContext(null);
 
-// Toast types with their styling
+// Toast types with their styling - includes CELEBRATION type
 const TOAST_TYPES = {
   success: {
     bg: 'bg-[#5CB85C]',
@@ -41,10 +39,11 @@ const TOAST_TYPES = {
     iconColor: 'text-white',
   },
   celebration: {
-    bg: 'bg-gradient-to-r from-[#E86B9A] to-[#F5A623]',
-    border: 'border-pink-500',
-    icon: PartyPopper,
+    bg: 'bg-gradient-to-r from-[#F5A623] via-[#E86B9A] to-[#8E6BBF]',
+    border: 'border-yellow-500',
+    icon: Star,
     iconColor: 'text-white',
+    animate: true,
   },
 };
 
@@ -76,12 +75,12 @@ const Toast = ({ id, type = 'info', title, message, duration = 3000, onClose }) 
         transform transition-all duration-300 min-w-[280px] max-w-[400px]
         ${config.bg} ${config.border}
         ${isExiting ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'}
-        ${type === 'celebration' ? 'animate-bounce-in' : ''}
+        ${config.animate ? 'animate-pulse' : ''}
       `}
       style={{ borderRadius: '255px 15px 225px 15px/15px 225px 15px 255px' }}
     >
       <div className={`p-2 rounded-full bg-white/20 ${config.iconColor}`}>
-        <IconComponent size={24} />
+        <IconComponent size={24} fill={type === 'celebration' ? 'currentColor' : 'none'} />
       </div>
       <div className="flex-1 min-w-0">
         {title && (
@@ -124,7 +123,6 @@ export const ConfirmModal = ({
         className="bg-[#FFFEF5] w-full max-w-sm rounded-3xl border-4 border-[#4A9FD4] shadow-crayon-lg overflow-hidden animate-bounce-in"
         style={{ borderRadius: '30px 70px 30px 70px / 70px 30px 70px 30px' }}
       >
-        {/* Header */}
         <div className={`${config.bg} p-4 flex items-center gap-3`}>
           <div className="p-2 bg-white/20 rounded-full">
             <IconComponent size={28} className="text-white" />
@@ -132,28 +130,21 @@ export const ConfirmModal = ({
           <h3 className="font-display text-xl text-white flex-1">{title}</h3>
         </div>
 
-        {/* Body */}
         <div className="p-6">
           <p className="font-crayon text-gray-700 text-lg text-center">{message}</p>
         </div>
 
-        {/* Actions */}
         <div className="flex gap-3 p-4 pt-0">
           <button
             onClick={onClose}
-            className="flex-1 py-3 px-4 border-3 border-gray-300 rounded-xl font-crayon text-gray-600
-                       hover:bg-gray-100 transition-all text-lg"
+            className="flex-1 py-3 px-4 border-3 border-gray-300 rounded-xl font-crayon text-gray-600 hover:bg-gray-100 transition-all text-lg"
             style={{ borderRadius: '255px 15px 225px 15px/15px 225px 15px 255px' }}
           >
             {cancelText}
           </button>
           <button
-            onClick={() => {
-              onConfirm();
-              onClose();
-            }}
-            className={`flex-1 py-3 px-4 ${config.bg} border-3 ${config.border} rounded-xl font-crayon text-white
-                       hover:opacity-90 transition-all text-lg flex items-center justify-center gap-2`}
+            onClick={() => { onConfirm(); onClose(); }}
+            className={`flex-1 py-3 px-4 ${config.bg} border-3 ${config.border} rounded-xl font-crayon text-white hover:opacity-90 transition-all text-lg flex items-center justify-center gap-2`}
             style={{ borderRadius: '255px 15px 225px 15px/15px 225px 15px 255px' }}
           >
             <Check size={20} />
@@ -211,7 +202,7 @@ export const ToastProvider = ({ children }) => {
     return addToast({ type: 'schedule', title, message, duration });
   }, [addToast]);
 
-  // NEW: Celebration toast for achievements and selections
+  // CELEBRATION toast for ChoiceBoard and other fun moments
   const celebration = useCallback((title, message, duration = 4000) => {
     return addToast({ type: 'celebration', title, message, duration });
   }, [addToast]);

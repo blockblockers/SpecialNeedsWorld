@@ -1,21 +1,23 @@
-// Health.jsx - Health hub with multiple apps
-// Contains: Nutrition/Recipes, Feelings, Water Tracker, etc.
+// Health.jsx - Health hub with multiple apps including Emotional Wellness
+// NAVIGATION: Back button goes to /hub
 
 import { useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  Heart, 
-  Utensils, 
-  Droplets,
-  Smile,
-  Moon,
-  Activity,
-  Apple,
-  Dumbbell
-} from 'lucide-react';
+import { ArrowLeft, Heart, Utensils, Droplets, Smile, Moon, Activity, Apple, Dumbbell, Brain } from 'lucide-react';
 
-// Health app categories
+// Health app categories - Emotional Wellness is FEATURED and first
 const healthApps = [
+  {
+    id: 'emotional-wellness',
+    name: 'Emotional Wellness',
+    description: 'Feelings, coping & calm down tools',
+    icon: Brain,
+    color: 'bg-gradient-to-br from-[#8E6BBF] to-[#E86B9A]',
+    borderColor: 'border-purple-500',
+    path: '/wellness',
+    emoji: '🧠',
+    ready: true,
+    featured: true,
+  },
   {
     id: 'nutrition',
     name: 'Nutrition & Recipes',
@@ -155,11 +157,19 @@ const Health = () => {
                     ? 'hover:scale-105 hover:-rotate-1 active:scale-95 cursor-pointer' 
                     : 'opacity-60 cursor-not-allowed grayscale-[30%]'
                   }
+                  ${app.featured ? 'ring-4 ring-yellow-400 ring-offset-2' : ''}
                 `}
                 style={{
                   borderRadius: '20px 8px 20px 8px',
                 }}
               >
+                {/* Featured Badge */}
+                {app.featured && (
+                  <div className="absolute -top-2 -right-2 bg-yellow-400 text-yellow-900 text-xs px-2 py-1 rounded-full font-crayon font-bold animate-pulse">
+                    ⭐ NEW
+                  </div>
+                )}
+
                 {/* Coming Soon Badge */}
                 {!app.ready && (
                   <div className="absolute -top-2 -right-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full font-crayon">

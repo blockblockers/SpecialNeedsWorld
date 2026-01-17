@@ -1,109 +1,88 @@
-// EmotionalWellnessHub.jsx - Emotional Wellness hub for ATLASassist
-// Contains emotional wellness, calming tools, and regulation resources
-// FIXED: All items are now ready (no coming soon)
-
+// EmotionalWellnessHub.jsx - Emotional Wellness sub-hub under Health
+// NAVIGATION: Back button goes to /health (parent hub)
 import { useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  Heart,
-  Smile,
-  Wind,
-  Sparkles,
-  Target,
-  HeartHandshake,
-  ListChecks,
-  Lightbulb,
-  CircleDot
-} from 'lucide-react';
+import { ArrowLeft, Brain, Wind, Smile, Heart, Target, Lightbulb, BookOpen, Activity } from 'lucide-react';
 
-// Emotional Wellness apps - ALL READY
+// Wellness apps available in this hub
 const wellnessApps = [
   {
     id: 'calm-down',
-    name: 'Calm Down Corner',
-    description: 'Breathing exercises & grounding',
+    name: 'Calm Down',
+    description: 'Breathing exercises & calming activities',
     icon: Wind,
-    color: 'bg-[#87CEEB]',
-    borderColor: 'border-sky-500',
+    color: '#87CEEB',
+    emoji: '😌',
     path: '/wellness/calm-down',
-    emoji: '🌬️',
-    ready: true,
-  },
-  {
-    id: 'sensory-breaks',
-    name: 'Sensory Breaks',
-    description: 'Regulation activities & timers',
-    icon: Sparkles,
-    color: 'bg-[#8E6BBF]',
-    borderColor: 'border-purple-500',
-    path: '/wellness/sensory-breaks',
-    emoji: '✨',
     ready: true,
   },
   {
     id: 'feelings',
-    name: 'Feelings Tracker',
-    description: 'Daily emotion check-ins',
-    icon: Heart,
-    color: 'bg-[#E86B9A]',
-    borderColor: 'border-pink-500',
+    name: 'How Do I Feel?',
+    description: 'Track your feelings throughout the day',
+    icon: Smile,
+    color: '#F5A623',
+    emoji: '😊',
     path: '/wellness/feelings',
-    emoji: '💗',
     ready: true,
   },
   {
     id: 'emotion-chart',
     name: 'Emotion Chart',
-    description: 'Identify & understand feelings',
-    icon: Smile,
-    color: 'bg-[#F5A623]',
-    borderColor: 'border-orange-500',
+    description: 'Learn about different emotions',
+    icon: Heart,
+    color: '#E86B9A',
+    emoji: '💖',
     path: '/wellness/emotion-chart',
-    emoji: '😊',
+    ready: true,
+  },
+  {
+    id: 'coping-skills',
+    name: 'Coping Skills',
+    description: 'Strategies to handle big feelings',
+    icon: Target,
+    color: '#5CB85C',
+    emoji: '🛠️',
+    path: '/wellness/coping-skills',
+    ready: true,
+  },
+  {
+    id: 'sensory-breaks',
+    name: 'Sensory Breaks',
+    description: 'Movement & sensory activities',
+    icon: Activity,
+    color: '#8E6BBF',
+    emoji: '🧘',
+    path: '/wellness/sensory-breaks',
     ready: true,
   },
   {
     id: 'circles-control',
     name: 'Circles of Control',
-    description: 'Sort worries & focus energy',
-    icon: CircleDot,
-    color: 'bg-[#4A9FD4]',
-    borderColor: 'border-blue-500',
+    description: 'What can I control?',
+    icon: Target,
+    color: '#20B2AA',
+    emoji: '⭕',
     path: '/wellness/circles-control',
-    emoji: '🎯',
-    ready: true,
-  },
-  {
-    id: 'coping-skills',
-    name: 'Coping Skills Chart',
-    description: 'Your personalized strategies',
-    icon: ListChecks,
-    color: 'bg-[#5CB85C]',
-    borderColor: 'border-green-500',
-    path: '/wellness/coping-skills',
-    emoji: '📋',
     ready: true,
   },
   {
     id: 'growth-mindset',
     name: 'Growth Mindset',
-    description: 'Positive thoughts & affirmations',
+    description: 'Learn to grow from challenges',
     icon: Lightbulb,
-    color: 'bg-[#F8D14A]',
-    borderColor: 'border-yellow-500',
+    color: '#F8D14A',
+    emoji: '🌱',
     path: '/wellness/growth-mindset',
-    emoji: '💡',
     ready: true,
   },
   {
-    id: 'self-care',
-    name: 'Self-Care Checklist',
-    description: 'Daily wellness activities',
-    icon: HeartHandshake,
-    color: 'bg-[#20B2AA]',
-    borderColor: 'border-teal-500',
-    path: '/wellness/self-care',
-    emoji: '🌸',
+    id: 'social-stories',
+    name: 'Social Stories',
+    description: 'Prepare for new situations',
+    icon: BookOpen,
+    color: '#4A9FD4',
+    emoji: '📖',
+    path: '/wellness/social-stories',
     ready: true,
   },
 ];
@@ -120,12 +99,13 @@ const EmotionalWellnessHub = () => {
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#E86B9A]">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#8E6BBF]">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
+          {/* IMPORTANT: Back button goes to /health (parent hub) */}
           <button
-            onClick={() => navigate('/hub')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#E86B9A] 
-                       rounded-xl font-display font-bold text-[#E86B9A] hover:bg-[#E86B9A] 
+            onClick={() => navigate('/health')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#8E6BBF] 
+                       rounded-xl font-display font-bold text-[#8E6BBF] hover:bg-[#8E6BBF] 
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
@@ -136,24 +116,21 @@ const EmotionalWellnessHub = () => {
             alt="ATLASassist" 
             className="w-10 h-10 rounded-lg shadow-sm"
           />
-          <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-display text-[#E86B9A] crayon-text flex items-center gap-2">
-              <Heart size={24} fill="currentColor" />
-              Emotional Wellness
-            </h1>
-          </div>
+          <h1 className="text-xl sm:text-2xl font-display text-[#8E6BBF] crayon-text flex items-center gap-2">
+            <Brain size={24} />
+            Emotional Wellness
+          </h1>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-2xl mx-auto px-4 py-6">
+      <main className="max-w-4xl mx-auto px-4 py-6">
         <p className="text-center text-gray-600 font-crayon mb-6">
-          Tools to help understand and manage emotions 💜
+          Tools to understand and manage your feelings
         </p>
 
         {/* Apps Grid */}
-        <div className="grid grid-cols-2 gap-4">
-          {wellnessApps.map((app) => {
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          {wellnessApps.map((app, index) => {
             const IconComponent = app.icon;
             return (
               <button
@@ -161,33 +138,41 @@ const EmotionalWellnessHub = () => {
                 onClick={() => handleAppClick(app)}
                 disabled={!app.ready}
                 className={`
-                  relative p-4 rounded-2xl border-4 ${app.borderColor}
-                  ${app.color} text-white
+                  relative p-4 rounded-2xl border-4 text-left
                   transition-all duration-200 shadow-crayon
                   ${app.ready 
                     ? 'hover:scale-105 hover:-rotate-1 active:scale-95 cursor-pointer' 
-                    : 'opacity-60 cursor-not-allowed grayscale-[30%]'
+                    : 'opacity-60 cursor-not-allowed'
                   }
                 `}
                 style={{
-                  borderRadius: '20px 8px 20px 8px',
+                  backgroundColor: app.color + '20',
+                  borderColor: app.color,
+                  borderRadius: index % 2 === 0 ? '20px 8px 20px 8px' : '8px 20px 8px 20px',
                 }}
               >
+                {/* Coming Soon Badge */}
+                {!app.ready && (
+                  <div className="absolute -top-2 -right-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full font-crayon">
+                    Soon!
+                  </div>
+                )}
+
                 {/* Emoji */}
                 <div className="text-3xl mb-2">{app.emoji}</div>
 
                 {/* Icon */}
                 <div className="flex justify-center mb-2">
-                  <IconComponent size={32} strokeWidth={2.5} />
+                  <IconComponent size={28} style={{ color: app.color }} strokeWidth={2.5} />
                 </div>
 
                 {/* Name */}
-                <h3 className="font-display text-lg crayon-text">
+                <h3 className="font-display text-base crayon-text" style={{ color: app.color }}>
                   {app.name}
                 </h3>
 
                 {/* Description */}
-                <p className="text-sm opacity-90 font-crayon mt-1">
+                <p className="text-xs text-gray-600 font-crayon mt-1 line-clamp-2">
                   {app.description}
                 </p>
               </button>
@@ -196,9 +181,9 @@ const EmotionalWellnessHub = () => {
         </div>
 
         {/* Info Note */}
-        <div className="mt-8 p-4 bg-white rounded-2xl border-3 border-[#E86B9A] shadow-sm">
+        <div className="mt-8 p-4 bg-white rounded-2xl border-3 border-[#8E6BBF]/30 shadow-sm">
           <p className="text-center text-gray-600 font-crayon text-sm">
-            💜 Remember: All feelings are okay. These tools help us understand and manage them.
+            🧠 Understanding your feelings is a superpower! Explore these tools to learn about emotions.
           </p>
         </div>
       </main>
