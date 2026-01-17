@@ -6,6 +6,7 @@
 // FIXED: HealthyChoices route to match Health.jsx path
 // UPDATED: Added TherapyTypes, Definitions, FAQ routes
 // UPDATED: Emotional Wellness now main hub (not under Health)
+// FIXED: Full auth implementation for EntryAuthScreen compatibility
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect, createContext, useContext, lazy, Suspense } from 'react';
@@ -112,11 +113,19 @@ const CommunityThread = lazy(() => import('./pages/CommunityThread'));
 // ============================================
 // LOADING FALLBACK COMPONENT
 // ============================================
-const LoadingSpinner = () => (
+const PageLoader = () => (
   <div className="min-h-screen bg-[#FFFEF5] flex items-center justify-center">
     <div className="text-center">
-      <div className="w-16 h-16 border-4 border-[#8E6BBF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-      <p className="font-crayon text-gray-600">Loading...</p>
+      <div className="relative w-16 h-16 mx-auto mb-4">
+        {/* Spinning loader */}
+        <div className="absolute inset-0 border-4 border-[#4A9FD4]/20 rounded-full"></div>
+        <div className="absolute inset-0 border-4 border-transparent border-t-[#4A9FD4] rounded-full animate-spin"></div>
+        {/* Center icon */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-2xl">✨</span>
+        </div>
+      </div>
+      <p className="font-crayon text-gray-500 text-sm">Loading...</p>
     </div>
   </div>
 );
@@ -124,82 +133,243 @@ const LoadingSpinner = () => (
 // ============================================
 // AUTH CONTEXT
 // ============================================
-const AuthContext = createContext(null);
+export const AuthContext = createContext(null);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
 
+// Format Supabase user to app user format
+const formatSupabaseUser = (supabaseUser) => {
+  if (!supabaseUser) return null;
+  return {
+    id: supabaseUser.id,
+    email: supabaseUser.email,
+    displayName: supabaseUser.user_metadata?.full_name || 
+                 supabaseUser.user_metadata?.name || 
+                 supabaseUser.email?.split('@')[0] || 
+                 'Friend',
+    photoURL: supabaseUser.user_metadata?.avatar_url || null,
+    provider: supabaseUser.app_metadata?.provider || 'email',
+  };
+};
+
+// ============================================
+// AUTH PROVIDER COMPONENT
+// ============================================
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [authMode, setAuthMode] = useState('checking');
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) {
-      setLoading(false);
-      return;
-    }
+    const initAuth = async () => {
+      if (isSupabaseConfigured()) {
+        setAuthMode('supabase');
+        
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (session?.user) {
+            setUser(formatSupabaseUser(session.user));
+          }
+          
+          const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            async (event, session) => {
+              console.log('Auth event:', event);
+              if (session?.user) {
+                setUser(formatSupabaseUser(session.user));
+                
+                if (event === 'SIGNED_IN') {
+                  setTimeout(() => {
+                    initNotifications().catch(console.error);
+                  }, 2000);
+                }
+              } else {
+                setUser(null);
+              }
+            }
+          );
+          
+          setLoading(false);
+          return () => subscription.unsubscribe();
+        } catch (error) {
+          console.error('Auth init error:', error);
+          setLoading(false);
+        }
+      } else {
+        setAuthMode('guest');
+        const savedGuest = localStorage.getItem('snw_guest_user');
+        if (savedGuest) {
+          try {
+            setUser(JSON.parse(savedGuest));
+          } catch (e) {
+            console.error('Error parsing guest user:', e);
+          }
+        }
+        setLoading(false);
+      }
+    };
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
+    initAuth();
   }, []);
 
+  // Sign in with email/password
   const signIn = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    return data;
+    if (!isSupabaseConfigured()) {
+      return { error: { message: 'Supabase not configured. Use guest mode.' } };
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('Sign-in error:', error);
+      return { error: { message: error.message || 'Failed to sign in' } };
+    }
   };
 
-  const signUp = async (email, password) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) throw error;
-    return data;
+  // Sign up with email/password
+  const signUp = async (email, password, displayName) => {
+    if (!isSupabaseConfigured()) {
+      return { error: { message: 'Supabase not configured. Use guest mode.' } };
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: displayName,
+            name: displayName,
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.user && !data?.session) {
+        return {
+          data,
+          error: null,
+          requiresConfirmation: true,
+        };
+      }
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('Sign-up error:', error);
+      let message = error.message;
+      if (message.includes('already registered')) {
+        message = 'This email is already registered. Try signing in instead.';
+      }
+      return { error: { message } };
+    }
   };
 
-  const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+  // Sign in with Google
+  const signInWithGoogle = async () => {
+    if (!isSupabaseConfigured()) {
+      return { error: { message: 'Supabase not configured.' } };
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/hub`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('Google sign-in error:', error);
+      return { error: { message: error.message || 'Failed to sign in with Google' } };
+    }
   };
 
+  // Reset password
   const resetPassword = async (email) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    if (error) throw error;
+    if (!isSupabaseConfigured()) {
+      return { error: { message: 'Supabase not configured.' } };
+    }
+
+    try {
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('Password reset error:', error);
+      return { error: { message: error.message } };
+    }
   };
 
-  const updatePassword = async (newPassword) => {
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    if (error) throw error;
+  // Sign in as guest
+  const signInAsGuest = (name = 'Friend') => {
+    const guestUser = {
+      id: `guest_${Date.now()}`,
+      email: null,
+      displayName: name,
+      photoURL: null,
+      provider: 'guest',
+      isGuest: true,
+    };
+    localStorage.setItem('snw_guest_user', JSON.stringify(guestUser));
+    setUser(guestUser);
+    return { data: guestUser, error: null };
+  };
+
+  // Sign out
+  const signOut = async () => {
+    if (authMode === 'supabase' && isSupabaseConfigured()) {
+      try {
+        await supabase.auth.signOut();
+      } catch (error) {
+        console.error('Sign out error:', error);
+      }
+    }
+    localStorage.removeItem('snw_guest_user');
+    setUser(null);
   };
 
   const value = {
     user,
     loading,
+    authMode,
     signIn,
     signUp,
+    signInWithGoogle,
+    signInAsGuest,
     signOut,
     resetPassword,
-    updatePassword,
+    isAuthenticated: !!user,
+    isGuest: user?.isGuest || user?.provider === 'guest',
+    isSupabaseConfigured: isSupabaseConfigured(),
   };
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 // ============================================
@@ -209,18 +379,18 @@ const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <LoadingSpinner />;
+    return <PageLoader />;
   }
 
   if (!user) {
     return <Navigate to="/" replace />;
   }
 
-  return <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>;
+  return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
 };
 
 // ============================================
-// RESET PASSWORD PAGE
+// RESET PASSWORD PAGE COMPONENT
 // ============================================
 const ResetPassword = () => {
   const [password, setPassword] = useState('');
@@ -228,7 +398,6 @@ const ResetPassword = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { updatePassword } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -245,24 +414,30 @@ const ResetPassword = () => {
     }
 
     setLoading(true);
+
     try {
-      await updatePassword(password);
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
       setSuccess(true);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Failed to reset password');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   if (success) {
     return (
       <div className="min-h-screen bg-[#FFFEF5] flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-8 shadow-crayon max-w-md w-full text-center">
-          <h2 className="text-2xl font-display text-[#5CB85C] mb-4">Password Updated!</h2>
-          <p className="font-crayon text-gray-600 mb-4">Your password has been changed successfully.</p>
+        <div className="bg-white rounded-2xl p-8 shadow-lg max-w-md w-full text-center">
+          <div className="text-5xl mb-4">✅</div>
+          <h1 className="font-display text-2xl text-[#5CB85C] mb-4">Password Updated!</h1>
+          <p className="font-crayon text-gray-600 mb-6">
+            Your password has been successfully reset.
+          </p>
           <a
             href="/"
-            className="inline-block px-6 py-3 bg-[#8E6BBF] text-white rounded-xl font-crayon"
+            className="inline-block px-6 py-3 bg-[#8E6BBF] text-white rounded-xl font-crayon hover:bg-[#7B5AA6] transition-colors"
           >
             Go to Login
           </a>
@@ -273,34 +448,44 @@ const ResetPassword = () => {
 
   return (
     <div className="min-h-screen bg-[#FFFEF5] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl p-8 shadow-crayon max-w-md w-full">
-        <h2 className="text-2xl font-display text-[#8E6BBF] mb-6 text-center">Set New Password</h2>
+      <div className="bg-white rounded-2xl p-8 shadow-lg max-w-md w-full">
+        <h1 className="font-display text-2xl text-[#8E6BBF] mb-6 text-center">
+          Set New Password
+        </h1>
+
         {error && (
           <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded-lg text-red-700 font-crayon text-sm">
             {error}
           </div>
         )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="password"
-            placeholder="New Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 font-crayon focus:border-[#8E6BBF] focus:outline-none"
-            required
-          />
-          <input
-            type="password"
-            placeholder="Confirm Password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 font-crayon focus:border-[#8E6BBF] focus:outline-none"
-            required
-          />
+          <div>
+            <input
+              type="password"
+              placeholder="New Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl font-crayon focus:border-[#8E6BBF] focus:outline-none"
+              required
+              minLength={6}
+            />
+          </div>
+          <div>
+            <input
+              type="password"
+              placeholder="Confirm Password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl font-crayon focus:border-[#8E6BBF] focus:outline-none"
+              required
+              minLength={6}
+            />
+          </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-[#8E6BBF] text-white rounded-xl font-display hover:bg-[#7d5aa8] transition-colors disabled:opacity-50"
+            className="w-full py-3 bg-[#8E6BBF] text-white rounded-xl font-crayon hover:bg-[#7B5AA6] disabled:opacity-50 transition-colors"
           >
             {loading ? 'Updating...' : 'Update Password'}
           </button>
@@ -315,677 +500,581 @@ const ResetPassword = () => {
 // ============================================
 function App() {
   return (
-    <ToastProvider>
-      <AuthProvider>
-        <Router>
+    <Router>
+      <ToastProvider>
+        <AuthProvider>
           <Routes>
-            {/* ============================================ */}
-            {/* AUTH ROUTES (not lazy - needed immediately) */}
-            {/* ============================================ */}
+            {/* Public Routes */}
             <Route path="/" element={<EntryAuthScreen />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            
-            {/* ============================================ */}
-            {/* MAIN HUB */}
-            {/* ============================================ */}
-            <Route 
-              path="/hub" 
+
+            {/* Main Hub */}
+            <Route
+              path="/hub"
               element={
                 <ProtectedRoute>
                   <AppHub />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/settings" 
+
+            {/* Settings */}
+            <Route
+              path="/settings"
               element={
                 <ProtectedRoute>
                   <Settings />
                 </ProtectedRoute>
-              } 
+              }
             />
-            
-            {/* ============================================ */}
-            {/* CORE FEATURES */}
-            {/* ============================================ */}
-            <Route 
-              path="/visual-schedule" 
+
+            {/* Core Features */}
+            <Route
+              path="/visual-schedule"
               element={
                 <ProtectedRoute>
                   <VisualSchedule />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/schedule" 
-              element={
-                <ProtectedRoute>
-                  <VisualSchedule />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/point-to-talk" 
+            <Route
+              path="/point-to-talk"
               element={
                 <ProtectedRoute>
                   <PointToTalk />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/talk" 
-              element={
-                <ProtectedRoute>
-                  <PointToTalk />
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* ============================================ */}
-            {/* TOOLS HUB */}
-            {/* ============================================ */}
-            <Route 
-              path="/tools" 
+
+            {/* Tools Hub */}
+            <Route
+              path="/tools"
               element={
                 <ProtectedRoute>
                   <Tools />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/tools/timer" 
+            <Route
+              path="/tools/timer"
               element={
                 <ProtectedRoute>
                   <VisualTimer />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/tools/first-then" 
+            <Route
+              path="/tools/first-then"
               element={
                 <ProtectedRoute>
                   <FirstThen />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/tools/counter" 
+            <Route
+              path="/tools/counter"
               element={
                 <ProtectedRoute>
                   <Counter />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/tools/soundboard" 
+            <Route
+              path="/tools/soundboard"
               element={
                 <ProtectedRoute>
                   <SoundBoard />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/tools/routines" 
+            <Route
+              path="/tools/daily-routines"
               element={
                 <ProtectedRoute>
                   <DailyRoutines />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/tools/milestones" 
+            <Route
+              path="/tools/milestones"
               element={
                 <ProtectedRoute>
                   <MilestoneGuide />
                 </ProtectedRoute>
-              } 
+              }
             />
-            
-            {/* ============================================ */}
-            {/* EMOTIONAL WELLNESS HUB (Main Hub - not under Health) */}
-            {/* ============================================ */}
-            <Route 
-              path="/wellness" 
+
+            {/* Emotional Wellness Hub - NOW MAIN HUB (not under Health) */}
+            <Route
+              path="/wellness"
               element={
                 <ProtectedRoute>
                   <EmotionalWellnessHub />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/wellness/calm-down" 
+            <Route
+              path="/wellness/calm-down"
               element={
                 <ProtectedRoute>
                   <CalmDown />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/wellness/sensory-breaks" 
-              element={
-                <ProtectedRoute>
-                  <SensoryBreaks />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/wellness/feelings" 
+            <Route
+              path="/wellness/feelings"
               element={
                 <ProtectedRoute>
                   <FeelingsTracker />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/wellness/emotion-chart" 
+            <Route
+              path="/wellness/emotion-chart"
               element={
                 <ProtectedRoute>
                   <EmotionChart />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/wellness/coping-skills" 
+            <Route
+              path="/wellness/coping-skills"
               element={
                 <ProtectedRoute>
                   <CopingSkillsChart />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/wellness/circles-control" 
+            <Route
+              path="/wellness/sensory-breaks"
+              element={
+                <ProtectedRoute>
+                  <SensoryBreaks />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/wellness/circles-control"
               element={
                 <ProtectedRoute>
                   <CirclesOfControl />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/wellness/growth-mindset" 
+            <Route
+              path="/wellness/growth-mindset"
               element={
                 <ProtectedRoute>
                   <GrowthMindset />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/wellness/social-stories" 
+            <Route
+              path="/wellness/social-stories"
               element={
                 <ProtectedRoute>
                   <SocialStories />
                 </ProtectedRoute>
-              } 
+              }
             />
-            
-            {/* Legacy routes for backward compatibility */}
-            <Route 
-              path="/emotional-wellness" 
-              element={<Navigate to="/wellness" replace />}
-            />
-            <Route 
-              path="/emotional-wellness/*" 
-              element={<Navigate to="/wellness" replace />}
-            />
-            
-            {/* ============================================ */}
-            {/* CARE TEAM / SERVICES HUB */}
-            {/* ============================================ */}
-            <Route 
-              path="/services" 
+
+            {/* Legacy Emotional Wellness routes - redirect to new paths */}
+            <Route path="/emotional-wellness" element={<Navigate to="/wellness" replace />} />
+            <Route path="/emotional-wellness/*" element={<Navigate to="/wellness" replace />} />
+
+            {/* Care Team / Services Hub */}
+            <Route
+              path="/services"
               element={
                 <ProtectedRoute>
                   <Services />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/care-team" 
-              element={
-                <ProtectedRoute>
-                  <Services />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/services/appointments" 
+            {/* Legacy care-team route redirect */}
+            <Route path="/care-team" element={<Navigate to="/services" replace />} />
+            <Route
+              path="/services/appointments"
               element={
                 <ProtectedRoute>
                   <AppointmentTracker />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/services/goals" 
+            <Route
+              path="/services/goals"
               element={
                 <ProtectedRoute>
                   <GoalTracker />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/services/team" 
+            <Route
+              path="/services/my-team"
               element={
                 <ProtectedRoute>
                   <MyTeam />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/services/notes" 
+            <Route
+              path="/services/notes"
               element={
                 <ProtectedRoute>
                   <QuickNotes />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/services/reminders" 
+            <Route
+              path="/services/reminders"
               element={
                 <ProtectedRoute>
                   <Reminders />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/services/routines" 
-              element={
-                <ProtectedRoute>
-                  <DailyRoutines />
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* ============================================ */}
-            {/* HEALTH HUB (Physical health only) */}
-            {/* ============================================ */}
-            <Route 
-              path="/health" 
+
+            {/* Health Hub - Physical Health Only (Emotional Wellness moved to /wellness) */}
+            <Route
+              path="/health"
               element={
                 <ProtectedRoute>
                   <Health />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/health/nutrition" 
+            <Route
+              path="/health/nutrition"
               element={
                 <ProtectedRoute>
                   <Nutrition />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/health/feelings" 
-              element={
-                <ProtectedRoute>
-                  <FeelingsTracker />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/health/water" 
+            <Route
+              path="/health/water"
               element={
                 <ProtectedRoute>
                   <WaterTracker />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/health/sleep" 
+            <Route
+              path="/health/sleep"
               element={
                 <ProtectedRoute>
                   <SleepTracker />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/health/exercise" 
+            <Route
+              path="/health/exercise"
               element={
                 <ProtectedRoute>
                   <MoveExercise />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/health/ot" 
+            <Route
+              path="/health/ot-exercises"
               element={
                 <ProtectedRoute>
                   <OTExercises />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/health/healthy-choices" 
+            <Route
+              path="/health/healthy-choices"
               element={
                 <ProtectedRoute>
                   <HealthyChoices />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/health/choices" 
-              element={
-                <ProtectedRoute>
-                  <HealthyChoices />
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* ============================================ */}
-            {/* GAMES HUB */}
-            {/* ============================================ */}
-            <Route 
-              path="/games" 
+
+            {/* Games Hub - FIXED: Routes match Games.jsx paths */}
+            <Route
+              path="/games"
               element={
                 <ProtectedRoute>
                   <Games />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/games/matching" 
+            <Route
+              path="/games/matching"
               element={
                 <ProtectedRoute>
                   <MatchingGame />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/games/emotions" 
+            <Route
+              path="/games/emotion-match"
               element={
                 <ProtectedRoute>
                   <EmotionMatch />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/games/bubbles" 
+            <Route
+              path="/games/bubble-pop"
               element={
                 <ProtectedRoute>
                   <BubblePop />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/games/sorting" 
+            <Route
+              path="/games/color-sort"
               element={
                 <ProtectedRoute>
                   <ColorSort />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/games/shapes" 
+            <Route
+              path="/games/shape-match"
               element={
                 <ProtectedRoute>
                   <ShapeMatch />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/games/puzzles" 
+            <Route
+              path="/games/puzzles"
               element={
                 <ProtectedRoute>
                   <SimplePuzzles />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/games/pattern" 
+            <Route
+              path="/games/patterns"
               element={
                 <ProtectedRoute>
                   <PatternSequence />
                 </ProtectedRoute>
-              } 
+              }
             />
-            
-            {/* ============================================ */}
-            {/* ACTIVITIES HUB */}
-            {/* ============================================ */}
-            <Route 
-              path="/activities" 
+
+            {/* Activities Hub */}
+            <Route
+              path="/activities"
               element={
                 <ProtectedRoute>
                   <Activities />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/activities/social-stories" 
+            <Route
+              path="/activities/social-stories"
               element={
                 <ProtectedRoute>
                   <SocialStories />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/activities/coloring" 
+            <Route
+              path="/activities/coloring"
               element={
                 <ProtectedRoute>
                   <ColoringBook />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/activities/pronunciation" 
+            <Route
+              path="/activities/pronunciation"
               element={
                 <ProtectedRoute>
                   <PronunciationPractice />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/activities/choice-board" 
+            <Route
+              path="/activities/choice-board"
               element={
                 <ProtectedRoute>
                   <ChoiceBoard />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/activities/music" 
+            <Route
+              path="/activities/music"
               element={
                 <ProtectedRoute>
                   <MusicSounds />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/activities/photo-journal" 
+            <Route
+              path="/activities/photo-journal"
               element={
                 <ProtectedRoute>
                   <PhotoJournal />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/activities/rewards" 
+            <Route
+              path="/activities/rewards"
               element={
                 <ProtectedRoute>
                   <RewardChart />
                 </ProtectedRoute>
-              } 
+              }
             />
-            
-            {/* ============================================ */}
-            {/* PLANNING HUB */}
-            {/* ============================================ */}
-            <Route 
-              path="/planning" 
+
+            {/* Planning & Documents Hub */}
+            <Route
+              path="/planning"
               element={
                 <ProtectedRoute>
                   <PlanningHub />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/planning/student-profile" 
+            <Route
+              path="/planning/student-profile"
               element={
                 <ProtectedRoute>
                   <StudentProfile />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/planning/file-of-life" 
+            <Route
+              path="/planning/file-of-life"
               element={
                 <ProtectedRoute>
                   <FileOfLife />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/planning/person-centered-plan" 
+            <Route
+              path="/planning/person-centered"
               element={
                 <ProtectedRoute>
                   <PersonCenteredPlan />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/planning/memorandum-of-intent" 
+            <Route
+              path="/planning/memorandum"
               element={
                 <ProtectedRoute>
                   <MemorandumOfIntent />
                 </ProtectedRoute>
-              } 
+              }
             />
-            
-            {/* ============================================ */}
-            {/* RESOURCES HUB - UPDATED with new apps */}
-            {/* ============================================ */}
-            <Route 
-              path="/resources" 
+
+            {/* Resources Hub - UPDATED: Added new resource pages */}
+            <Route
+              path="/resources"
               element={
                 <ProtectedRoute>
                   <ResourcesHub />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/resources/printables" 
+            <Route
+              path="/resources/knowledge"
               element={
                 <ProtectedRoute>
-                  <PrintablesLibrary />
+                  <Knowledge />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/resources/research" 
+            <Route
+              path="/resources/research"
               element={
                 <ProtectedRoute>
                   <ResearchHub />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/resources/products" 
+            <Route
+              path="/resources/printables"
+              element={
+                <ProtectedRoute>
+                  <PrintablesLibrary />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/resources/products"
               element={
                 <ProtectedRoute>
                   <RecommendedProducts />
                 </ProtectedRoute>
-              } 
+              }
             />
             {/* NEW: Therapy Types */}
-            <Route 
-              path="/resources/therapy-types" 
+            <Route
+              path="/resources/therapy-types"
               element={
                 <ProtectedRoute>
                   <TherapyTypes />
                 </ProtectedRoute>
-              } 
+              }
             />
             {/* NEW: Definitions */}
-            <Route 
-              path="/resources/definitions" 
+            <Route
+              path="/resources/definitions"
               element={
                 <ProtectedRoute>
                   <Definitions />
                 </ProtectedRoute>
-              } 
+              }
             />
             {/* NEW: FAQ */}
-            <Route 
-              path="/resources/faq" 
+            <Route
+              path="/resources/faq"
               element={
                 <ProtectedRoute>
                   <FAQ />
                 </ProtectedRoute>
-              } 
+              }
             />
-            
-            {/* ============================================ */}
-            {/* KNOWLEDGE / STATE RESOURCES */}
-            {/* ============================================ */}
-            <Route 
-              path="/knowledge" 
-              element={
-                <ProtectedRoute>
-                  <Knowledge />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/knowledge/:region" 
-              element={
-                <ProtectedRoute>
-                  <Knowledge />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/knowledge/:region/:slug" 
-              element={
-                <ProtectedRoute>
-                  <Knowledge />
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* ============================================ */}
-            {/* COMMUNITY */}
-            {/* ============================================ */}
-            <Route 
-              path="/community" 
+
+            {/* Community */}
+            <Route
+              path="/community"
               element={
                 <ProtectedRoute>
                   <Community />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/community/setup" 
+            <Route
+              path="/community/setup"
               element={
                 <ProtectedRoute>
                   <CommunityProfileSetup />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/community/new" 
+            <Route
+              path="/community/new"
               element={
                 <ProtectedRoute>
                   <CommunityNewThread />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/community/thread/:threadId" 
+            <Route
+              path="/community/thread/:id"
               element={
                 <ProtectedRoute>
                   <CommunityThread />
                 </ProtectedRoute>
-              } 
+              }
             />
-            
-            {/* ============================================ */}
-            {/* CATCH-ALL REDIRECT */}
-            {/* ============================================ */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+
+            {/* Fallback - redirect to hub if authenticated, otherwise to login */}
+            <Route path="*" element={<Navigate to="/hub" replace />} />
           </Routes>
-        </Router>
-      </AuthProvider>
-    </ToastProvider>
+        </AuthProvider>
+      </ToastProvider>
+    </Router>
   );
 }
 
