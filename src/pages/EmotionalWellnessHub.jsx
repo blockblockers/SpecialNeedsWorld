@@ -1,5 +1,6 @@
-// EmotionalWellnessHub.jsx - Emotional Wellness sub-hub under Health
-// NAVIGATION: Back button goes to /health (parent hub)
+// EmotionalWellnessHub.jsx - Emotional Wellness hub for ATLASassist
+// UPDATED: Now a main hub - back button goes to /hub (main menu)
+// All wellness sub-apps should navigate back to /wellness
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Brain, Wind, Smile, Heart, Target, Lightbulb, BookOpen, Activity } from 'lucide-react';
 
@@ -99,13 +100,13 @@ const EmotionalWellnessHub = () => {
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#8E6BBF]">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#20B2AA]">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
-          {/* IMPORTANT: Back button goes to /health (parent hub) */}
+          {/* UPDATED: Back button goes to /hub (main menu) */}
           <button
-            onClick={() => navigate('/health')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#8E6BBF] 
-                       rounded-xl font-display font-bold text-[#8E6BBF] hover:bg-[#8E6BBF] 
+            onClick={() => navigate('/hub')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#20B2AA] 
+                       rounded-xl font-display font-bold text-[#20B2AA] hover:bg-[#20B2AA] 
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
@@ -116,7 +117,7 @@ const EmotionalWellnessHub = () => {
             alt="ATLASassist" 
             className="w-10 h-10 rounded-lg shadow-sm"
           />
-          <h1 className="text-xl sm:text-2xl font-display text-[#8E6BBF] crayon-text flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-display text-[#20B2AA] crayon-text flex items-center gap-2">
             <Brain size={24} />
             Emotional Wellness
           </h1>
@@ -148,42 +149,38 @@ const EmotionalWellnessHub = () => {
                 style={{
                   backgroundColor: app.color + '20',
                   borderColor: app.color,
-                  borderRadius: index % 2 === 0 ? '20px 8px 20px 8px' : '8px 20px 8px 20px',
+                  borderRadius: index % 2 === 0 ? '1rem 1.5rem 1rem 1rem' : '1.5rem 1rem 1rem 1rem',
                 }}
               >
-                {/* Coming Soon Badge */}
                 {!app.ready && (
-                  <div className="absolute -top-2 -right-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full font-crayon">
-                    Soon!
-                  </div>
+                  <span className="absolute top-2 right-2 text-xs bg-white/90 px-2 py-0.5 rounded-full font-crayon">
+                    Coming Soon
+                  </span>
                 )}
-
-                {/* Emoji */}
-                <div className="text-3xl mb-2">{app.emoji}</div>
-
-                {/* Icon */}
-                <div className="flex justify-center mb-2">
-                  <IconComponent size={28} style={{ color: app.color }} strokeWidth={2.5} />
+                
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-2xl">{app.emoji}</span>
                 </div>
-
-                {/* Name */}
-                <h3 className="font-display text-base crayon-text" style={{ color: app.color }}>
+                
+                <h3 
+                  className="font-display text-sm leading-tight mb-1"
+                  style={{ color: app.color }}
+                >
                   {app.name}
                 </h3>
-
-                {/* Description */}
-                <p className="text-xs text-gray-600 font-crayon mt-1 line-clamp-2">
+                
+                <p className="font-crayon text-xs text-gray-600">
                   {app.description}
                 </p>
               </button>
             );
           })}
         </div>
-
-        {/* Info Note */}
-        <div className="mt-8 p-4 bg-white rounded-2xl border-3 border-[#8E6BBF]/30 shadow-sm">
-          <p className="text-center text-gray-600 font-crayon text-sm">
-            🧠 Understanding your feelings is a superpower! Explore these tools to learn about emotions.
+        
+        {/* Helpful tip */}
+        <div className="mt-8 p-4 bg-[#20B2AA]/10 rounded-2xl border-2 border-[#20B2AA]/30">
+          <p className="font-crayon text-center text-gray-600 text-sm">
+            💡 <strong>Tip:</strong> It's okay to have big feelings! These tools can help you understand and manage them.
           </p>
         </div>
       </main>

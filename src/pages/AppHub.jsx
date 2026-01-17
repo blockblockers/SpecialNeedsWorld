@@ -1,6 +1,7 @@
 // AppHub.jsx - Updated Main navigation hub for ATLASassist v2.0
 // Reorganized with new hubs: Emotional Wellness, Planning & Documents, expanded Resources
 // v3: Removed "NEW" badges, restored Finn footer
+// v4: FIXED - My Care Team now correctly points to /services
 
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -83,7 +84,7 @@ const appCategories = [
     color: 'bg-[#008B8B]',
     borderColor: 'border-teal-700',
     hoverRotate: 'hover:rotate-1',
-    path: '/care-team',
+    path: '/services', // FIXED: Was /care-team, now correctly points to /services
     emoji: '👥',
   },
   {
@@ -122,10 +123,10 @@ const appCategories = [
   {
     id: 'planning',
     name: 'Planning & Documents',
-    description: 'Important documents & planning',
+    description: 'Important info & documents',
     icon: FileText,
-    color: 'bg-[#CD853F]',
-    borderColor: 'border-amber-700',
+    color: 'bg-[#8E6BBF]',
+    borderColor: 'border-purple-600',
     hoverRotate: 'hover:rotate-1',
     path: '/planning',
     emoji: '📋',
@@ -133,105 +134,54 @@ const appCategories = [
   {
     id: 'resources',
     name: 'Resources & Research',
-    description: 'Laws, research & printables!',
+    description: 'Helpful information & tools',
     icon: Library,
-    color: 'bg-[#8E6BBF]',
-    borderColor: 'border-purple-600',
+    color: 'bg-[#9370DB]',
+    borderColor: 'border-purple-500',
     hoverRotate: 'hover:-rotate-1',
     path: '/resources',
     emoji: '📚',
   },
-  {
-    id: 'community',
-    name: 'Community',
-    description: 'Connect with others!',
-    icon: Users,
-    color: 'bg-[#FF7F7F]',
-    borderColor: 'border-red-400',
-    hoverRotate: 'hover:rotate-1',
-    path: '/community',
-    emoji: '💬',
-  },
 ];
-
-// Floating decoration component
-const FloatingDecoration = ({ Icon, className, delay = '0s', fill = false }) => (
-  <Icon 
-    className={`absolute animate-bounce-soft ${className}`}
-    style={{ animationDelay: delay }}
-    fill={fill ? 'currentColor' : 'none'}
-  />
-);
 
 const AppHub = () => {
   const navigate = useNavigate();
+  const isInstalled = useIsAppInstalled();
   const { user, signOut } = useAuth();
-  const isAppInstalled = useIsAppInstalled();
-
-  const handleSignOut = () => {
-    signOut();
-    navigate('/');
-  };
 
   const handleAppClick = (path) => {
     navigate(path);
   };
 
-  // Get display name or default
-  const displayName = user?.displayName || user?.user_metadata?.display_name || 'Friend';
-  const firstName = displayName.split(' ')[0];
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
 
   return (
-    <div className="min-h-screen bg-[#FFFEF5] relative overflow-hidden flex flex-col">
-      {/* Background Decorations */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {/* Sun - top right */}
-        <div className="absolute top-8 right-8 w-16 h-16 sm:w-20 sm:h-20">
-          <div className="w-full h-full rounded-full bg-[#F8D14A] animate-pulse" style={{ boxShadow: '0 0 30px #F5A623' }}></div>
-          {/* Sun rays */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            {[...Array(8)].map((_, i) => (
-              <div
-                key={i}
-                className="absolute w-1 h-6 bg-[#F5A623] origin-center"
-                style={{
-                  transform: `rotate(${i * 45}deg) translateY(-30px)`,
-                  borderRadius: '10px',
-                  opacity: 0.6,
-                }}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Floating decorations */}
-        <FloatingDecoration Icon={Star} className="top-32 left-8 text-[#F8D14A] w-6 h-6" delay="0.5s" fill />
-        <FloatingDecoration Icon={Sparkles} className="bottom-40 right-12 text-[#E86B9A] w-8 h-8" delay="1s" />
-        <FloatingDecoration Icon={Star} className="top-48 right-1/4 text-[#4A9FD4] w-5 h-5" delay="1.5s" fill />
-        <FloatingDecoration Icon={Cloud} className="top-20 left-1/3 text-white w-12 h-12" delay="2s" fill />
-        <FloatingDecoration Icon={Star} className="bottom-32 left-16 text-[#5CB85C] w-4 h-4" delay="0.8s" fill />
+    <div className="min-h-screen bg-[#FFFEF5] flex flex-col">
+      {/* Hand-drawn style background decorations */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-30">
+        <div className="absolute top-4 left-4 text-6xl transform -rotate-12">✨</div>
+        <div className="absolute top-20 right-8 text-4xl transform rotate-12">🌟</div>
+        <div className="absolute bottom-40 left-8 text-5xl transform rotate-6">🎨</div>
+        <div className="absolute bottom-20 right-4 text-4xl transform -rotate-6">⭐</div>
       </div>
-
-      {/* PWA Install Prompt */}
-      {!isAppInstalled && (
-        <div className="fixed bottom-4 left-4 right-4 z-50 max-w-md mx-auto">
-          <PushNotificationPrompt />
-        </div>
-      )}
-
+      
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#4A9FD4]">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#8E6BBF] shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          {/* Logo and Greeting */}
+          {/* Logo and greeting */}
           <div className="flex items-center gap-3">
             <img 
               src="/logo.jpeg" 
               alt="ATLASassist" 
-              className="w-12 h-12 rounded-xl shadow-crayon"
+              className="w-12 h-12 rounded-xl shadow-crayon border-2 border-[#8E6BBF]"
             />
             <div>
-              <h1 className="text-lg sm:text-xl font-display text-[#4A9FD4] crayon-text">
-                Hi, {firstName}! 👋
+              <h1 className="text-lg sm:text-xl font-display text-[#8E6BBF]">
+                Hello{user?.email ? `, ${user.email.split('@')[0]}` : ''}! 
+                👋
               </h1>
               <p className="text-gray-600 font-crayon text-sm">
                 What would you like to do today?
@@ -294,66 +244,61 @@ const AppHub = () => {
                            ${app.hoverRotate} hover:scale-105 active:scale-95
                            flex flex-col items-center gap-2 text-white`}
                 style={{
-                  borderRadius: '20px 40px 20px 40px / 40px 20px 40px 20px',
+                  borderRadius: app.id === 'visual-schedule' ? '1.5rem 1rem 1rem 1rem' :
+                               app.id === 'point-to-talk' ? '1rem 1.5rem 1rem 1rem' :
+                               app.id === 'tools' ? '1rem 1rem 1.5rem 1rem' :
+                               '1rem 1rem 1rem 1.5rem',
                 }}
               >
-                {/* Icon */}
-                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/20 rounded-xl flex items-center justify-center
-                               group-hover:bg-white/30 transition-colors">
-                  <span className="text-2xl sm:text-3xl">{app.emoji}</span>
-                </div>
+                {/* Emoji */}
+                <span className="text-3xl sm:text-4xl">{app.emoji}</span>
                 
-                {/* Text */}
-                <div className="text-center">
-                  <h3 className="font-display text-sm sm:text-base leading-tight">
-                    {app.name}
-                  </h3>
-                  <p className="font-crayon text-xs text-white/80 mt-1 hidden sm:block">
-                    {app.description}
-                  </p>
-                </div>
+                {/* Icon */}
+                <app.icon size={24} className="opacity-90" />
+                
+                {/* Name */}
+                <h3 className="font-display text-center text-sm sm:text-base leading-tight">
+                  {app.name}
+                </h3>
+                
+                {/* Description - Hidden on mobile */}
+                <p className="hidden sm:block font-crayon text-xs text-white/80 text-center">
+                  {app.description}
+                </p>
               </button>
             ))}
           </div>
-
-          {/* Guest Mode Notice */}
-          {user?.isGuest && (
-            <div 
-              className="mt-8 p-4 bg-white border-4 border-dashed border-crayon-orange rounded-2xl text-center"
-              style={{ borderRadius: '255px 15px 225px 15px/15px 225px 15px 255px' }}
-            >
-              <p className="font-crayon text-gray-600">
-                🌟 <strong>You're exploring as a guest!</strong> Your progress won't be saved.
-              </p>
-              <button 
-                onClick={() => navigate('/')}
-                className="mt-2 text-crayon-blue hover:text-crayon-purple font-crayon underline"
-              >
-                Create an account to save your work
-              </button>
+          
+          {/* Cloud Sync Status */}
+          <div className="mt-6 flex justify-center">
+            <div className="flex items-center gap-2 px-4 py-2 bg-white/80 rounded-full border-2 border-[#5CB85C] shadow-sm">
+              <Cloud size={16} className="text-[#5CB85C]" />
+              <span className="font-crayon text-sm text-[#5CB85C]">
+                {user ? 'Cloud sync enabled' : 'Sign in for cloud sync'}
+              </span>
             </div>
-          )}
+          </div>
+          
+          {/* Push Notification Prompt */}
+          <PushNotificationPrompt />
         </div>
       </main>
 
-      {/* Push Notification Prompt */}
-      <PushNotificationPrompt user={user} />
-
-      {/* Footer - For Finn */}
-      <footer className="relative z-10 text-center py-6 px-4">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <img 
-            src="/logo.jpeg" 
-            alt="" 
-            className="w-8 h-8 rounded-md"
-          />
-          <p className="text-gray-700 font-display text-lg crayon-text">
-            ATLASassist
-          </p>
+      {/* Footer */}
+      <footer className="relative z-10 border-t-4 border-[#8E6BBF] bg-white/50 py-4">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 text-center">
+            <p className="font-crayon text-gray-600 text-sm flex items-center gap-2">
+              Made with <Heart size={16} className="text-crayon-red fill-crayon-red" /> for Finn
+            </p>
+            <span className="hidden sm:inline text-gray-400">•</span>
+            <p className="font-crayon text-[#8E6BBF] text-sm flex items-center gap-1">
+              <Star size={14} className="text-[#F8D14A] fill-[#F8D14A]" />
+              You are amazing just the way you are!
+              <Star size={14} className="text-[#F8D14A] fill-[#F8D14A]" />
+            </p>
+          </div>
         </div>
-        <p className="text-crayon-purple font-display text-sm italic">
-          For Finn, and for people like him. 💜
-        </p>
       </footer>
     </div>
   );

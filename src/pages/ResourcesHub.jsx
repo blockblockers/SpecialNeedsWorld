@@ -1,7 +1,7 @@
 // ResourcesHub.jsx - Resources & Research hub for ATLASassist
-// FIXED: Navigation paths corrected
-// - US & State Resources now navigates to /knowledge (the existing Knowledge component)
-// - All items are now ready (no coming soon)
+// UPDATED: Added dredf.org, ed.gov IDEA to featured resources
+// UPDATED: Added Therapy Types, Definitions, FAQ apps
+// UPDATED: Removed Printables Preview section (kept Printables app)
 
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -16,7 +16,10 @@ import {
   Star,
   Heart,
   Info,
-  AlertCircle
+  AlertCircle,
+  Stethoscope,
+  BookMarked,
+  HelpCircle
 } from 'lucide-react';
 
 // Resource sections - ALL READY with CORRECT PATHS
@@ -28,7 +31,7 @@ const resourceSections = [
     icon: Scale,
     color: 'bg-[#4A9FD4]',
     borderColor: 'border-blue-500',
-    path: '/knowledge', // FIXED: Points to the existing Knowledge component
+    path: '/knowledge',
     emoji: '⚖️',
     ready: true,
   },
@@ -41,6 +44,39 @@ const resourceSections = [
     borderColor: 'border-green-500',
     path: '/resources/research',
     emoji: '🔬',
+    ready: true,
+  },
+  {
+    id: 'therapy-types',
+    name: 'Therapy Types',
+    description: 'Learn about different therapies',
+    icon: Stethoscope,
+    color: 'bg-[#E86B9A]',
+    borderColor: 'border-pink-500',
+    path: '/resources/therapy-types',
+    emoji: '🩺',
+    ready: true,
+  },
+  {
+    id: 'definitions',
+    name: 'Definitions',
+    description: 'Common terms explained',
+    icon: BookMarked,
+    color: 'bg-[#20B2AA]',
+    borderColor: 'border-teal-500',
+    path: '/resources/definitions',
+    emoji: '📖',
+    ready: true,
+  },
+  {
+    id: 'faq',
+    name: 'FAQ',
+    description: 'Frequently asked questions',
+    icon: HelpCircle,
+    color: 'bg-[#F8D14A]',
+    borderColor: 'border-yellow-500',
+    path: '/resources/faq',
+    emoji: '❓',
     ready: true,
   },
   {
@@ -67,18 +103,20 @@ const resourceSections = [
   },
 ];
 
-// Printables preview categories
-const PRINTABLES_PREVIEW = [
-  { name: 'Visual Schedules', count: 12, emoji: '📅' },
-  { name: 'Emotion Charts', count: 8, emoji: '😊' },
-  { name: 'Coping Cards', count: 15, emoji: '🧘' },
-  { name: 'Social Stories', count: 10, emoji: '📖' },
-  { name: 'Token Boards', count: 6, emoji: '⭐' },
-  { name: 'First-Then Boards', count: 8, emoji: '➡️' },
-];
-
-// Featured external resources
+// Featured external resources - UPDATED with dredf.org and ed.gov
 const FEATURED_RESOURCES = [
+  {
+    name: 'DREDF',
+    description: 'Disability Rights Education & Defense Fund',
+    url: 'https://dredf.org',
+    emoji: '⚖️',
+  },
+  {
+    name: 'IDEA - U.S. Department of Education',
+    description: 'Individuals with Disabilities Education Act',
+    url: 'https://www.ed.gov/laws-and-policy/individuals-disabilities/idea/',
+    emoji: '🏛️',
+  },
   {
     name: 'Understood.org',
     description: 'Free resources for learning and thinking differences',
@@ -89,13 +127,13 @@ const FEATURED_RESOURCES = [
     name: 'ASAN',
     description: 'Autistic Self Advocacy Network',
     url: 'https://autisticadvocacy.org',
-    emoji: '🏛️',
+    emoji: '🏳️',
   },
   {
     name: 'Wrightslaw',
     description: 'Special education law and advocacy',
     url: 'https://www.wrightslaw.com',
-    emoji: '⚖️',
+    emoji: '📚',
   },
 ];
 
@@ -127,24 +165,22 @@ const ResourcesHub = () => {
             alt="ATLASassist" 
             className="w-10 h-10 rounded-lg shadow-sm"
           />
-          <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-display text-[#8E6BBF] crayon-text flex items-center gap-2">
-              <Library size={24} />
-              Resources & Research
-            </h1>
-          </div>
+          <h1 className="text-lg sm:text-xl font-display text-[#8E6BBF] crayon-text flex items-center gap-2">
+            <Library size={22} />
+            Resources & Research
+          </h1>
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="max-w-2xl mx-auto px-4 py-6">
+        {/* Intro */}
         <p className="text-center text-gray-600 font-crayon mb-6">
-          📚 Knowledge, tools, and resources to support your journey
+          Helpful information, guides, and tools
         </p>
 
-        {/* Main Sections Grid */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
-          {resourceSections.map((section) => {
+        {/* Resource Sections Grid */}
+        <div className="grid grid-cols-2 gap-3 mb-8">
+          {resourceSections.map((section, index) => {
             const IconComponent = section.icon;
             return (
               <button
@@ -152,33 +188,31 @@ const ResourcesHub = () => {
                 onClick={() => handleSectionClick(section)}
                 disabled={!section.ready}
                 className={`
-                  relative p-4 rounded-2xl border-4 ${section.borderColor}
-                  ${section.color} text-white
+                  relative p-4 rounded-2xl border-4 text-left
+                  ${section.color} ${section.borderColor}
                   transition-all duration-200 shadow-crayon
                   ${section.ready 
                     ? 'hover:scale-105 hover:-rotate-1 active:scale-95 cursor-pointer' 
-                    : 'opacity-60 cursor-not-allowed grayscale-[30%]'
+                    : 'opacity-60 cursor-not-allowed'
                   }
                 `}
                 style={{
-                  borderRadius: '20px 8px 20px 8px',
+                  borderRadius: index % 2 === 0 ? '1rem 1.5rem 1rem 1rem' : '1.5rem 1rem 1rem 1rem',
                 }}
               >
-                {/* Emoji */}
-                <div className="text-3xl mb-2">{section.emoji}</div>
-
-                {/* Icon */}
-                <div className="flex justify-center mb-2">
-                  <IconComponent size={32} strokeWidth={2.5} />
+                {!section.ready && (
+                  <span className="absolute top-2 right-2 text-xs bg-white/90 px-2 py-0.5 rounded-full font-crayon">
+                    Coming Soon
+                  </span>
+                )}
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-2xl">{section.emoji}</span>
+                  <IconComponent size={20} className="text-white" />
                 </div>
-
-                {/* Name */}
-                <h3 className="font-display text-lg crayon-text">
+                <h3 className="font-display text-white text-sm leading-tight">
                   {section.name}
                 </h3>
-
-                {/* Description */}
-                <p className="text-sm opacity-90 font-crayon mt-1">
+                <p className="font-crayon text-white/80 text-xs mt-1">
                   {section.description}
                 </p>
               </button>
@@ -186,9 +220,9 @@ const ResourcesHub = () => {
           })}
         </div>
 
-        {/* Featured External Resources */}
+        {/* Featured Resources */}
         <div className="mb-8">
-          <h2 className="font-display text-lg text-[#8E6BBF] mb-4 flex items-center gap-2">
+          <h2 className="font-display text-[#8E6BBF] mb-3 flex items-center gap-2">
             <Star size={20} className="text-[#F8D14A]" />
             Featured Resources
           </h2>
@@ -215,33 +249,6 @@ const ResourcesHub = () => {
               </a>
             ))}
           </div>
-        </div>
-
-        {/* Printables Preview */}
-        <div className="mb-8 p-4 bg-orange-50 rounded-2xl border-3 border-[#F5A623]">
-          <h2 className="font-display text-[#F5A623] mb-3 flex items-center gap-2">
-            <Printer size={20} />
-            Printables Library Preview
-          </h2>
-          <div className="grid grid-cols-3 gap-2">
-            {PRINTABLES_PREVIEW.map((item) => (
-              <div
-                key={item.name}
-                className="p-2 bg-white rounded-lg text-center"
-              >
-                <span className="text-xl">{item.emoji}</span>
-                <p className="font-crayon text-xs text-gray-600 mt-1">{item.name}</p>
-                <p className="font-display text-sm text-[#F5A623]">{item.count}</p>
-              </div>
-            ))}
-          </div>
-          <button
-            onClick={() => navigate('/resources/printables')}
-            className="mt-3 w-full py-2 bg-[#F5A623] text-white rounded-lg font-crayon text-sm
-                     hover:bg-orange-500 transition-colors"
-          >
-            View All Printables →
-          </button>
         </div>
 
         {/* Disclaimer */}

@@ -1,23 +1,12 @@
-// Health.jsx - Health hub with multiple apps including Emotional Wellness
-// NAVIGATION: Back button goes to /hub
+// Health.jsx - Health hub for ATLASassist
+// UPDATED: Removed Emotional Wellness (now a separate main hub at /wellness)
+// Physical health tracking tools only
 
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Heart, Utensils, Droplets, Smile, Moon, Activity, Apple, Dumbbell, Brain } from 'lucide-react';
+import { ArrowLeft, Heart, Utensils, Droplets, Moon, Activity, Apple, Dumbbell } from 'lucide-react';
 
-// Health app categories - Emotional Wellness is FEATURED and first
+// Health app categories - Physical health focused
 const healthApps = [
-  {
-    id: 'emotional-wellness',
-    name: 'Emotional Wellness',
-    description: 'Feelings, coping & calm down tools',
-    icon: Brain,
-    color: 'bg-gradient-to-br from-[#8E6BBF] to-[#E86B9A]',
-    borderColor: 'border-purple-500',
-    path: '/wellness',
-    emoji: '🧠',
-    ready: true,
-    featured: true,
-  },
   {
     id: 'nutrition',
     name: 'Nutrition & Recipes',
@@ -27,17 +16,6 @@ const healthApps = [
     borderColor: 'border-green-600',
     path: '/health/nutrition',
     emoji: '🍳',
-    ready: true,
-  },
-  {
-    id: 'feelings',
-    name: 'How Do I Feel?',
-    description: 'Track your feelings',
-    icon: Smile,
-    color: 'bg-[#F5A623]',
-    borderColor: 'border-orange-500',
-    path: '/health/feelings',
-    emoji: '😊',
     ready: true,
   },
   {
@@ -66,7 +44,7 @@ const healthApps = [
     id: 'exercise',
     name: 'Move & Exercise',
     description: 'Fun ways to move!',
-    icon: Activity,
+    icon: Dumbbell,
     color: 'bg-[#E63B2E]',
     borderColor: 'border-red-500',
     path: '/health/exercise',
@@ -74,25 +52,25 @@ const healthApps = [
     ready: true,
   },
   {
-    id: 'ot-exercises',
-    name: 'OT Exercises',
-    description: 'Stretches & therapy',
-    icon: Dumbbell,
-    color: 'bg-[#20B2AA]',
-    borderColor: 'border-teal-500',
-    path: '/health/ot',
-    emoji: '🧘',
+    id: 'healthy-choices',
+    name: 'Healthy Choices',
+    description: 'Make good choices today!',
+    icon: Apple,
+    color: 'bg-[#F5A623]',
+    borderColor: 'border-orange-500',
+    path: '/health/healthy-choices',
+    emoji: '🍎',
     ready: true,
   },
   {
-    id: 'healthy-choices',
-    name: 'Healthy Choices',
-    description: 'Track healthy decisions',
-    icon: Apple,
-    color: 'bg-[#E86B9A]',
-    borderColor: 'border-pink-500',
-    path: '/health/choices',
-    emoji: '✨',
+    id: 'body-check',
+    name: 'Body Check-In',
+    description: 'How does your body feel?',
+    icon: Activity,
+    color: 'bg-[#20B2AA]',
+    borderColor: 'border-teal-500',
+    path: '/health/body-check',
+    emoji: '🫀',
     ready: true,
   },
 ];
@@ -110,7 +88,7 @@ const Health = () => {
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#E86B9A]">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/hub')}
             className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#E86B9A] 
@@ -125,24 +103,21 @@ const Health = () => {
             alt="ATLASassist" 
             className="w-10 h-10 rounded-lg shadow-sm"
           />
-          <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-display text-[#E86B9A] crayon-text flex items-center gap-2">
-              <Heart size={24} fill="currentColor" />
-              Health
-            </h1>
-          </div>
+          <h1 className="text-xl sm:text-2xl font-display text-[#E86B9A] crayon-text flex items-center gap-2">
+            <Heart size={24} />
+            Health & Wellness
+          </h1>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-2xl mx-auto px-4 py-6">
+      <main className="max-w-4xl mx-auto px-4 py-6">
         <p className="text-center text-gray-600 font-crayon mb-6">
-          Stay healthy and happy! Tap to explore.
+          Tools to take care of your body and stay healthy
         </p>
 
         {/* Apps Grid */}
-        <div className="grid grid-cols-2 gap-4">
-          {healthApps.map((app) => {
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {healthApps.map((app, index) => {
             const IconComponent = app.icon;
             return (
               <button
@@ -150,59 +125,67 @@ const Health = () => {
                 onClick={() => handleAppClick(app)}
                 disabled={!app.ready}
                 className={`
-                  relative p-4 rounded-2xl border-4 ${app.borderColor}
-                  ${app.color} text-white
-                  transition-all duration-200 shadow-crayon
+                  relative p-4 sm:p-5 rounded-2xl border-4 text-left
+                  ${app.color} ${app.borderColor}
+                  transition-all duration-200 shadow-crayon text-white
                   ${app.ready 
                     ? 'hover:scale-105 hover:-rotate-1 active:scale-95 cursor-pointer' 
-                    : 'opacity-60 cursor-not-allowed grayscale-[30%]'
+                    : 'opacity-60 cursor-not-allowed'
                   }
-                  ${app.featured ? 'ring-4 ring-yellow-400 ring-offset-2' : ''}
                 `}
                 style={{
-                  borderRadius: '20px 8px 20px 8px',
+                  borderRadius: index % 2 === 0 ? '1rem 1.5rem 1rem 1rem' : '1.5rem 1rem 1rem 1rem',
                 }}
               >
-                {/* Featured Badge */}
-                {app.featured && (
-                  <div className="absolute -top-2 -right-2 bg-yellow-400 text-yellow-900 text-xs px-2 py-1 rounded-full font-crayon font-bold animate-pulse">
-                    ⭐ NEW
-                  </div>
-                )}
-
-                {/* Coming Soon Badge */}
                 {!app.ready && (
-                  <div className="absolute -top-2 -right-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full font-crayon">
-                    Soon!
-                  </div>
+                  <span className="absolute top-2 right-2 text-xs bg-white/90 text-gray-600 px-2 py-0.5 rounded-full font-crayon">
+                    Coming Soon
+                  </span>
                 )}
-
-                {/* Emoji */}
-                <div className="text-3xl mb-2">{app.emoji}</div>
-
-                {/* Icon */}
-                <div className="flex justify-center mb-2">
-                  <IconComponent size={32} strokeWidth={2.5} />
+                
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-3xl">{app.emoji}</span>
+                  <IconComponent size={20} className="opacity-80" />
                 </div>
-
-                {/* Name */}
-                <h3 className="font-display text-lg crayon-text">
+                
+                <h3 className="font-display text-sm sm:text-base leading-tight mb-1">
                   {app.name}
                 </h3>
-
-                {/* Description */}
-                <p className="text-sm opacity-90 font-crayon mt-1">
+                
+                <p className="font-crayon text-xs text-white/80">
                   {app.description}
                 </p>
               </button>
             );
           })}
         </div>
-
-        {/* Info Note */}
-        <div className="mt-8 p-4 bg-white rounded-2xl border-3 border-[#87CEEB] shadow-sm">
-          <p className="text-center text-gray-600 font-crayon text-sm">
-            ❤️ Taking care of yourself is important! More health tools coming soon.
+        
+        {/* Link to Emotional Wellness */}
+        <div className="mt-8 p-4 bg-[#20B2AA]/10 rounded-2xl border-3 border-[#20B2AA]">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-display text-[#20B2AA] flex items-center gap-2">
+                💚 Looking for Emotional Wellness?
+              </h3>
+              <p className="font-crayon text-sm text-gray-600 mt-1">
+                Feelings, coping skills, and calming tools
+              </p>
+            </div>
+            <button
+              onClick={() => navigate('/wellness')}
+              className="px-4 py-2 bg-[#20B2AA] text-white rounded-xl font-crayon 
+                       hover:scale-105 transition-transform"
+            >
+              Go →
+            </button>
+          </div>
+        </div>
+        
+        {/* Helpful tip */}
+        <div className="mt-4 p-4 bg-pink-50 rounded-2xl border-2 border-[#E86B9A]/30">
+          <p className="font-crayon text-center text-gray-600 text-sm">
+            💪 <strong>Tip:</strong> Taking care of your body helps you feel your best! 
+            Try to drink water, move your body, and get enough sleep.
           </p>
         </div>
       </main>

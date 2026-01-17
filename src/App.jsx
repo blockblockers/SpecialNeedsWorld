@@ -4,6 +4,8 @@
 // UPDATED: Added Music & Sounds, Photo Journal, Reward Chart
 // FIXED: Game routes to match Games.jsx paths
 // FIXED: HealthyChoices route to match Health.jsx path
+// UPDATED: Added TherapyTypes, Definitions, FAQ routes
+// UPDATED: Emotional Wellness now main hub (not under Health)
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect, createContext, useContext, lazy, Suspense } from 'react';
@@ -37,7 +39,7 @@ const SoundBoard = lazy(() => import('./pages/SoundBoard'));
 const DailyRoutines = lazy(() => import('./pages/DailyRoutines'));
 const MilestoneGuide = lazy(() => import('./pages/MilestoneGuide'));
 
-// Emotional Wellness Hub
+// Emotional Wellness Hub (now main hub, not under Health)
 const EmotionalWellnessHub = lazy(() => import('./pages/EmotionalWellnessHub'));
 const CalmDown = lazy(() => import('./pages/CalmDown'));
 const SensoryBreaks = lazy(() => import('./pages/SensoryBreaks'));
@@ -80,7 +82,6 @@ const SocialStories = lazy(() => import('./pages/SocialStories'));
 const ColoringBook = lazy(() => import('./pages/ColoringBook'));
 const PronunciationPractice = lazy(() => import('./pages/PronunciationPractice'));
 const ChoiceBoard = lazy(() => import('./pages/ChoiceBoard'));
-// NEW: Activities apps
 const MusicSounds = lazy(() => import('./pages/MusicSounds'));
 const PhotoJournal = lazy(() => import('./pages/PhotoJournal'));
 const RewardChart = lazy(() => import('./pages/RewardChart'));
@@ -92,12 +93,15 @@ const FileOfLife = lazy(() => import('./pages/FileOfLife'));
 const PersonCenteredPlan = lazy(() => import('./pages/PersonCenteredPlan'));
 const MemorandumOfIntent = lazy(() => import('./pages/MemorandumOfIntent'));
 
-// Resources Hub
+// Resources Hub - UPDATED: Added TherapyTypes, Definitions, FAQ
 const ResourcesHub = lazy(() => import('./pages/ResourcesHub'));
 const PrintablesLibrary = lazy(() => import('./pages/PrintablesLibrary'));
 const ResearchHub = lazy(() => import('./pages/ResearchHub'));
 const RecommendedProducts = lazy(() => import('./pages/RecommendedProducts'));
 const Knowledge = lazy(() => import('./pages/Knowledge'));
+const TherapyTypes = lazy(() => import('./pages/TherapyTypes'));
+const Definitions = lazy(() => import('./pages/Definitions'));
+const FAQ = lazy(() => import('./pages/FAQ'));
 
 // Community
 const Community = lazy(() => import('./pages/Community'));
@@ -108,19 +112,11 @@ const CommunityThread = lazy(() => import('./pages/CommunityThread'));
 // ============================================
 // LOADING FALLBACK COMPONENT
 // ============================================
-const PageLoader = () => (
+const LoadingSpinner = () => (
   <div className="min-h-screen bg-[#FFFEF5] flex items-center justify-center">
     <div className="text-center">
-      <div className="relative w-16 h-16 mx-auto mb-4">
-        {/* Spinning loader */}
-        <div className="absolute inset-0 border-4 border-[#4A9FD4]/20 rounded-full"></div>
-        <div className="absolute inset-0 border-4 border-transparent border-t-[#4A9FD4] rounded-full animate-spin"></div>
-        {/* Center icon */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-2xl">✨</span>
-        </div>
-      </div>
-      <p className="font-crayon text-gray-500 text-sm">Loading...</p>
+      <div className="w-16 h-16 border-4 border-[#8E6BBF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <p className="font-crayon text-gray-600">Loading...</p>
     </div>
   </div>
 );
@@ -128,243 +124,82 @@ const PageLoader = () => (
 // ============================================
 // AUTH CONTEXT
 // ============================================
-export const AuthContext = createContext(null);
+const AuthContext = createContext(null);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth must be used within AuthProvider');
   }
   return context;
 };
 
-// Format Supabase user to app user format
-const formatSupabaseUser = (supabaseUser) => {
-  if (!supabaseUser) return null;
-  return {
-    id: supabaseUser.id,
-    email: supabaseUser.email,
-    displayName: supabaseUser.user_metadata?.full_name || 
-                 supabaseUser.user_metadata?.name || 
-                 supabaseUser.email?.split('@')[0] || 
-                 'Friend',
-    photoURL: supabaseUser.user_metadata?.avatar_url || null,
-    provider: supabaseUser.app_metadata?.provider || 'email',
-  };
-};
-
-// ============================================
-// AUTH PROVIDER COMPONENT
-// ============================================
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [authMode, setAuthMode] = useState('checking');
 
   useEffect(() => {
-    const initAuth = async () => {
-      if (isSupabaseConfigured()) {
-        setAuthMode('supabase');
-        
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          
-          if (session?.user) {
-            setUser(formatSupabaseUser(session.user));
-          }
-          
-          const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (event, session) => {
-              console.log('Auth event:', event);
-              if (session?.user) {
-                setUser(formatSupabaseUser(session.user));
-                
-                if (event === 'SIGNED_IN') {
-                  setTimeout(() => {
-                    initNotifications().catch(console.error);
-                  }, 2000);
-                }
-              } else {
-                setUser(null);
-              }
-            }
-          );
-          
-          setLoading(false);
-          return () => subscription.unsubscribe();
-        } catch (error) {
-          console.error('Auth init error:', error);
-          setLoading(false);
-        }
-      } else {
-        setAuthMode('guest');
-        const savedGuest = localStorage.getItem('snw_guest_user');
-        if (savedGuest) {
-          try {
-            setUser(JSON.parse(savedGuest));
-          } catch (e) {
-            console.error('Error parsing guest user:', e);
-          }
-        }
-        setLoading(false);
-      }
-    };
+    if (!isSupabaseConfigured()) {
+      setLoading(false);
+      return;
+    }
 
-    initAuth();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  // Sign in with email/password
   const signIn = async (email, password) => {
-    if (!isSupabaseConfigured()) {
-      return { error: { message: 'Supabase not configured. Use guest mode.' } };
-    }
-
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-      return { data, error: null };
-    } catch (error) {
-      console.error('Sign-in error:', error);
-      return { error: { message: error.message || 'Failed to sign in' } };
-    }
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    return data;
   };
 
-  // Sign up with email/password
-  const signUp = async (email, password, displayName) => {
-    if (!isSupabaseConfigured()) {
-      return { error: { message: 'Supabase not configured. Use guest mode.' } };
-    }
-
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: displayName,
-            name: displayName,
-          },
-        },
-      });
-
-      if (error) throw error;
-
-      if (data?.user && !data?.session) {
-        return {
-          data,
-          error: null,
-          requiresConfirmation: true,
-        };
-      }
-
-      return { data, error: null };
-    } catch (error) {
-      console.error('Sign-up error:', error);
-      let message = error.message;
-      if (message.includes('already registered')) {
-        message = 'This email is already registered. Try signing in instead.';
-      }
-      return { error: { message } };
-    }
+  const signUp = async (email, password) => {
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) throw error;
+    return data;
   };
 
-  // Sign in with Google
-  const signInWithGoogle = async () => {
-    if (!isSupabaseConfigured()) {
-      return { error: { message: 'Supabase not configured.' } };
-    }
-
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/hub`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-        },
-      });
-
-      if (error) throw error;
-      return { data, error: null };
-    } catch (error) {
-      console.error('Google sign-in error:', error);
-      return { error: { message: error.message || 'Failed to sign in with Google' } };
-    }
-  };
-
-  // Reset password
-  const resetPassword = async (email) => {
-    if (!isSupabaseConfigured()) {
-      return { error: { message: 'Supabase not configured.' } };
-    }
-
-    try {
-      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-
-      if (error) throw error;
-      return { data, error: null };
-    } catch (error) {
-      console.error('Password reset error:', error);
-      return { error: { message: error.message } };
-    }
-  };
-
-  // Sign in as guest
-  const signInAsGuest = (name = 'Friend') => {
-    const guestUser = {
-      id: `guest_${Date.now()}`,
-      email: null,
-      displayName: name,
-      photoURL: null,
-      provider: 'guest',
-      isGuest: true,
-    };
-    localStorage.setItem('snw_guest_user', JSON.stringify(guestUser));
-    setUser(guestUser);
-    return { data: guestUser, error: null };
-  };
-
-  // Sign out
   const signOut = async () => {
-    if (authMode === 'supabase' && isSupabaseConfigured()) {
-      try {
-        await supabase.auth.signOut();
-      } catch (error) {
-        console.error('Sign out error:', error);
-      }
-    }
-    localStorage.removeItem('snw_guest_user');
-    setUser(null);
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+  };
+
+  const resetPassword = async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) throw error;
+  };
+
+  const updatePassword = async (newPassword) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
   };
 
   const value = {
     user,
     loading,
-    authMode,
     signIn,
     signUp,
-    signInWithGoogle,
-    signInAsGuest,
     signOut,
     resetPassword,
-    isAuthenticated: !!user,
-    isGuest: user?.isGuest || user?.provider === 'guest',
-    isSupabaseConfigured: isSupabaseConfigured(),
+    updatePassword,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 // ============================================
@@ -374,18 +209,18 @@ const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <PageLoader />;
+    return <LoadingSpinner />;
   }
 
   if (!user) {
     return <Navigate to="/" replace />;
   }
 
-  return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
+  return <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>;
 };
 
 // ============================================
-// RESET PASSWORD PAGE COMPONENT
+// RESET PASSWORD PAGE
 // ============================================
 const ResetPassword = () => {
   const [password, setPassword] = useState('');
@@ -393,6 +228,7 @@ const ResetPassword = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { updatePassword } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -409,30 +245,24 @@ const ResetPassword = () => {
     }
 
     setLoading(true);
-
     try {
-      const { error } = await supabase.auth.updateUser({ password });
-      if (error) throw error;
+      await updatePassword(password);
       setSuccess(true);
     } catch (err) {
-      setError(err.message || 'Failed to reset password');
-    } finally {
-      setLoading(false);
+      setError(err.message);
     }
+    setLoading(false);
   };
 
   if (success) {
     return (
       <div className="min-h-screen bg-[#FFFEF5] flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-8 shadow-lg max-w-md w-full text-center">
-          <div className="text-5xl mb-4">✅</div>
-          <h1 className="font-display text-2xl text-[#5CB85C] mb-4">Password Updated!</h1>
-          <p className="font-crayon text-gray-600 mb-6">
-            Your password has been successfully reset.
-          </p>
+        <div className="bg-white rounded-2xl p-8 shadow-crayon max-w-md w-full text-center">
+          <h2 className="text-2xl font-display text-[#5CB85C] mb-4">Password Updated!</h2>
+          <p className="font-crayon text-gray-600 mb-4">Your password has been changed successfully.</p>
           <a
             href="/"
-            className="block w-full py-3 bg-[#4A9FD4] text-white rounded-xl font-display hover:bg-blue-600 transition-colors"
+            className="inline-block px-6 py-3 bg-[#8E6BBF] text-white rounded-xl font-crayon"
           >
             Go to Login
           </a>
@@ -443,42 +273,34 @@ const ResetPassword = () => {
 
   return (
     <div className="min-h-screen bg-[#FFFEF5] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl p-8 shadow-lg max-w-md w-full">
-        <h1 className="font-display text-2xl text-[#4A9FD4] mb-6 text-center">Reset Password</h1>
-        
+      <div className="bg-white rounded-2xl p-8 shadow-crayon max-w-md w-full">
+        <h2 className="text-2xl font-display text-[#8E6BBF] mb-6 text-center">Set New Password</h2>
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded-lg text-red-700 font-crayon text-sm">
+            {error}
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block font-crayon text-gray-600 mb-1">New Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#4A9FD4] outline-none font-crayon"
-              placeholder="Enter new password"
-              required
-            />
-          </div>
-          
-          <div>
-            <label className="block font-crayon text-gray-600 mb-1">Confirm Password</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#4A9FD4] outline-none font-crayon"
-              placeholder="Confirm new password"
-              required
-            />
-          </div>
-          
-          {error && (
-            <p className="text-red-500 font-crayon text-sm text-center">{error}</p>
-          )}
-          
+          <input
+            type="password"
+            placeholder="New Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 font-crayon focus:border-[#8E6BBF] focus:outline-none"
+            required
+          />
+          <input
+            type="password"
+            placeholder="Confirm Password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 font-crayon focus:border-[#8E6BBF] focus:outline-none"
+            required
+          />
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-[#4A9FD4] text-white rounded-xl font-display hover:bg-blue-600 transition-colors disabled:opacity-50"
+            className="w-full py-3 bg-[#8E6BBF] text-white rounded-xl font-display hover:bg-[#7d5aa8] transition-colors disabled:opacity-50"
           >
             {loading ? 'Updating...' : 'Update Password'}
           </button>
@@ -527,10 +349,26 @@ function App() {
             {/* CORE FEATURES */}
             {/* ============================================ */}
             <Route 
+              path="/visual-schedule" 
+              element={
+                <ProtectedRoute>
+                  <VisualSchedule />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path="/schedule" 
               element={
                 <ProtectedRoute>
                   <VisualSchedule />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/point-to-talk" 
+              element={
+                <ProtectedRoute>
+                  <PointToTalk />
                 </ProtectedRoute>
               } 
             />
@@ -604,10 +442,10 @@ function App() {
             />
             
             {/* ============================================ */}
-            {/* EMOTIONAL WELLNESS HUB */}
+            {/* EMOTIONAL WELLNESS HUB (Main Hub - not under Health) */}
             {/* ============================================ */}
             <Route 
-              path="/emotional-wellness" 
+              path="/wellness" 
               element={
                 <ProtectedRoute>
                   <EmotionalWellnessHub />
@@ -615,7 +453,7 @@ function App() {
               } 
             />
             <Route 
-              path="/emotional-wellness/calm-down" 
+              path="/wellness/calm-down" 
               element={
                 <ProtectedRoute>
                   <CalmDown />
@@ -623,7 +461,7 @@ function App() {
               } 
             />
             <Route 
-              path="/emotional-wellness/sensory-breaks" 
+              path="/wellness/sensory-breaks" 
               element={
                 <ProtectedRoute>
                   <SensoryBreaks />
@@ -631,7 +469,7 @@ function App() {
               } 
             />
             <Route 
-              path="/emotional-wellness/feelings" 
+              path="/wellness/feelings" 
               element={
                 <ProtectedRoute>
                   <FeelingsTracker />
@@ -639,7 +477,7 @@ function App() {
               } 
             />
             <Route 
-              path="/emotional-wellness/emotion-chart" 
+              path="/wellness/emotion-chart" 
               element={
                 <ProtectedRoute>
                   <EmotionChart />
@@ -647,7 +485,7 @@ function App() {
               } 
             />
             <Route 
-              path="/emotional-wellness/coping-skills" 
+              path="/wellness/coping-skills" 
               element={
                 <ProtectedRoute>
                   <CopingSkillsChart />
@@ -655,7 +493,7 @@ function App() {
               } 
             />
             <Route 
-              path="/emotional-wellness/circles-of-control" 
+              path="/wellness/circles-control" 
               element={
                 <ProtectedRoute>
                   <CirclesOfControl />
@@ -663,12 +501,30 @@ function App() {
               } 
             />
             <Route 
-              path="/emotional-wellness/growth-mindset" 
+              path="/wellness/growth-mindset" 
               element={
                 <ProtectedRoute>
                   <GrowthMindset />
                 </ProtectedRoute>
               } 
+            />
+            <Route 
+              path="/wellness/social-stories" 
+              element={
+                <ProtectedRoute>
+                  <SocialStories />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Legacy routes for backward compatibility */}
+            <Route 
+              path="/emotional-wellness" 
+              element={<Navigate to="/wellness" replace />}
+            />
+            <Route 
+              path="/emotional-wellness/*" 
+              element={<Navigate to="/wellness" replace />}
             />
             
             {/* ============================================ */}
@@ -676,6 +532,14 @@ function App() {
             {/* ============================================ */}
             <Route 
               path="/services" 
+              element={
+                <ProtectedRoute>
+                  <Services />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/care-team" 
               element={
                 <ProtectedRoute>
                   <Services />
@@ -732,7 +596,7 @@ function App() {
             />
             
             {/* ============================================ */}
-            {/* HEALTH HUB */}
+            {/* HEALTH HUB (Physical health only) */}
             {/* ============================================ */}
             <Route 
               path="/health" 
@@ -790,7 +654,14 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            {/* FIXED: Changed from /health/healthy-choices to /health/choices */}
+            <Route 
+              path="/health/healthy-choices" 
+              element={
+                <ProtectedRoute>
+                  <HealthyChoices />
+                </ProtectedRoute>
+              } 
+            />
             <Route 
               path="/health/choices" 
               element={
@@ -802,7 +673,6 @@ function App() {
             
             {/* ============================================ */}
             {/* GAMES HUB */}
-            {/* FIXED: Routes now match Games.jsx paths */}
             {/* ============================================ */}
             <Route 
               path="/games" 
@@ -820,7 +690,6 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            {/* FIXED: /games/emotion-match -> /games/emotions */}
             <Route 
               path="/games/emotions" 
               element={
@@ -829,7 +698,6 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            {/* FIXED: /games/bubble-pop -> /games/bubbles */}
             <Route 
               path="/games/bubbles" 
               element={
@@ -838,7 +706,6 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            {/* FIXED: /games/color-sort -> /games/sorting */}
             <Route 
               path="/games/sorting" 
               element={
@@ -847,7 +714,6 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            {/* FIXED: /games/shape-match -> /games/shapes */}
             <Route 
               path="/games/shapes" 
               element={
@@ -864,7 +730,6 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            {/* FIXED: /games/patterns -> /games/pattern */}
             <Route 
               path="/games/pattern" 
               element={
@@ -882,14 +747,6 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Activities />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/activities/sensory-breaks" 
-              element={
-                <ProtectedRoute>
-                  <SensoryBreaks />
                 </ProtectedRoute>
               } 
             />
@@ -925,7 +782,6 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            {/* NEW: Music & Sounds */}
             <Route 
               path="/activities/music" 
               element={
@@ -934,7 +790,6 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            {/* NEW: Photo Journal */}
             <Route 
               path="/activities/photo-journal" 
               element={
@@ -943,7 +798,6 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            {/* NEW: Reward Chart */}
             <Route 
               path="/activities/rewards" 
               element={
@@ -954,7 +808,7 @@ function App() {
             />
             
             {/* ============================================ */}
-            {/* PLANNING & DOCUMENTS HUB */}
+            {/* PLANNING HUB */}
             {/* ============================================ */}
             <Route 
               path="/planning" 
@@ -981,7 +835,7 @@ function App() {
               } 
             />
             <Route 
-              path="/planning/person-centered" 
+              path="/planning/person-centered-plan" 
               element={
                 <ProtectedRoute>
                   <PersonCenteredPlan />
@@ -989,7 +843,7 @@ function App() {
               } 
             />
             <Route 
-              path="/planning/memo-intent" 
+              path="/planning/memorandum-of-intent" 
               element={
                 <ProtectedRoute>
                   <MemorandumOfIntent />
@@ -998,7 +852,7 @@ function App() {
             />
             
             {/* ============================================ */}
-            {/* RESOURCES & RESEARCH HUB */}
+            {/* RESOURCES HUB - UPDATED with new apps */}
             {/* ============================================ */}
             <Route 
               path="/resources" 
@@ -1029,6 +883,33 @@ function App() {
               element={
                 <ProtectedRoute>
                   <RecommendedProducts />
+                </ProtectedRoute>
+              } 
+            />
+            {/* NEW: Therapy Types */}
+            <Route 
+              path="/resources/therapy-types" 
+              element={
+                <ProtectedRoute>
+                  <TherapyTypes />
+                </ProtectedRoute>
+              } 
+            />
+            {/* NEW: Definitions */}
+            <Route 
+              path="/resources/definitions" 
+              element={
+                <ProtectedRoute>
+                  <Definitions />
+                </ProtectedRoute>
+              } 
+            />
+            {/* NEW: FAQ */}
+            <Route 
+              path="/resources/faq" 
+              element={
+                <ProtectedRoute>
+                  <FAQ />
                 </ProtectedRoute>
               } 
             />

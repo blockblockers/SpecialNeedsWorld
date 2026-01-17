@@ -1,7 +1,8 @@
 // BubblePop.jsx - Pop the bubbles game
+// UPDATED: Added back button during gameplay to return to menu
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Pause, RotateCcw, Trophy, Star, Volume2, VolumeX } from 'lucide-react';
+import { ArrowLeft, Play, Pause, RotateCcw, Trophy, Star, Volume2, VolumeX, Home } from 'lucide-react';
 
 // Bubble colors
 const COLORS = [
@@ -40,7 +41,6 @@ const BubblePop = () => {
   const playPopSound = useCallback(() => {
     if (!soundEnabled) return;
     
-    // Create a simple pop sound using Web Audio API
     try {
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const oscillator = audioContext.createOscillator();
@@ -93,13 +93,22 @@ const BubblePop = () => {
     setGameStarted(true);
   }, [duration]);
 
+  // Go back to menu
+  const goToMenu = useCallback(() => {
+    setGameStarted(false);
+    setGameOver(false);
+    setIsPaused(false);
+    setScore(0);
+    setBubbles([]);
+    setTimeLeft(DURATIONS[duration].seconds);
+  }, [duration]);
+
   // Pop a bubble
   const popBubble = useCallback((bubbleId) => {
     setBubbles(prev => prev.filter(b => b.id !== bubbleId));
     setScore(prev => prev + 1);
     setPoppedBubble(bubbleId);
     playPopSound();
-    
     setTimeout(() => setPoppedBubble(null), 100);
   }, [playPopSound]);
 
@@ -124,105 +133,97 @@ const BubblePop = () => {
   useEffect(() => {
     if (!gameStarted || gameOver || isPaused) return;
 
-    const spawner = setInterval(() => {
+    const spawnInterval = setInterval(() => {
       const newBubble = createBubble();
       if (newBubble) {
         setBubbles(prev => [...prev, newBubble]);
       }
-    }, 1200); // New bubble every 1.2 seconds (slower spawn)
+    }, 600); // Spawn a bubble every 600ms
 
-    return () => clearInterval(spawner);
+    return () => clearInterval(spawnInterval);
   }, [gameStarted, gameOver, isPaused, createBubble]);
 
-  // Bubble animator - remove bubbles that floated away
+  // Remove old bubbles
   useEffect(() => {
     if (!gameStarted || gameOver || isPaused) return;
 
-    const animator = setInterval(() => {
-      setBubbles(prev => {
-        const now = Date.now();
-        return prev.filter(bubble => {
-          const elapsed = (now - bubble.created) / 1000;
-          return elapsed < bubble.speed + 2; // Keep for speed + 2 seconds
-        });
-      });
-    }, 100);
+    const cleanupInterval = setInterval(() => {
+      setBubbles(prev => prev.filter(b => 
+        Date.now() - b.created < b.speed * 1000
+      ));
+    }, 500);
 
-    return () => clearInterval(animator);
+    return () => clearInterval(cleanupInterval);
   }, [gameStarted, gameOver, isPaused]);
 
-  // Calculate bubble position based on time
+  // Calculate bubble position
   const getBubblePosition = (bubble) => {
-    if (!gameAreaRef.current) return { bottom: 0, opacity: 1 };
-    
     const elapsed = (Date.now() - bubble.created) / 1000;
     const progress = elapsed / bubble.speed;
-    const area = gameAreaRef.current.getBoundingClientRect();
-    const bottom = progress * (area.height + bubble.size);
-    const opacity = progress > 0.8 ? 1 - (progress - 0.8) * 5 : 1;
-    
+    const area = gameAreaRef.current?.getBoundingClientRect();
+    const maxHeight = area?.height || 500;
+    const bottom = progress * (maxHeight + bubble.size);
+    const opacity = 1 - (progress * 0.5);
     return { bottom, opacity };
   };
 
-  // Start screen
+  // Menu screen
   if (!gameStarted) {
     return (
       <div className="min-h-screen bg-[#FFFEF5]">
-        {/* Header */}
-        <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#4A9FD4]">
+        <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#5CB85C]">
           <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
             <button
               onClick={() => navigate('/games')}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#4A9FD4] 
-                         rounded-xl font-display font-bold text-[#4A9FD4] hover:bg-[#4A9FD4] 
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#5CB85C] 
+                         rounded-xl font-display font-bold text-[#5CB85C] hover:bg-[#5CB85C] 
                          hover:text-white transition-all shadow-md"
             >
               <ArrowLeft size={16} />
               Back
             </button>
-            <div className="flex-1">
-              <h1 className="text-lg sm:text-xl font-display text-[#4A9FD4] crayon-text flex items-center gap-2">
-                🫧 Pop Bubbles
-              </h1>
-            </div>
+            <img 
+              src="/logo.jpeg" 
+              alt="ATLASassist" 
+              className="w-10 h-10 rounded-lg shadow-sm"
+            />
+            <h1 className="text-lg sm:text-xl font-display text-[#5CB85C] crayon-text">
+              🫧 Pop the Bubbles
+            </h1>
           </div>
         </header>
 
         <main className="max-w-md mx-auto px-4 py-8">
-          <div className="bg-white rounded-3xl border-4 border-[#4A9FD4] p-6 shadow-crayon">
-            <h2 className="text-2xl font-display text-center text-[#4A9FD4] mb-2">
+          <div className="bg-white rounded-3xl border-4 border-[#5CB85C] p-6 shadow-crayon">
+            <h2 className="text-2xl font-display text-center text-[#5CB85C] mb-6">
               Pop the Bubbles! 🫧
             </h2>
-            <p className="text-center text-gray-600 font-crayon mb-6">
-              Tap bubbles before they float away!
-            </p>
 
             {/* Duration Selection */}
             <div className="mb-6">
-              <label className="block font-crayon text-gray-700 mb-2">Game Time:</label>
-              <div className="grid grid-cols-3 gap-2">
-                {Object.entries(DURATIONS).map(([key, { label }]) => (
+              <p className="font-crayon text-gray-600 mb-3 text-center">How long do you want to play?</p>
+              <div className="flex gap-2 justify-center">
+                {Object.entries(DURATIONS).map(([key, value]) => (
                   <button
                     key={key}
                     onClick={() => setDuration(key)}
-                    className={`p-3 rounded-xl border-3 font-crayon text-sm transition-all
+                    className={`px-4 py-2 rounded-xl font-crayon transition-all
                       ${duration === key 
-                        ? 'border-[#4A9FD4] bg-blue-50 text-[#4A9FD4]' 
-                        : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
+                        ? 'bg-[#5CB85C] text-white border-4 border-green-600' 
+                        : 'bg-gray-100 text-gray-600 border-4 border-gray-200 hover:border-[#5CB85C]'
                       }`}
                   >
-                    {label}
+                    {value.label}
                   </button>
                 ))}
               </div>
             </div>
 
             {/* Sound Toggle */}
-            <div className="mb-6 flex items-center justify-center gap-3">
-              <span className="font-crayon text-gray-600">Sound:</span>
+            <div className="mb-6 flex justify-center">
               <button
                 onClick={() => setSoundEnabled(!soundEnabled)}
-                className={`p-3 rounded-xl border-3 transition-all
+                className={`p-4 rounded-xl border-4 transition-all
                   ${soundEnabled 
                     ? 'border-[#5CB85C] bg-green-50 text-[#5CB85C]' 
                     : 'border-gray-300 bg-gray-50 text-gray-400'
@@ -286,21 +287,22 @@ const BubblePop = () => {
             You popped <strong className="text-[#4A9FD4] text-3xl">{score}</strong> bubbles!
           </p>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 justify-center">
             <button
               onClick={startGame}
-              className="flex-1 py-3 bg-[#5CB85C] text-white rounded-xl border-3 border-green-600
-                         font-crayon hover:scale-105 transition-transform flex items-center justify-center gap-2"
+              className="flex items-center gap-2 px-6 py-3 bg-[#5CB85C] text-white rounded-xl 
+                         font-crayon hover:scale-105 transition-transform"
             >
               <RotateCcw size={20} />
               Play Again
             </button>
             <button
-              onClick={() => navigate('/games')}
-              className="flex-1 py-3 bg-[#4A9FD4] text-white rounded-xl border-3 border-blue-600
+              onClick={goToMenu}
+              className="flex items-center gap-2 px-6 py-3 bg-gray-200 text-gray-700 rounded-xl 
                          font-crayon hover:scale-105 transition-transform"
             >
-              More Games
+              <Home size={20} />
+              Menu
             </button>
           </div>
         </div>
@@ -308,32 +310,44 @@ const BubblePop = () => {
     );
   }
 
-  // Game screen
+  // Active gameplay
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#87CEEB] to-[#4A9FD4] flex flex-col">
-      {/* Header */}
-      <header className="bg-white/90 backdrop-blur-sm border-b-4 border-[#4A9FD4] z-40">
-        <div className="max-w-2xl mx-auto px-4 py-2 flex items-center gap-3">
+    <div className="h-screen flex flex-col bg-gradient-to-b from-sky-100 to-sky-200 overflow-hidden">
+      {/* Game Header */}
+      <header className="bg-white/90 backdrop-blur-sm border-b-4 border-[#5CB85C] px-4 py-2 flex items-center justify-between z-20">
+        {/* Back Button - NEW */}
+        <button
+          onClick={goToMenu}
+          className="flex items-center gap-2 px-3 py-2 bg-white border-3 border-gray-300 
+                     rounded-xl font-display text-gray-600 hover:border-[#5CB85C] 
+                     hover:text-[#5CB85C] transition-all shadow-sm"
+        >
+          <ArrowLeft size={16} />
+          <span className="hidden sm:inline">Menu</span>
+        </button>
+
+        {/* Timer and Score */}
+        <div className="flex items-center gap-4">
+          <div className="text-center">
+            <span className="block text-xs text-gray-500 font-crayon">TIME</span>
+            <span className={`text-2xl font-display ${timeLeft <= 10 ? 'text-red-500 animate-pulse' : 'text-gray-800'}`}>
+              {timeLeft}
+            </span>
+          </div>
+          <div className="text-center">
+            <span className="block text-xs text-gray-500 font-crayon">SCORE</span>
+            <span className="text-2xl font-display text-[#5CB85C]">{score}</span>
+          </div>
+        </div>
+
+        {/* Pause and Sound */}
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setIsPaused(!isPaused)}
-            className="p-2 bg-white border-3 border-[#4A9FD4] rounded-full"
+            className="p-2 bg-white border-3 border-[#5CB85C] rounded-full"
           >
-            {isPaused ? <Play size={20} /> : <Pause size={20} />}
+            {isPaused ? <Play size={20} className="text-[#5CB85C]" /> : <Pause size={20} className="text-[#5CB85C]" />}
           </button>
-          
-          <div className="flex-1 flex justify-center gap-6">
-            <div className="text-center">
-              <span className="block text-xs text-gray-500 font-crayon">TIME</span>
-              <span className={`text-2xl font-display ${timeLeft <= 10 ? 'text-red-500 animate-pulse' : 'text-gray-800'}`}>
-                {timeLeft}
-              </span>
-            </div>
-            <div className="text-center">
-              <span className="block text-xs text-gray-500 font-crayon">SCORE</span>
-              <span className="text-2xl font-display text-[#5CB85C]">{score}</span>
-            </div>
-          </div>
-
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
             className="p-2 bg-white border-3 border-gray-300 rounded-full"
@@ -354,14 +368,24 @@ const BubblePop = () => {
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-30">
             <div className="bg-white rounded-3xl p-8 text-center">
               <h2 className="text-2xl font-display text-gray-800 mb-4">Paused</h2>
-              <button
-                onClick={() => setIsPaused(false)}
-                className="px-8 py-3 bg-[#5CB85C] text-white rounded-xl font-crayon
-                           hover:scale-105 transition-transform flex items-center gap-2 mx-auto"
-              >
-                <Play size={20} />
-                Resume
-              </button>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => setIsPaused(false)}
+                  className="px-8 py-3 bg-[#5CB85C] text-white rounded-xl font-crayon
+                             hover:scale-105 transition-transform flex items-center gap-2 mx-auto"
+                >
+                  <Play size={20} />
+                  Resume
+                </button>
+                <button
+                  onClick={goToMenu}
+                  className="px-8 py-3 bg-gray-200 text-gray-700 rounded-xl font-crayon
+                             hover:scale-105 transition-transform flex items-center gap-2 mx-auto"
+                >
+                  <Home size={20} />
+                  Exit to Menu
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -396,26 +420,14 @@ const BubblePop = () => {
                 left: bubble.x,
                 bottom: bottom,
                 opacity: isPaused ? 0.5 : opacity,
-                transform: poppedBubble === bubble.id ? 'scale(1.5)' : 'scale(1)',
-                zIndex: 20,
+                transform: poppedBubble === bubble.id ? 'scale(0)' : 'scale(1)',
               }}
             >
-              {/* Bubble shine - pointer-events none so it doesn't block clicks */}
-              <div 
-                className="absolute top-1 left-2 w-3 h-3 bg-white/60 rounded-full pointer-events-none"
-              />
+              {/* Bubble shine */}
+              <div className="absolute top-2 left-2 w-3 h-3 bg-white/50 rounded-full" />
             </button>
           );
         })}
-
-        {/* Floating hint when no bubbles */}
-        {bubbles.length === 0 && !isPaused && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <p className="text-white/70 font-crayon text-xl animate-pulse">
-              Get ready... 🫧
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );
