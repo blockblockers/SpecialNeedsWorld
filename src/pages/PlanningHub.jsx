@@ -1,6 +1,6 @@
-// PlanningHub.jsx - Planning & Documents hub for ATLASassist
-// Critical planning, advocacy, and emergency documents
-// FIXED: All items are now ready (no coming soon)
+// PlanningHub.jsx - Planning & Documents Hub
+// FIXED: Consistent button style matching other hubs
+// FIXED: All routes correct including Memorandum of Intent
 
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -8,79 +8,59 @@ import {
   FileText,
   User,
   Heart,
-  FileHeart,
+  Target,
   ScrollText,
-  Shield,
-  ClipboardList,
-  AlertTriangle
+  FolderOpen
 } from 'lucide-react';
 
-// Planning & Documents apps - ALL READY
-const planningApps = [
+// Planning documents with correct paths
+const planningDocs = [
   {
     id: 'student-profile',
-    name: 'Student Profile & One-Pager',
-    description: 'Info sheets for teachers & providers',
+    name: 'Student Profile',
+    description: 'One-page student summary',
     icon: User,
-    color: 'bg-[#4A9FD4]',
-    borderColor: 'border-blue-500',
-    path: '/planning/student-profile',
+    color: '#4A9FD4',
     emoji: '👤',
-    ready: true,
-    priority: 'high',
+    path: '/planning/student-profile',
   },
   {
     id: 'file-of-life',
     name: 'File of Life',
-    description: 'Emergency medical info card',
-    icon: Shield,
-    color: 'bg-[#E63B2E]',
-    borderColor: 'border-red-600',
+    description: 'Emergency info card',
+    icon: Heart,
+    color: '#E63B2E',
+    emoji: '🆘',
     path: '/planning/file-of-life',
-    emoji: '🏥',
-    ready: true,
-    priority: 'high',
   },
   {
     id: 'person-centered',
     name: 'Person-Centered Plan',
-    description: 'Transition & IEP planning template',
-    icon: Heart,
-    color: 'bg-[#E86B9A]',
-    borderColor: 'border-pink-500',
+    description: 'Goals, dreams & preferences',
+    icon: Target,
+    color: '#5CB85C',
+    emoji: '🎯',
     path: '/planning/person-centered',
-    emoji: '💜',
-    ready: true,
-    priority: 'medium',
   },
   {
-    id: 'memo-intent',
+    id: 'memorandum',
     name: 'Memorandum of Intent',
-    description: 'Future care planning document',
+    description: 'Future care instructions',
     icon: ScrollText,
-    color: 'bg-[#8E6BBF]',
-    borderColor: 'border-purple-500',
-    path: '/planning/memo-intent',
+    color: '#8E6BBF',
     emoji: '📜',
-    ready: true,
-    priority: 'low',
+    path: '/planning/memorandum',
   },
 ];
 
 const PlanningHub = () => {
   const navigate = useNavigate();
 
-  const handleAppClick = (app) => {
-    if (app.ready) {
-      navigate(app.path);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#CD853F]">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/hub')}
             className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#CD853F] 
@@ -95,78 +75,50 @@ const PlanningHub = () => {
             alt="ATLASassist" 
             className="w-10 h-10 rounded-lg shadow-sm"
           />
-          <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-display text-[#CD853F] crayon-text flex items-center gap-2">
-              <FileText size={24} />
-              Planning & Documents
-            </h1>
-          </div>
+          <h1 className="text-xl sm:text-2xl font-display text-[#CD853F] crayon-text flex items-center gap-2">
+            <FolderOpen size={24} />
+            Planning & Documents
+          </h1>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-2xl mx-auto px-4 py-6">
+      <main className="max-w-4xl mx-auto px-4 py-6">
         <p className="text-center text-gray-600 font-crayon mb-6">
-          📋 Important documents for advocacy, emergencies, and future planning
+          Important documents for planning and care
         </p>
 
-        {/* Important Notice */}
-        <div className="mb-6 p-4 bg-amber-50 rounded-2xl border-3 border-amber-300 flex gap-3">
-          <AlertTriangle className="text-amber-600 flex-shrink-0 mt-0.5" size={20} />
-          <div>
-            <h3 className="font-display text-amber-700 text-sm mb-1">Privacy Note</h3>
-            <p className="font-crayon text-amber-600 text-xs">
-              All documents are stored locally on your device. We recommend downloading 
-              completed documents and storing them securely.
-            </p>
-          </div>
-        </div>
-
-        {/* Apps Grid */}
+        {/* Planning Docs Grid - Consistent button style */}
         <div className="grid grid-cols-2 gap-4">
-          {planningApps.map((app) => {
-            const IconComponent = app.icon;
+          {planningDocs.map((doc) => {
+            const IconComponent = doc.icon;
             return (
               <button
-                key={app.id}
-                onClick={() => handleAppClick(app)}
-                disabled={!app.ready}
-                className={`
-                  relative p-4 rounded-2xl border-4 ${app.borderColor}
-                  ${app.color} text-white
-                  transition-all duration-200 shadow-crayon
-                  ${app.ready 
-                    ? 'hover:scale-105 hover:-rotate-1 active:scale-95 cursor-pointer' 
-                    : 'opacity-60 cursor-not-allowed grayscale-[30%]'
-                  }
-                `}
+                key={doc.id}
+                onClick={() => navigate(doc.path)}
+                className="p-4 rounded-2xl border-4 text-center
+                         transition-all duration-200 shadow-crayon
+                         hover:scale-105 hover:-rotate-1 active:scale-95"
                 style={{
-                  borderRadius: '20px 8px 20px 8px',
+                  backgroundColor: `${doc.color}15`,
+                  borderColor: doc.color,
                 }}
               >
-                {/* Priority Badge */}
-                {app.priority === 'high' && (
-                  <div className="absolute -top-2 -right-2 bg-amber-500 text-white text-xs px-2 py-1 rounded-full font-crayon">
-                    Important
-                  </div>
-                )}
+                {/* Emoji - centered */}
+                <div className="text-3xl mb-2">{doc.emoji}</div>
 
-                {/* Emoji */}
-                <div className="text-3xl mb-2">{app.emoji}</div>
-
-                {/* Icon */}
+                {/* Icon - centered */}
                 <div className="flex justify-center mb-2">
-                  <IconComponent size={32} strokeWidth={2.5} />
+                  <IconComponent size={28} style={{ color: doc.color }} />
                 </div>
 
-                {/* Name */}
-                <h3 className="font-display text-lg crayon-text">
-                  {app.name}
+                {/* Name - centered */}
+                <h3 className="font-display text-base" style={{ color: doc.color }}>
+                  {doc.name}
                 </h3>
 
-                {/* Description */}
-                <p className="text-sm opacity-90 font-crayon mt-1">
-                  {app.description}
+                {/* Description - centered */}
+                <p className="text-xs text-gray-500 font-crayon mt-1">
+                  {doc.description}
                 </p>
               </button>
             );
@@ -174,10 +126,10 @@ const PlanningHub = () => {
         </div>
 
         {/* Info Note */}
-        <div className="mt-8 p-4 bg-white rounded-2xl border-3 border-[#CD853F] shadow-sm">
-          <p className="text-center text-gray-600 font-crayon text-sm">
-            📝 These documents help communicate your child's needs to schools, 
-            healthcare providers, and caregivers.
+        <div className="mt-8 p-4 bg-amber-50 rounded-2xl border-3 border-amber-300">
+          <p className="text-center text-amber-800 font-crayon text-sm">
+            📋 These documents help ensure your loved one receives the best care.
+            All information stays on your device for privacy.
           </p>
         </div>
       </main>

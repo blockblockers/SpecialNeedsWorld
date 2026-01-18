@@ -1,9 +1,7 @@
-// ChoiceBoard.jsx - COMPREHENSIVE FIX v2
-// Fixed: 
-// - Time picker allows any time (input type="time" instead of select)
-// - Added choice history with ability to delete saved boards
-// - Check/Cancel buttons have descriptions
-// - Celebration toast + schedule integration
+// ChoiceBoard.jsx - COMPREHENSIVE FIX v3
+// FIXED: Today/Tomorrow buttons now work properly
+// FIXED: Schedule integration error handling
+// FIXED: Added type="button" to prevent form submission issues
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -35,8 +33,6 @@ import {
   addActivityToSchedule, 
   SCHEDULE_SOURCES, 
   SOURCE_COLORS,
-  getToday,
-  getTomorrow,
   formatDateDisplay,
   formatTimeDisplay 
 } from '../services/scheduleHelper';
@@ -72,9 +68,26 @@ const PRESET_ICONS = {
       { emoji: '🚴', name: 'Bike Ride' },
       { emoji: '⚽', name: 'Sports' },
       { emoji: '🎪', name: 'Play Outside' },
-      { emoji: '🏊', name: 'Swimming' },
       { emoji: '🎭', name: 'Pretend Play' },
-    ]
+      { emoji: '🤸', name: 'Gymnastics' },
+    ],
+  },
+  food: {
+    name: 'Food & Drinks',
+    icons: [
+      { emoji: '🍎', name: 'Apple' },
+      { emoji: '🍌', name: 'Banana' },
+      { emoji: '🥕', name: 'Carrots' },
+      { emoji: '🍪', name: 'Cookie' },
+      { emoji: '🥪', name: 'Sandwich' },
+      { emoji: '🍕', name: 'Pizza' },
+      { emoji: '🍿', name: 'Popcorn' },
+      { emoji: '🥤', name: 'Juice' },
+      { emoji: '💧', name: 'Water' },
+      { emoji: '🥛', name: 'Milk' },
+      { emoji: '🍦', name: 'Ice Cream' },
+      { emoji: '🧁', name: 'Cupcake' },
+    ],
   },
   places: {
     name: 'Places',
@@ -85,55 +98,21 @@ const PRESET_ICONS = {
       { emoji: '🏥', name: 'Doctor' },
       { emoji: '🌳', name: 'Park' },
       { emoji: '📚', name: 'Library' },
-      { emoji: '🍔', name: 'Restaurant' },
-      { emoji: '🎢', name: 'Theme Park' },
-      { emoji: '🏖️', name: 'Beach' },
+      { emoji: '🎢', name: 'Playground' },
+      { emoji: '🏊', name: 'Pool' },
       { emoji: '🎬', name: 'Movies' },
-      { emoji: '🛒', name: 'Grocery' },
-      { emoji: '👨‍👩‍👧', name: 'Grandparents' },
-    ]
+      { emoji: '🍽️', name: 'Restaurant' },
+      { emoji: '🐕', name: 'Pet Store' },
+      { emoji: '🎨', name: 'Art Class' },
+    ],
   },
-  food: {
-    name: 'Food',
-    icons: [
-      { emoji: '🍕', name: 'Pizza' },
-      { emoji: '🍔', name: 'Burger' },
-      { emoji: '🌮', name: 'Tacos' },
-      { emoji: '🍝', name: 'Pasta' },
-      { emoji: '🍗', name: 'Chicken' },
-      { emoji: '🥗', name: 'Salad' },
-      { emoji: '🍜', name: 'Soup' },
-      { emoji: '🥪', name: 'Sandwich' },
-      { emoji: '🍦', name: 'Ice Cream' },
-      { emoji: '🍎', name: 'Fruit' },
-      { emoji: '🥕', name: 'Vegetables' },
-      { emoji: '🧃', name: 'Juice' },
-    ]
-  },
-  selfCare: {
-    name: 'Self Care',
-    icons: [
-      { emoji: '🛁', name: 'Bath' },
-      { emoji: '🪥', name: 'Brush Teeth' },
-      { emoji: '👕', name: 'Get Dressed' },
-      { emoji: '🛏️', name: 'Make Bed' },
-      { emoji: '💇', name: 'Hair' },
-      { emoji: '🧴', name: 'Lotion' },
-      { emoji: '💅', name: 'Nails' },
-      { emoji: '👟', name: 'Shoes' },
-      { emoji: '🧥', name: 'Coat' },
-      { emoji: '🎒', name: 'Backpack' },
-      { emoji: '😴', name: 'Rest' },
-      { emoji: '💊', name: 'Medicine' },
-    ]
-  },
-  emotions: {
-    name: 'Emotions',
+  feelings: {
+    name: 'Feelings',
     icons: [
       { emoji: '😊', name: 'Happy' },
       { emoji: '😢', name: 'Sad' },
       { emoji: '😠', name: 'Angry' },
-      { emoji: '😨', name: 'Scared' },
+      { emoji: '😰', name: 'Worried' },
       { emoji: '🤗', name: 'Calm' },
       { emoji: '🤩', name: 'Excited' },
       { emoji: '😴', name: 'Tired' },
@@ -142,19 +121,48 @@ const PRESET_ICONS = {
       { emoji: '🥰', name: 'Loved' },
       { emoji: '😤', name: 'Frustrated' },
       { emoji: '🥺', name: 'Worried' },
-    ]
+    ],
   },
 };
 
 // =====================================================
-// ADD TO SCHEDULE MODAL - Fixed with input type="time"
+// ADD TO SCHEDULE MODAL - FIXED
 // =====================================================
 const AddToScheduleModal = ({ isOpen, onClose, option, onAdd }) => {
-  const [selectedDate, setSelectedDate] = useState(getToday());
+  // Calculate dates directly - more reliable than helper functions
+  const getTodayDate = () => new Date().toISOString().split('T')[0];
+  const getTomorrowDate = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+  };
+
+  const [selectedDate, setSelectedDate] = useState(getTodayDate());
   const [selectedTime, setSelectedTime] = useState('10:00');
   const [enableReminder, setEnableReminder] = useState(true);
 
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedDate(getTodayDate());
+      setSelectedTime('10:00');
+      setEnableReminder(true);
+    }
+  }, [isOpen]);
+
   if (!isOpen || !option) return null;
+
+  // FIXED: Direct date setters that actually work
+  const handleSetToday = () => {
+    const today = new Date().toISOString().split('T')[0];
+    setSelectedDate(today);
+  };
+
+  const handleSetTomorrow = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    setSelectedDate(tomorrow.toISOString().split('T')[0]);
+  };
 
   const handleAdd = () => {
     onAdd({
@@ -165,6 +173,12 @@ const AddToScheduleModal = ({ isOpen, onClose, option, onAdd }) => {
     });
   };
 
+  // Check which button should be highlighted
+  const todayStr = getTodayDate();
+  const tomorrowStr = getTomorrowDate();
+  const isToday = selectedDate === todayStr;
+  const isTomorrow = selectedDate === tomorrowStr;
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden">
@@ -172,7 +186,11 @@ const AddToScheduleModal = ({ isOpen, onClose, option, onAdd }) => {
         <div className="bg-[#8E6BBF] text-white p-4 flex items-center gap-3">
           <CalendarPlus size={24} />
           <h3 className="font-display text-xl flex-1">Add to Schedule?</h3>
-          <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
+          <button 
+            type="button"
+            onClick={onClose} 
+            className="p-1 hover:bg-white/20 rounded-full"
+          >
             <X size={24} />
           </button>
         </div>
@@ -183,7 +201,7 @@ const AddToScheduleModal = ({ isOpen, onClose, option, onAdd }) => {
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
             <div 
               className="w-12 h-12 rounded-xl flex items-center justify-center"
-              style={{ backgroundColor: option.color }}
+              style={{ backgroundColor: option.color || '#F5A623' }}
             >
               {option.image ? (
                 <img src={option.image} alt={option.name} className="w-full h-full object-cover rounded-xl" />
@@ -197,25 +215,29 @@ const AddToScheduleModal = ({ isOpen, onClose, option, onAdd }) => {
             </div>
           </div>
 
-          {/* Date Selection */}
+          {/* Date Selection - FIXED */}
           <div>
             <label className="block font-crayon text-gray-600 mb-2">📅 When?</label>
             <div className="flex gap-2 mb-2">
+              {/* FIXED: Today button with type="button" and direct onClick */}
               <button
-                onClick={() => setSelectedDate(getToday())}
+                type="button"
+                onClick={handleSetToday}
                 className={`flex-1 py-2 rounded-xl font-crayon text-sm border-2 transition-all
-                          ${selectedDate === getToday() 
-                            ? 'bg-[#8E6BBF]/20 border-[#8E6BBF] text-[#8E6BBF]' 
-                            : 'bg-white border-gray-200 text-gray-600'}`}
+                          ${isToday 
+                            ? 'bg-[#8E6BBF] border-[#8E6BBF] text-white font-bold' 
+                            : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'}`}
               >
                 Today
               </button>
+              {/* FIXED: Tomorrow button with type="button" and direct onClick */}
               <button
-                onClick={() => setSelectedDate(getTomorrow())}
+                type="button"
+                onClick={handleSetTomorrow}
                 className={`flex-1 py-2 rounded-xl font-crayon text-sm border-2 transition-all
-                          ${selectedDate === getTomorrow() 
-                            ? 'bg-[#8E6BBF]/20 border-[#8E6BBF] text-[#8E6BBF]' 
-                            : 'bg-white border-gray-200 text-gray-600'}`}
+                          ${isTomorrow 
+                            ? 'bg-[#8E6BBF] border-[#8E6BBF] text-white font-bold' 
+                            : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'}`}
               >
                 Tomorrow
               </button>
@@ -225,12 +247,12 @@ const AddToScheduleModal = ({ isOpen, onClose, option, onAdd }) => {
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              min={getToday()}
+              min={todayStr}
               className="w-full p-2 border-2 border-gray-200 rounded-xl font-crayon text-sm focus:border-[#8E6BBF] outline-none"
             />
           </div>
 
-          {/* Time Selection - NOW USES INPUT TYPE="TIME" */}
+          {/* Time Selection */}
           <div>
             <label className="block font-crayon text-gray-600 mb-2">🕐 What time?</label>
             <input
@@ -239,13 +261,11 @@ const AddToScheduleModal = ({ isOpen, onClose, option, onAdd }) => {
               onChange={(e) => setSelectedTime(e.target.value)}
               className="w-full p-3 border-2 border-gray-200 rounded-xl font-crayon text-lg focus:border-[#8E6BBF] outline-none"
             />
-            <p className="text-xs font-crayon text-gray-400 mt-1">
-              Type or tap to pick any time
-            </p>
           </div>
 
           {/* Reminder Toggle */}
           <button
+            type="button"
             onClick={() => setEnableReminder(!enableReminder)}
             className={`w-full p-3 rounded-xl border-2 flex items-center gap-3 transition-all
                        ${enableReminder 
@@ -262,12 +282,14 @@ const AddToScheduleModal = ({ isOpen, onClose, option, onAdd }) => {
         {/* Footer */}
         <div className="p-4 bg-gray-50 flex gap-3">
           <button
+            type="button"
             onClick={onClose}
             className="flex-1 py-3 border-2 border-gray-300 rounded-xl font-crayon text-gray-600 hover:bg-gray-100"
           >
             Not Now
           </button>
           <button
+            type="button"
             onClick={handleAdd}
             className="flex-1 py-3 bg-[#5CB85C] border-2 border-green-600 rounded-xl font-crayon text-white 
                      flex items-center justify-center gap-2 hover:bg-green-600"
@@ -294,7 +316,7 @@ const ChoiceHistoryModal = ({ isOpen, onClose, history, onClearHistory }) => {
         <div className="bg-[#F5A623] text-white p-4 flex items-center gap-3">
           <History size={24} />
           <h3 className="font-display text-xl flex-1">Choice History</h3>
-          <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
+          <button type="button" onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
             <X size={24} />
           </button>
         </div>
@@ -341,6 +363,7 @@ const ChoiceHistoryModal = ({ isOpen, onClose, history, onClearHistory }) => {
         <div className="p-4 bg-gray-50 border-t">
           {history.length > 0 && (
             <button
+              type="button"
               onClick={onClearHistory}
               className="w-full py-2 text-red-500 font-crayon text-sm hover:bg-red-50 rounded-lg"
             >
@@ -348,6 +371,7 @@ const ChoiceHistoryModal = ({ isOpen, onClose, history, onClearHistory }) => {
             </button>
           )}
           <button
+            type="button"
             onClick={onClose}
             className="w-full py-3 mt-2 bg-gray-200 rounded-xl font-crayon text-gray-600 hover:bg-gray-300"
           >
@@ -372,12 +396,13 @@ const IconPickerModal = ({ isOpen, onClose, currentEmoji, onSelectIcon, onSelect
     const file = e.target.files?.[0];
     if (file) {
       try {
-        const compressed = await compressImage(file, { maxWidth: 200, maxHeight: 200, quality: 0.8 });
+        const compressed = await compressImage(file, 200, 200, 0.8);
         onSelectImage(compressed);
-      } catch (err) {
-        console.error('Error compressing image:', err);
+      } catch (error) {
+        console.error('Error compressing image:', error);
+        // Fallback to original
         const reader = new FileReader();
-        reader.onload = (event) => onSelectImage(event.target.result);
+        reader.onloadend = () => onSelectImage(reader.result);
         reader.readAsDataURL(file);
       }
     }
@@ -387,14 +412,15 @@ const IconPickerModal = ({ isOpen, onClose, currentEmoji, onSelectIcon, onSelect
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl max-h-[80vh] overflow-hidden">
         {/* Header */}
-        <div className="bg-[#F5A623] text-white p-4 flex items-center justify-between">
-          <h3 className="font-display text-xl">Choose Icon</h3>
-          <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
+        <div className="bg-[#F5A623] text-white p-4 flex items-center gap-3">
+          <Star size={24} />
+          <h3 className="font-display text-xl flex-1">Choose an Icon</h3>
+          <button type="button" onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
             <X size={24} />
           </button>
         </div>
 
-        {/* Upload Photo Option */}
+        {/* Photo Upload Option */}
         <div className="p-4 border-b">
           <input
             type="file"
@@ -404,8 +430,10 @@ const IconPickerModal = ({ isOpen, onClose, currentEmoji, onSelectIcon, onSelect
             className="hidden"
           />
           <button
+            type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="w-full py-3 bg-[#4A9FD4] text-white rounded-xl font-crayon flex items-center justify-center gap-2 hover:bg-blue-600"
+            className="w-full py-3 border-2 border-dashed border-[#F5A623] rounded-xl
+                     font-crayon text-[#F5A623] hover:bg-[#F5A623]/10 flex items-center justify-center gap-2"
           >
             <Camera size={20} />
             Upload Photo
@@ -413,17 +441,18 @@ const IconPickerModal = ({ isOpen, onClose, currentEmoji, onSelectIcon, onSelect
         </div>
 
         {/* Category Tabs */}
-        <div className="flex overflow-x-auto p-2 gap-1 border-b bg-gray-50">
-          {Object.entries(PRESET_ICONS).map(([key, category]) => (
+        <div className="flex border-b overflow-x-auto">
+          {Object.entries(PRESET_ICONS).map(([key, cat]) => (
             <button
               key={key}
+              type="button"
               onClick={() => setSelectedCategory(key)}
-              className={`px-3 py-1.5 rounded-full font-crayon text-sm whitespace-nowrap transition-all
+              className={`px-4 py-2 font-crayon text-sm whitespace-nowrap border-b-2 transition-all
                         ${selectedCategory === key 
-                          ? 'bg-[#F5A623] text-white' 
-                          : 'bg-white text-gray-600 border border-gray-200'}`}
+                          ? 'border-[#F5A623] text-[#F5A623]' 
+                          : 'border-transparent text-gray-500 hover:text-gray-700'}`}
             >
-              {category.name}
+              {cat.name}
             </button>
           ))}
         </div>
@@ -431,11 +460,12 @@ const IconPickerModal = ({ isOpen, onClose, currentEmoji, onSelectIcon, onSelect
         {/* Icons Grid */}
         <div className="p-4 overflow-y-auto max-h-[40vh]">
           <div className="grid grid-cols-4 gap-2">
-            {PRESET_ICONS[selectedCategory].icons.map((icon, index) => (
+            {PRESET_ICONS[selectedCategory]?.icons.map((icon) => (
               <button
-                key={index}
+                key={icon.emoji}
+                type="button"
                 onClick={() => onSelectIcon(icon.emoji, icon.name)}
-                className={`p-3 rounded-xl border-2 transition-all hover:scale-105
+                className={`p-3 rounded-xl border-2 transition-all text-center
                           ${currentEmoji === icon.emoji 
                             ? 'border-[#F5A623] bg-[#F5A623]/10' 
                             : 'border-gray-200 hover:border-gray-300'}`}
@@ -470,12 +500,14 @@ const DeleteBoardModal = ({ isOpen, onClose, boardName, onConfirm }) => {
           </p>
           <div className="flex gap-3">
             <button
+              type="button"
               onClick={onClose}
               className="flex-1 py-3 border-2 border-gray-300 rounded-xl font-crayon text-gray-600 hover:bg-gray-50"
             >
               Cancel
             </button>
             <button
+              type="button"
               onClick={onConfirm}
               className="flex-1 py-3 bg-red-500 border-2 border-red-600 rounded-xl font-crayon text-white hover:bg-red-600"
             >
@@ -569,6 +601,7 @@ const BoardEditor = ({ board, onSave, onCancel }) => {
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#F5A623]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
+            type="button"
             onClick={onCancel}
             className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F5A623] 
                        rounded-xl font-display font-bold text-[#F5A623] hover:bg-[#F5A623] 
@@ -615,6 +648,7 @@ const BoardEditor = ({ board, onSave, onCancel }) => {
                 <div className="flex items-start gap-3">
                   {/* Icon/Image */}
                   <button
+                    type="button"
                     onClick={() => {
                       setEditingOptionIndex(index);
                       setIconPickerOpen(true);
@@ -627,29 +661,31 @@ const BoardEditor = ({ board, onSave, onCancel }) => {
                     {option.image ? (
                       <img src={option.image} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-3xl">{option.emoji || '+'}</span>
+                      <span className="text-3xl">{option.emoji || '⭐'}</span>
                     )}
                   </button>
 
-                  {/* Details */}
-                  <div className="flex-1 min-w-0">
+                  {/* Option Details */}
+                  <div className="flex-1 space-y-2">
+                    {/* Name Input */}
                     <input
                       type="text"
                       value={option.name}
                       onChange={(e) => handleOptionChange(index, 'name', e.target.value)}
-                      placeholder="Choice name"
+                      placeholder="Choice name..."
                       className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg font-crayon
-                               focus:border-[#F5A623] focus:outline-none text-sm"
+                               focus:border-[#F5A623] focus:outline-none"
                     />
-                    
-                    {/* Availability Toggle with Label */}
-                    <div className="mt-2 flex items-center gap-2">
+
+                    {/* Availability Toggle */}
+                    <div className="flex items-center gap-2">
                       <button
+                        type="button"
                         onClick={() => handleOptionChange(index, 'isAvailable', !option.isAvailable)}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-crayon transition-all
+                        className={`px-3 py-1 rounded-full text-xs font-crayon flex items-center gap-1
                                   ${option.isAvailable 
-                                    ? 'bg-green-100 text-green-700 border border-green-300' 
-                                    : 'bg-red-100 text-red-700 border border-red-300'}`}
+                                    ? 'bg-green-100 text-green-700' 
+                                    : 'bg-red-100 text-red-700'}`}
                       >
                         {option.isAvailable ? (
                           <>
@@ -672,6 +708,7 @@ const BoardEditor = ({ board, onSave, onCancel }) => {
                   {/* Remove Button */}
                   {options.length > 2 && (
                     <button
+                      type="button"
                       onClick={() => removeOption(index)}
                       className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
                       title="Remove this choice"
@@ -687,6 +724,7 @@ const BoardEditor = ({ board, onSave, onCancel }) => {
           {/* Add Option Button */}
           {options.length < 6 && (
             <button
+              type="button"
               onClick={addOption}
               className="w-full mt-3 py-3 border-3 border-dashed border-gray-300 rounded-xl
                        font-crayon text-gray-500 hover:border-[#F5A623] hover:text-[#F5A623]
@@ -700,6 +738,7 @@ const BoardEditor = ({ board, onSave, onCancel }) => {
 
         {/* Save Button */}
         <button
+          type="button"
           onClick={handleSave}
           disabled={!name.trim() || options.some(o => !o.name.trim())}
           className="w-full py-4 bg-[#5CB85C] border-4 border-green-600 rounded-xl
@@ -890,7 +929,7 @@ const ChoiceBoard = () => {
     setShowAddToSchedule(true);
   };
 
-  // Add to Visual Schedule - Fixed to handle the result properly
+  // FIXED: Add to Visual Schedule with proper error handling
   const handleAddToSchedule = ({ option, date, time, reminder }) => {
     try {
       const result = addActivityToSchedule({
@@ -898,8 +937,8 @@ const ChoiceBoard = () => {
         name: option.name,
         time: time,
         emoji: option.emoji || '⭐',
-        color: option.color || SOURCE_COLORS[SCHEDULE_SOURCES.CHOICE_BOARD],
-        source: SCHEDULE_SOURCES.CHOICE_BOARD,
+        color: option.color || SOURCE_COLORS?.[SCHEDULE_SOURCES?.CHOICE_BOARD] || '#F5A623',
+        source: SCHEDULE_SOURCES?.CHOICE_BOARD || 'choice-board',
         notify: reminder,
         customImage: option.image || null,
         metadata: { 
@@ -919,9 +958,16 @@ const ChoiceBoard = () => {
         );
         saveHistory(updatedHistory);
         
+        // Format the date for display
+        const displayDate = new Date(date).toLocaleDateString('en-US', { 
+          weekday: 'short', 
+          month: 'short', 
+          day: 'numeric' 
+        });
+        
         toast.schedule(
           'Added to Schedule!',
-          `"${option.name}" is on your Visual Schedule for ${formatDateDisplay(date)} at ${formatTimeDisplay(time)}`
+          `"${option.name}" scheduled for ${displayDate} at ${time}`
         );
       } else {
         toast.error('Oops!', result?.error || 'Could not add to schedule. Please try again.');
@@ -977,6 +1023,7 @@ const ChoiceBoard = () => {
         <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#F5A623]">
           <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
             <button
+              type="button"
               onClick={() => setSelectedBoard(null)}
               className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F5A623] 
                          rounded-xl font-display font-bold text-[#F5A623] hover:bg-[#F5A623] 
@@ -991,6 +1038,7 @@ const ChoiceBoard = () => {
               </h1>
             </div>
             <button
+              type="button"
               onClick={() => setEditingBoard(selectedBoard)}
               className="p-2 text-gray-500 hover:text-[#F5A623] hover:bg-[#F5A623]/10 rounded-lg"
               title="Edit board"
@@ -1010,6 +1058,7 @@ const ChoiceBoard = () => {
             {selectedBoard.options.map((option) => (
               <button
                 key={option.id}
+                type="button"
                 onClick={() => handleSelectOption(option)}
                 className={`relative aspect-square rounded-2xl border-4 shadow-crayon
                           transition-all duration-200 overflow-hidden
@@ -1034,22 +1083,15 @@ const ChoiceBoard = () => {
                       {option.emoji || '⭐'}
                     </span>
                   )}
-                  <span 
-                    className={`mt-2 font-display text-sm text-center px-1 
-                              ${!option.isAvailable ? 'text-red-600' : ''}`}
-                    style={{ color: option.isAvailable ? option.color : undefined }}
-                  >
+                  <span className={`mt-2 font-crayon text-center text-sm ${!option.isAvailable ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
                     {option.name}
                   </span>
                 </div>
 
-                {/* Unavailable Watermark */}
+                {/* Unavailable Overlay */}
                 {!option.isAvailable && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
-                    <div className="absolute bg-red-500/20 text-red-600 font-display text-sm 
-                                  transform -rotate-45 w-[200%] py-1 text-center tracking-wider">
-                      UNAVAILABLE
-                    </div>
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/50">
+                    <Ban size={32} className="text-[#E63B2E]" />
                   </div>
                 )}
               </button>
@@ -1057,8 +1099,8 @@ const ChoiceBoard = () => {
           </div>
 
           {/* Tip */}
-          <div className="mt-8 p-4 bg-[#8E6BBF]/10 rounded-2xl border-3 border-[#8E6BBF]/30">
-            <p className="text-center font-crayon text-gray-600 text-sm">
+          <div className="mt-8 p-4 bg-[#F5A623]/10 rounded-2xl border-3 border-[#F5A623]/30">
+            <p className="font-crayon text-gray-600 text-center text-sm">
               💡 After choosing, you can add it to your Visual Schedule!
             </p>
           </div>
@@ -1085,6 +1127,7 @@ const ChoiceBoard = () => {
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#F5A623]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
+            type="button"
             onClick={() => navigate('/activities')}
             className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F5A623] 
                        rounded-xl font-display font-bold text-[#F5A623] hover:bg-[#F5A623] 
@@ -1100,6 +1143,7 @@ const ChoiceBoard = () => {
             </h1>
           </div>
           <button
+            type="button"
             onClick={() => setShowHistory(true)}
             className="p-2 text-gray-500 hover:text-[#F5A623] hover:bg-[#F5A623]/10 rounded-lg"
             title="View choice history"
@@ -1121,34 +1165,55 @@ const ChoiceBoard = () => {
             {boards.map((board) => (
               <div
                 key={board.id}
-                className="bg-white rounded-xl border-3 border-gray-200 p-4 shadow-sm"
+                className="bg-white rounded-2xl border-3 border-gray-200 p-4 shadow-sm
+                         hover:border-[#F5A623] hover:shadow-crayon transition-all"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
+                  {/* Board Preview */}
+                  <div className="flex -space-x-2">
+                    {board.options.slice(0, 3).map((opt, i) => (
+                      <div
+                        key={i}
+                        className="w-10 h-10 rounded-lg border-2 border-white flex items-center justify-center"
+                        style={{ backgroundColor: opt.color }}
+                      >
+                        {opt.image ? (
+                          <img src={opt.image} alt="" className="w-full h-full object-cover rounded-lg" />
+                        ) : (
+                          <span className="text-lg">{opt.emoji || '⭐'}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Board Info */}
+                  <div className="flex-1">
+                    <h3 className="font-display text-gray-800">{board.name}</h3>
+                    <p className="font-crayon text-xs text-gray-500">
+                      {board.options.length} choices
+                    </p>
+                  </div>
+
+                  {/* Actions */}
                   <button
+                    type="button"
                     onClick={() => setSelectedBoard(board)}
-                    className="flex-1 flex items-center gap-3 text-left"
+                    className="px-4 py-2 bg-[#F5A623] text-white rounded-xl font-crayon text-sm
+                             hover:bg-orange-500 transition-colors"
                   >
-                    <div className="w-12 h-12 bg-[#F5A623]/20 rounded-xl flex items-center justify-center">
-                      <Grid3X3 size={24} className="text-[#F5A623]" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-display text-gray-800">{board.name}</h3>
-                      <p className="font-crayon text-sm text-gray-500">
-                        {board.options.length} choices • {board.options.filter(o => o.isAvailable).length} available
-                      </p>
-                    </div>
+                    Use
                   </button>
                   <button
+                    type="button"
                     onClick={() => setEditingBoard(board)}
-                    className="p-2 text-gray-400 hover:text-[#F5A623] hover:bg-[#F5A623]/10 rounded-lg"
-                    title="Edit board"
+                    className="p-2 text-gray-400 hover:text-[#F5A623]"
                   >
                     <Edit3 size={18} />
                   </button>
                   <button
+                    type="button"
                     onClick={() => setShowDeleteConfirm(board)}
-                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
-                    title="Delete board"
+                    className="p-2 text-gray-400 hover:text-red-500"
                   >
                     <Trash2 size={18} />
                   </button>
@@ -1158,16 +1223,17 @@ const ChoiceBoard = () => {
           </div>
         ) : (
           <div className="text-center py-12 mb-6">
-            <Grid3X3 size={48} className="mx-auto text-gray-300 mb-4" />
-            <p className="font-crayon text-gray-500 mb-2">No choice boards yet</p>
-            <p className="font-crayon text-sm text-gray-400">
-              Create your first board to get started!
+            <Grid3X3 size={64} className="mx-auto text-gray-300 mb-4" />
+            <h3 className="font-display text-xl text-gray-600 mb-2">No Boards Yet</h3>
+            <p className="font-crayon text-gray-500">
+              Create your first choice board to get started!
             </p>
           </div>
         )}
 
         {/* Create Board Button */}
         <button
+          type="button"
           onClick={() => setEditingBoard('new')}
           className="w-full py-4 bg-[#F5A623] border-4 border-orange-500 rounded-xl
                    font-display text-xl text-white shadow-crayon

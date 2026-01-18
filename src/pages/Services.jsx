@@ -1,5 +1,6 @@
-// Services.jsx - Services and Trackers hub
-// Privacy-focused: All data stored locally, no PHI
+// Services.jsx - My Care Team Hub (formerly Services and Trackers)
+// FIXED: Renamed to "My Care Team" per user request
+// FIXED: All paths to match App.jsx routes
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -12,94 +13,76 @@ import {
   Shield
 } from 'lucide-react';
 
-// Service tracker items
+// Service tracker items with FIXED paths
 const trackers = [
   {
     id: 'appointments',
     name: 'Appointments',
     description: 'Track upcoming visits',
     icon: Calendar,
-    color: 'bg-[#4A9FD4]',
-    borderColor: 'border-blue-500',
+    color: '#4A9FD4',
     path: '/services/appointments',
     emoji: '📅',
-    ready: true,
   },
   {
     id: 'goals',
     name: 'Goal Tracker',
     description: 'Track IEP & therapy goals',
     icon: Target,
-    color: 'bg-[#5CB85C]',
-    borderColor: 'border-green-500',
+    color: '#5CB85C',
     path: '/services/goals',
     emoji: '🎯',
-    ready: true,
   },
   {
     id: 'team',
     name: 'My Team',
     description: 'Provider contacts',
     icon: Users,
-    color: 'bg-[#8E6BBF]',
-    borderColor: 'border-purple-500',
-    path: '/services/team',
+    color: '#8E6BBF',
+    path: '/services/my-team', // FIXED: was /services/team
     emoji: '👥',
-    ready: true,
   },
   {
     id: 'reminders',
     name: 'Reminders',
     description: 'Set helpful reminders',
     icon: Bell,
-    color: 'bg-[#F5A623]',
-    borderColor: 'border-orange-500',
+    color: '#F5A623',
     path: '/services/reminders',
     emoji: '🔔',
-    ready: true,
   },
   {
     id: 'notes',
     name: 'Quick Notes',
     description: 'Jot down notes',
     icon: FileText,
-    color: 'bg-[#E86B9A]',
-    borderColor: 'border-pink-500',
+    color: '#E86B9A',
     path: '/services/notes',
     emoji: '📝',
-    ready: true,
   },
   {
     id: 'routines',
     name: 'Daily Routines',
     description: 'Track daily routines',
     icon: Clock,
-    color: 'bg-[#20B2AA]',
-    borderColor: 'border-teal-500',
+    color: '#20B2AA',
     path: '/services/routines',
     emoji: '📋',
-    ready: true,
   },
 ];
 
 const Services = () => {
   const navigate = useNavigate();
 
-  const handleTrackerClick = (tracker) => {
-    if (tracker.ready) {
-      navigate(tracker.path);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#20B2AA]">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#008B8B]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/hub')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#20B2AA] 
-                       rounded-xl font-display font-bold text-[#20B2AA] hover:bg-[#20B2AA] 
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#008B8B] 
+                       rounded-xl font-display font-bold text-[#008B8B] hover:bg-[#008B8B] 
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
@@ -111,8 +94,8 @@ const Services = () => {
             className="w-10 h-10 rounded-lg shadow-sm"
           />
           <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-display text-[#20B2AA] crayon-text flex items-center gap-2">
-              📋 Services & Trackers
+            <h1 className="text-lg sm:text-xl font-display text-[#008B8B] crayon-text flex items-center gap-2">
+              👥 My Care Team
             </h1>
           </div>
         </div>
@@ -135,50 +118,37 @@ const Services = () => {
           </div>
         </div>
 
-        {/* Trackers Grid */}
-        <div className="grid grid-cols-2 gap-4">
+        {/* Trackers Grid - Using consistent button style */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           {trackers.map((tracker) => {
             const IconComponent = tracker.icon;
             return (
               <button
                 key={tracker.id}
-                onClick={() => handleTrackerClick(tracker)}
-                disabled={!tracker.ready}
-                className={`
-                  relative p-4 rounded-2xl border-4 ${tracker.borderColor}
-                  ${tracker.color} text-white
-                  transition-all duration-200 shadow-crayon
-                  ${tracker.ready 
-                    ? 'hover:scale-105 hover:-rotate-1 active:scale-95 cursor-pointer' 
-                    : 'opacity-60 cursor-not-allowed grayscale-[30%]'
-                  }
-                `}
+                onClick={() => navigate(tracker.path)}
+                className="p-4 rounded-2xl border-4 text-center
+                         transition-all duration-200 shadow-crayon
+                         hover:scale-105 hover:-rotate-1 active:scale-95"
                 style={{
-                  borderRadius: '20px 8px 20px 8px',
+                  backgroundColor: `${tracker.color}15`,
+                  borderColor: tracker.color,
                 }}
               >
-                {/* Coming Soon Badge */}
-                {!tracker.ready && (
-                  <div className="absolute -top-2 -right-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full font-crayon">
-                    Soon!
-                  </div>
-                )}
-
                 {/* Emoji */}
                 <div className="text-3xl mb-2">{tracker.emoji}</div>
 
-                {/* Icon */}
+                {/* Icon - centered */}
                 <div className="flex justify-center mb-2">
-                  <IconComponent size={32} strokeWidth={2.5} />
+                  <IconComponent size={28} style={{ color: tracker.color }} />
                 </div>
 
                 {/* Name */}
-                <h3 className="font-display text-lg crayon-text">
+                <h3 className="font-display text-base" style={{ color: tracker.color }}>
                   {tracker.name}
                 </h3>
 
                 {/* Description */}
-                <p className="text-sm opacity-90 font-crayon mt-1">
+                <p className="text-xs text-gray-500 font-crayon mt-1">
                   {tracker.description}
                 </p>
               </button>
@@ -186,10 +156,10 @@ const Services = () => {
           })}
         </div>
 
-        {/* Tips */}
+        {/* Info Note */}
         <div className="mt-8 p-4 bg-white rounded-2xl border-3 border-[#87CEEB] shadow-sm">
           <p className="text-center text-gray-600 font-crayon text-sm">
-            💡 <strong>Tip:</strong> Use these trackers to stay organized and prepared for appointments and IEP meetings!
+            💜 Your care team supports your journey!
           </p>
         </div>
       </main>

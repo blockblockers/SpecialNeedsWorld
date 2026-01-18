@@ -1,101 +1,85 @@
-// Tools.jsx - Daily Tools Hub for ATLASassist
-// FIXED: Milestone Guide text is now white, all tools are ready (no coming soon)
+// Tools.jsx - Daily Tools Hub
+// FIXED: Consistent button style matching other hubs
+// FIXED: All routes match App.jsx
 
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
-  Clock, 
-  Calculator,
+  Wrench,
   Timer,
+  ArrowRightLeft,
+  Hash,
   Volume2,
-  Lightbulb,
-  BarChart3
+  Clock,
+  TrendingUp
 } from 'lucide-react';
 
-// Tool items - ALL ARE READY (no coming soon)
+// Tools list with correct paths
 const tools = [
-  {
-    id: 'milestones',
-    name: 'Milestone Guide',
-    description: 'Development by age',
-    icon: BarChart3,
-    color: 'bg-[#F8D14A]',
-    borderColor: 'border-yellow-500',
-    path: '/tools/milestones',
-    emoji: '📊',
-    ready: true,
-  },
   {
     id: 'timer',
     name: 'Visual Timer',
     description: 'See time counting down',
     icon: Timer,
-    color: 'bg-[#E63B2E]',
-    borderColor: 'border-red-600',
-    path: '/tools/timer',
+    color: '#E63B2E',
     emoji: '⏱️',
-    ready: true,
+    path: '/tools/timer',
   },
   {
     id: 'first-then',
-    name: 'First / Then',
+    name: 'First/Then Board',
     description: 'First do this, then that!',
-    icon: Clock,
-    color: 'bg-[#5CB85C]',
-    borderColor: 'border-green-600',
+    icon: ArrowRightLeft,
+    color: '#5CB85C',
+    emoji: '➡️',
     path: '/tools/first-then',
-    emoji: '1️⃣',
-    ready: true,
-  },
-  {
-    id: 'calm-down',
-    name: 'Calm Down',
-    description: 'Breathing & relaxation',
-    icon: Lightbulb,
-    color: 'bg-[#4A9FD4]',
-    borderColor: 'border-blue-600',
-    path: '/tools/calm-down',
-    emoji: '😌',
-    ready: true,
-  },
-  {
-    id: 'sound-board',
-    name: 'Sound Board',
-    description: 'Fun sounds to play',
-    icon: Volume2,
-    color: 'bg-[#8E6BBF]',
-    borderColor: 'border-purple-600',
-    path: '/tools/soundboard',
-    emoji: '🔊',
-    ready: true,
   },
   {
     id: 'counter',
     name: 'Counter',
     description: 'Count things easily',
-    icon: Calculator,
-    color: 'bg-[#E86B9A]',
-    borderColor: 'border-pink-600',
-    path: '/tools/counter',
+    icon: Hash,
+    color: '#4A9FD4',
     emoji: '🔢',
-    ready: true,
+    path: '/tools/counter',
+  },
+  {
+    id: 'soundboard',
+    name: 'Sound Board',
+    description: 'Fun sounds to play',
+    icon: Volume2,
+    color: '#8E6BBF',
+    emoji: '🔊',
+    path: '/tools/soundboard',
+  },
+  {
+    id: 'daily-routines',
+    name: 'Daily Routines',
+    description: 'Track daily routines',
+    icon: Clock,
+    color: '#20B2AA',
+    emoji: '📋',
+    path: '/tools/daily-routines',
+  },
+  {
+    id: 'milestones',
+    name: 'Milestone Guide',
+    description: 'Track developmental milestones',
+    icon: TrendingUp,
+    color: '#F5A623',
+    emoji: '📈',
+    path: '/tools/milestones',
   },
 ];
 
 const Tools = () => {
   const navigate = useNavigate();
 
-  const handleToolClick = (tool) => {
-    if (tool.ready) {
-      navigate(tool.path);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#F8D14A]">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/hub')}
             className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F8D14A] 
@@ -110,57 +94,49 @@ const Tools = () => {
             alt="ATLASassist" 
             className="w-10 h-10 rounded-lg shadow-sm"
           />
-          <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-display text-[#F8D14A] crayon-text flex items-center gap-2">
-              🔧 Daily Tools
-            </h1>
-          </div>
+          <h1 className="text-xl sm:text-2xl font-display text-[#F8D14A] crayon-text flex items-center gap-2">
+            <Wrench size={24} />
+            Daily Tools
+          </h1>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-2xl mx-auto px-4 py-6">
+      <main className="max-w-4xl mx-auto px-4 py-6">
         <p className="text-center text-gray-600 font-crayon mb-6">
-          Helpful tools for everyday! Tap to open.
+          Helpful tools for everyday!
         </p>
 
-        {/* Tools Grid */}
-        <div className="grid grid-cols-2 gap-4">
+        {/* Tools Grid - Consistent button style */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           {tools.map((tool) => {
             const IconComponent = tool.icon;
             return (
               <button
                 key={tool.id}
-                onClick={() => handleToolClick(tool)}
-                disabled={!tool.ready}
-                className={`
-                  relative p-4 rounded-2xl border-4 ${tool.borderColor}
-                  ${tool.color} text-white
-                  transition-all duration-200 shadow-crayon
-                  ${tool.ready 
-                    ? 'hover:scale-105 hover:-rotate-1 active:scale-95 cursor-pointer' 
-                    : 'opacity-60 cursor-not-allowed grayscale-[30%]'
-                  }
-                `}
+                onClick={() => navigate(tool.path)}
+                className="p-4 rounded-2xl border-4 text-center
+                         transition-all duration-200 shadow-crayon
+                         hover:scale-105 hover:-rotate-1 active:scale-95"
                 style={{
-                  borderRadius: '20px 8px 20px 8px',
+                  backgroundColor: `${tool.color}15`,
+                  borderColor: tool.color,
                 }}
               >
-                {/* Emoji */}
+                {/* Emoji - centered */}
                 <div className="text-3xl mb-2">{tool.emoji}</div>
 
-                {/* Icon */}
+                {/* Icon - centered */}
                 <div className="flex justify-center mb-2">
-                  <IconComponent size={32} strokeWidth={2.5} />
+                  <IconComponent size={28} style={{ color: tool.color }} />
                 </div>
 
-                {/* Name */}
-                <h3 className="font-display text-lg crayon-text">
+                {/* Name - centered */}
+                <h3 className="font-display text-base" style={{ color: tool.color }}>
                   {tool.name}
                 </h3>
 
-                {/* Description */}
-                <p className="text-sm opacity-90 font-crayon mt-1">
+                {/* Description - centered */}
+                <p className="text-xs text-gray-500 font-crayon mt-1">
                   {tool.description}
                 </p>
               </button>
@@ -171,7 +147,7 @@ const Tools = () => {
         {/* Info Note */}
         <div className="mt-8 p-4 bg-white rounded-2xl border-3 border-[#87CEEB] shadow-sm">
           <p className="text-center text-gray-600 font-crayon text-sm">
-            💡 These tools help with daily routines, communication, and calming.
+            🔧 Tools help make every day easier!
           </p>
         </div>
       </main>

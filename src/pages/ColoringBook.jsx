@@ -1,4 +1,5 @@
 // ColoringBook.jsx - Interactive Coloring Book
+// FIXED: Back button now says "Back" instead of "Activities"
 // Browse and color pre-made or AI-generated coloring pages
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -67,21 +68,10 @@ const ColorPicker = ({ selectedColor, onSelectColor, onSelectEraser, isEraser })
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}
         >
-          <Eraser size={16} />
+          <Eraser size={18} />
           Eraser
         </button>
       </div>
-      
-      {/* Current Color Preview */}
-      {!isEraser && (
-        <div className="mt-2 flex items-center gap-2">
-          <span className="font-crayon text-xs text-gray-500">Selected:</span>
-          <div 
-            className="w-6 h-6 rounded border-2 border-gray-400"
-            style={{ backgroundColor: selectedColor }}
-          />
-        </div>
-      )}
     </div>
   );
 };
@@ -90,27 +80,22 @@ const ColorPicker = ({ selectedColor, onSelectColor, onSelectEraser, isEraser })
 // COLORING CANVAS COMPONENT
 // ============================================
 
-const ColoringCanvas = ({ 
-  svgContent, 
-  selectedColor, 
-  isEraser,
-  onSvgChange,
-  coloredSvg 
-}) => {
+const ColoringCanvas = ({ svgContent, coloredSvg, selectedColor, isEraser, onSvgChange }) => {
   const containerRef = useRef(null);
-  const [currentSvg, setCurrentSvg] = useState(coloredSvg || svgContent);
+  const [currentSvg, setCurrentSvg] = useState('');
   
-  // Update when svg changes
   useEffect(() => {
     setCurrentSvg(coloredSvg || svgContent);
   }, [svgContent, coloredSvg]);
   
-  // Handle click on SVG element
   const handleClick = useCallback((e) => {
     const target = e.target;
     
-    // Check if the element is colorable
-    if (target.hasAttribute('data-colorable')) {
+    // Only color paths and shapes, not the background
+    if (target.tagName === 'path' || target.tagName === 'circle' || 
+        target.tagName === 'rect' || target.tagName === 'ellipse' ||
+        target.tagName === 'polygon') {
+      
       const newColor = isEraser ? 'white' : selectedColor;
       
       // Check if it's a stroke-colorable element (like rainbow arcs)
@@ -140,7 +125,6 @@ const ColoringCanvas = ({
       onClick={handleClick}
       dangerouslySetInnerHTML={{ __html: currentSvg }}
       style={{
-        // Make SVG fill container
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -166,75 +150,70 @@ const PageCard = ({ page, onClick }) => (
       style={{ pointerEvents: 'none' }}
     />
     <h3 className="font-display text-sm text-gray-800 truncate">{page.title}</h3>
-    <p className="font-crayon text-xs text-gray-500">
-      {page.difficulty} • {page.use_count || 0} colored
-    </p>
+    <p className="font-crayon text-xs text-gray-500">{page.category}</p>
   </button>
 );
 
 // ============================================
-// MAIN COMPONENT
+// MAIN COLORING BOOK COMPONENT
 // ============================================
 
 const ColoringBook = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   
-  // View state
-  const [view, setView] = useState('browse'); // browse, coloring, generate
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  
-  // Pages state
+  // State
+  const [view, setView] = useState('browse'); // 'browse' or 'coloring'
   const [pages, setPages] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(null);
   const [coloredSvg, setColoredSvg] = useState(null);
-  
-  // Coloring state
-  const [selectedColor, setSelectedColor] = useState('#F44336');
+  const [selectedColor, setSelectedColor] = useState('#E63B2E');
   const [isEraser, setIsEraser] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  
-  // Generate state
-  const [generatePrompt, setGeneratePrompt] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [customPrompt, setCustomPrompt] = useState('');
   
-  // Load pages on mount and category change
+  // Load pages on mount
   useEffect(() => {
     loadPages();
-  }, [selectedCategory]);
+  }, []);
   
   const loadPages = async () => {
     setIsLoading(true);
     try {
-      const data = await getColoringPages(selectedCategory);
-      setPages(data);
+      const loadedPages = await getColoringPages();
+      setPages(loadedPages || []);
     } catch (error) {
       console.error('Error loading pages:', error);
+      setPages([]);
     } finally {
       setIsLoading(false);
     }
   };
   
-  // Open a coloring page
+  // Open a page for coloring
   const openPage = async (page) => {
     setCurrentPage(page);
     setView('coloring');
     setHasChanges(false);
+    setColoredSvg(null);
     
-    // Load any existing coloring
-    const existing = await getUserColoring(user?.id, page.id);
-    if (existing?.colored_svg) {
-      setColoredSvg(existing.colored_svg);
-    } else {
-      setColoredSvg(null);
+    // Check for saved coloring
+    if (user?.id) {
+      const saved = await getUserColoring(user.id, page.id);
+      if (saved?.colored_svg) {
+        setColoredSvg(saved.colored_svg);
+      }
     }
   };
   
   // Handle color selection
-  const handleSelectColor = (hex) => {
-    setSelectedColor(hex);
+  const handleSelectColor = (color) => {
+    setSelectedColor(color);
     setIsEraser(false);
   };
   
@@ -246,11 +225,11 @@ const ColoringBook = () => {
   
   // Save coloring
   const handleSave = async () => {
-    if (!currentPage || !coloredSvg) return;
+    if (!currentPage || !coloredSvg || !user?.id) return;
     
     setIsSaving(true);
     try {
-      await saveUserColoring(user?.id, currentPage.id, coloredSvg);
+      await saveUserColoring(user.id, currentPage.id, coloredSvg);
       setHasChanges(false);
     } catch (error) {
       console.error('Error saving:', error);
@@ -261,90 +240,113 @@ const ColoringBook = () => {
   
   // Reset coloring
   const handleReset = () => {
-    if (!currentPage) return;
-    setColoredSvg(currentPage.svg_content);
-    setHasChanges(true);
+    if (currentPage) {
+      setColoredSvg(currentPage.svg_content);
+      setHasChanges(true);
+    }
   };
   
-  // Download as image
+  // Download coloring
   const handleDownload = () => {
-    if (!coloredSvg) return;
+    if (!coloredSvg && !currentPage?.svg_content) return;
     
-    // Create a blob and download
-    const blob = new Blob([coloredSvg], { type: 'image/svg+xml' });
+    const svgData = coloredSvg || currentPage.svg_content;
+    const blob = new Blob([svgData], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${currentPage?.title || 'coloring'}.svg`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${currentPage?.title || 'coloring-page'}.svg`;
+    link.click();
     URL.revokeObjectURL(url);
   };
   
-  // Generate new page
+  // Generate custom page
   const handleGenerate = async () => {
-    if (!generatePrompt.trim()) return;
+    if (!customPrompt.trim()) return;
     
     setIsGenerating(true);
     try {
-      const newPage = await generateColoringPage(generatePrompt, {
-        userId: user?.id,
-        category: selectedCategory !== 'all' ? selectedCategory : 'general',
-      });
-      
+      const newPage = await generateColoringPage(customPrompt);
       if (newPage) {
-        // Open the new page
+        setPages(prev => [newPage, ...prev]);
+        setCustomPrompt('');
         openPage(newPage);
-        setGeneratePrompt('');
       }
     } catch (error) {
       console.error('Error generating:', error);
-      alert('Failed to generate coloring page. Please try again.');
     } finally {
       setIsGenerating(false);
     }
   };
   
+  // Filter pages
+  const filteredPages = pages.filter(page => {
+    const matchesCategory = selectedCategory === 'all' || page.category === selectedCategory;
+    const matchesSearch = !searchQuery || 
+      page.title.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+  
   // Render browse view
   const renderBrowseView = () => (
-    <div className="space-y-6">
-      {/* Categories */}
-      <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat.id}
-            onClick={() => setSelectedCategory(cat.id)}
-            className={`flex-shrink-0 px-4 py-2 rounded-full font-crayon text-sm transition-all ${
-              selectedCategory === cat.id
-                ? 'bg-[#E63B2E] text-white shadow-md'
-                : 'bg-white border-2 border-gray-200 text-gray-600 hover:border-[#E63B2E]'
-            }`}
-          >
-            {cat.emoji} {cat.name}
-          </button>
-        ))}
-      </div>
-      
-      {/* Generate Button */}
-      <div className="bg-gradient-to-r from-[#8E6BBF] to-[#E63B2E] rounded-2xl p-4 text-white">
-        <div className="flex items-center gap-2 mb-2">
-          <Sparkles size={20} />
-          <span className="font-display">Create Your Own!</span>
+    <div>
+      {/* Search and Category Filters */}
+      <div className="mb-6 space-y-4">
+        {/* Search */}
+        <div className="relative">
+          <Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search pages..."
+            className="w-full pl-10 pr-4 py-3 border-3 border-gray-200 rounded-xl font-crayon
+                     focus:border-[#E63B2E] focus:outline-none"
+          />
         </div>
+        
+        {/* Categories */}
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          <button
+            onClick={() => setSelectedCategory('all')}
+            className={`px-4 py-2 rounded-xl font-crayon text-sm whitespace-nowrap transition-all
+              ${selectedCategory === 'all' 
+                ? 'bg-[#E63B2E] text-white' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+          >
+            All
+          </button>
+          {CATEGORIES?.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
+              className={`px-4 py-2 rounded-xl font-crayon text-sm whitespace-nowrap transition-all
+                ${selectedCategory === cat.id 
+                  ? 'bg-[#E63B2E] text-white' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+            >
+              {cat.emoji} {cat.name}
+            </button>
+          ))}
+        </div>
+        
+        {/* AI Generate */}
         <div className="flex gap-2">
           <input
             type="text"
-            value={generatePrompt}
-            onChange={(e) => setGeneratePrompt(e.target.value)}
-            placeholder="e.g., A happy elephant, A birthday cake..."
-            className="flex-1 px-4 py-2 rounded-xl text-gray-800 font-crayon text-sm"
+            value={customPrompt}
+            onChange={(e) => setCustomPrompt(e.target.value)}
+            placeholder="Create your own: e.g., 'a happy dinosaur'"
+            className="flex-1 px-4 py-3 border-3 border-gray-200 rounded-xl font-crayon
+                     focus:border-[#E63B2E] focus:outline-none"
           />
           <button
             onClick={handleGenerate}
-            disabled={!generatePrompt.trim() || isGenerating}
-            className="px-4 py-2 bg-white text-[#8E6BBF] rounded-xl font-crayon text-sm
-                       disabled:opacity-50 flex items-center gap-1"
+            disabled={!customPrompt.trim() || isGenerating}
+            className="px-4 py-3 bg-[#8E6BBF] text-white rounded-xl font-crayon
+                     hover:bg-purple-600 disabled:opacity-50 flex items-center gap-2"
           >
             {isGenerating ? (
               <Loader2 size={16} className="animate-spin" />
@@ -361,9 +363,9 @@ const ColoringBook = () => {
         <div className="flex items-center justify-center py-12">
           <Loader2 size={32} className="text-[#E63B2E] animate-spin" />
         </div>
-      ) : pages.length > 0 ? (
+      ) : filteredPages.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {pages.map((page) => (
+          {filteredPages.map((page) => (
             <PageCard 
               key={page.id} 
               page={page} 
@@ -468,7 +470,8 @@ const ColoringBook = () => {
                        hover:text-white transition-all shadow-md"
           >
             <ChevronLeft size={16} />
-            {view === 'coloring' ? 'Back' : 'Activities'}
+            {/* FIXED: Always says "Back" now */}
+            Back
           </button>
           <img 
             src="/logo.jpeg" 

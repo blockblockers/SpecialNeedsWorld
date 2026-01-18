@@ -1,99 +1,95 @@
-// Games.jsx - Games hub for fun learning games
+// Games.jsx - Games Hub
+// FIXED: All game routes match App.jsx
+// FIXED: Consistent button style matching other hubs
+
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
-  Sparkles,
-  Grid3X3,
-  Smile,
-  Circle,
+  Gamepad2,
+  Puzzle,
+  Palette,
   Shapes,
-  Disc
+  Music,
+  Grid3X3,
+  Heart,
+  Sparkles
 } from 'lucide-react';
 
-// Game items
+// Games list with FIXED routes
 const games = [
   {
     id: 'matching',
     name: 'Matching Game',
     description: 'Find the matching pairs!',
     icon: Grid3X3,
-    color: 'bg-[#E63B2E]',
-    borderColor: 'border-red-600',
+    color: '#4A9FD4',
+    emoji: '🃏',
     path: '/games/matching',
-    emoji: '🎴',
-    ready: true,
   },
   {
-    id: 'emotions',
+    id: 'emotion-match',
     name: 'Emotion Match',
-    description: 'Match faces to feelings!',
-    icon: Smile,
-    color: 'bg-[#F5A623]',
-    borderColor: 'border-orange-500',
-    path: '/games/emotions',
+    description: 'Match feelings to faces!',
+    icon: Heart,
+    color: '#E86B9A',
     emoji: '😊',
-    ready: true,
+    path: '/games/emotion-match',
   },
   {
-    id: 'bubbles',
+    id: 'bubble-pop',
     name: 'Pop Bubbles',
-    description: 'Pop the bubbles!',
-    icon: Circle,
-    color: 'bg-[#4A9FD4]',
-    borderColor: 'border-blue-500',
-    path: '/games/bubbles',
+    description: 'Pop the colorful bubbles!',
+    icon: Sparkles,
+    color: '#8E6BBF',
     emoji: '🫧',
-    ready: true,
+    path: '/games/bubble-pop',
   },
   {
-    id: 'sorting',
+    id: 'color-sort',
     name: 'Color Sort',
-    description: 'Sort by colors!',
-    icon: Shapes,
-    color: 'bg-[#5CB85C]',
-    borderColor: 'border-green-500',
-    path: '/games/sorting',
-    emoji: '🔴',
-    ready: true,
+    description: 'Sort items by color!',
+    icon: Palette,
+    color: '#F5A623',
+    emoji: '🎨',
+    path: '/games/color-sort',
   },
   {
-    id: 'shapes',
+    id: 'shape-match',
     name: 'Shape Match',
-    description: 'Match shapes to holes!',
+    description: 'Match the shapes!',
     icon: Shapes,
-    color: 'bg-[#8E6BBF]',
-    borderColor: 'border-purple-500',
-    path: '/games/shapes',
+    color: '#5CB85C',
     emoji: '🔷',
-    ready: true,
+    path: '/games/shape-match',
   },
   {
-    id: 'pattern',
+    id: 'puzzles',
+    name: 'Simple Puzzles',
+    description: 'Put pieces together!',
+    icon: Puzzle,
+    color: '#20B2AA',
+    emoji: '🧩',
+    path: '/games/puzzles',
+  },
+  {
+    id: 'patterns',
     name: 'Pattern Sequence',
-    description: 'Remember the pattern!',
-    icon: Disc,
-    color: 'bg-[#E86B9A]',
-    borderColor: 'border-pink-500',
-    path: '/games/pattern',
-    emoji: '🎵',
-    ready: true,
+    description: 'Complete the pattern!',
+    icon: Music,
+    color: '#E63B2E',
+    emoji: '🔢',
+    path: '/games/patterns',
   },
 ];
 
 const Games = () => {
   const navigate = useNavigate();
 
-  const handleGameClick = (game) => {
-    if (game.ready) {
-      navigate(game.path);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#5CB85C]">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/hub')}
             className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#5CB85C] 
@@ -108,65 +104,49 @@ const Games = () => {
             alt="ATLASassist" 
             className="w-10 h-10 rounded-lg shadow-sm"
           />
-          <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-display text-[#5CB85C] crayon-text flex items-center gap-2">
-              🎮 Games
-            </h1>
-          </div>
-          <Sparkles className="text-[#F8D14A] w-6 h-6 animate-pulse" />
+          <h1 className="text-xl sm:text-2xl font-display text-[#5CB85C] crayon-text flex items-center gap-2">
+            <Gamepad2 size={24} />
+            Games
+          </h1>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-2xl mx-auto px-4 py-6">
+      <main className="max-w-4xl mx-auto px-4 py-6">
         <p className="text-center text-gray-600 font-crayon mb-6">
-          Fun games to play! Tap a game to start.
+          Fun games to play and learn!
         </p>
 
-        {/* Games Grid */}
-        <div className="grid grid-cols-2 gap-4">
+        {/* Games Grid - Consistent button style */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {games.map((game) => {
             const IconComponent = game.icon;
             return (
               <button
                 key={game.id}
-                onClick={() => handleGameClick(game)}
-                disabled={!game.ready}
-                className={`
-                  relative p-4 rounded-2xl border-4 ${game.borderColor}
-                  ${game.color} text-white
-                  transition-all duration-200 shadow-crayon
-                  ${game.ready 
-                    ? 'hover:scale-105 hover:-rotate-1 active:scale-95 cursor-pointer' 
-                    : 'opacity-60 cursor-not-allowed grayscale-[30%]'
-                  }
-                `}
+                onClick={() => navigate(game.path)}
+                className="p-4 rounded-2xl border-4 text-center
+                         transition-all duration-200 shadow-crayon
+                         hover:scale-105 hover:-rotate-1 active:scale-95"
                 style={{
-                  borderRadius: '20px 8px 20px 8px',
+                  backgroundColor: `${game.color}15`,
+                  borderColor: game.color,
                 }}
               >
-                {/* Coming Soon Badge */}
-                {!game.ready && (
-                  <div className="absolute -top-2 -right-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full font-crayon">
-                    Soon!
-                  </div>
-                )}
-
-                {/* Emoji */}
+                {/* Emoji - centered */}
                 <div className="text-3xl mb-2">{game.emoji}</div>
 
-                {/* Icon */}
+                {/* Icon - centered */}
                 <div className="flex justify-center mb-2">
-                  <IconComponent size={32} strokeWidth={2.5} />
+                  <IconComponent size={28} style={{ color: game.color }} />
                 </div>
 
-                {/* Name */}
-                <h3 className="font-display text-lg crayon-text">
+                {/* Name - centered */}
+                <h3 className="font-display text-base" style={{ color: game.color }}>
                   {game.name}
                 </h3>
 
-                {/* Description */}
-                <p className="text-sm opacity-90 font-crayon mt-1">
+                {/* Description - centered */}
+                <p className="text-xs text-gray-500 font-crayon mt-1">
                   {game.description}
                 </p>
               </button>
