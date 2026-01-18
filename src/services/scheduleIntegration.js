@@ -37,7 +37,6 @@ export {
   addRoutineToSchedule,
   addFirstThenToSchedule,
   addReminderToSchedule,
-  addCopingStrategyToSchedule,
   addOTExerciseToSchedule,
   addOTSessionToSchedule,
   addSensoryBreakToSchedule,
