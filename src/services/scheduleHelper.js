@@ -759,6 +759,24 @@ export const addHealthyChoiceReminderToSchedule = (choice, time, date = null) =>
   });
 };
 
+// Coping Strategy helper
+export const addCopingStrategyToSchedule = (strategy, time, date = null) => {
+  return addActivityToSchedule({
+    date: date || getToday(),
+    name: strategy.name || strategy.title || 'Coping Strategy',
+    time,
+    emoji: strategy.emoji || '🧘',
+    color: strategy.color || '#20B2AA',
+    source: SCHEDULE_SOURCES.SENSORY_BREAK,
+    notify: true,
+    metadata: {
+      strategyId: strategy.id,
+      category: strategy.category,
+      type: 'coping-strategy',
+    },
+  });
+};
+
 // OT Exercise helper
 export const addOTExerciseToSchedule = (exercise, time, date = null) => {
   return addActivityToSchedule({
@@ -869,6 +887,7 @@ export default {
   addRoutineToSchedule,
   addFirstThenToSchedule,
   addReminderToSchedule,
+  addCopingStrategyToSchedule,
   addOTExerciseToSchedule,
   addOTSessionToSchedule,
   addSensoryBreakToSchedule,
