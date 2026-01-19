@@ -1,263 +1,203 @@
-// SoundMatch.jsx - Match sounds to pictures game
-// UPDATED: Uses REAL audio files from Pixabay (royalty-free)
-// Listen to a sound and tap the matching picture!
+// SoundMatch.jsx - Sound matching game for ATLASassist
+// Tries to load sounds from /sounds/match/, falls back to synthesized
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, RotateCcw, Trophy, Star, Volume2, VolumeX, Loader2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  Volume2,
+  VolumeX,
+  RotateCcw,
+  Trophy,
+  Star,
+  HelpCircle,
+  CheckCircle,
+} from 'lucide-react';
+import { playAudioWithFallback, playSynthesized, loadAudio } from '../services/soundUtils';
 
-// =====================================================
-// REAL SOUND URLS - Free, royalty-free from Pixabay
-// =====================================================
-const SOUND_ITEMS = [
-  { 
-    id: 'dog', 
-    emoji: '🐕', 
-    name: 'Dog', 
-    url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_942694ff27.mp3'
-  },
-  { 
-    id: 'cat', 
-    emoji: '🐱', 
-    name: 'Cat', 
-    url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_bfdca5a23a.mp3'
-  },
-  { 
-    id: 'bird', 
-    emoji: '🐦', 
-    name: 'Bird', 
-    url: 'https://cdn.pixabay.com/audio/2022/03/09/audio_6c143d19c6.mp3'
-  },
-  { 
-    id: 'cow', 
-    emoji: '🐄', 
-    name: 'Cow', 
-    url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_0689f2fc53.mp3'
-  },
-  { 
-    id: 'rooster', 
-    emoji: '🐓', 
-    name: 'Rooster', 
-    url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_215bb8f1e3.mp3'
-  },
-  { 
-    id: 'horse', 
-    emoji: '🐴', 
-    name: 'Horse', 
-    url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_c518ad3d40.mp3'
-  },
-  { 
-    id: 'sheep', 
-    emoji: '🐑', 
-    name: 'Sheep', 
-    url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_80c7aa8b7e.mp3'
-  },
-  { 
-    id: 'duck', 
-    emoji: '🦆', 
-    name: 'Duck', 
-    url: 'https://cdn.pixabay.com/audio/2022/03/24/audio_18c169a30d.mp3'
-  },
-  { 
-    id: 'bell', 
-    emoji: '🔔', 
-    name: 'Bell', 
-    url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_85d4f65b72.mp3'
-  },
-  { 
-    id: 'train', 
-    emoji: '🚂', 
-    name: 'Train', 
-    url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_f5e1db0c64.mp3'
-  },
-  { 
-    id: 'car', 
-    emoji: '🚗', 
-    name: 'Car Horn', 
-    url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_c7a0dd7f73.mp3'
-  },
-  { 
-    id: 'applause', 
-    emoji: '👏', 
-    name: 'Applause', 
-    url: 'https://cdn.pixabay.com/audio/2021/08/04/audio_c6ccbb5b5e.mp3'
-  },
+// Sound definitions - maps to files in /sounds/match/
+const SOUND_LIBRARY = [
+  { id: 'bell', name: 'Bell', emoji: '🔔', file: '/sounds/match/bell.mp3', fallback: 'bell' },
+  { id: 'drum', name: 'Drum', emoji: '🥁', file: '/sounds/match/drum.mp3', fallback: 'drum' },
+  { id: 'whistle', name: 'Whistle', emoji: '📯', file: '/sounds/match/whistle.mp3', fallback: 'whistle' },
+  { id: 'buzz', name: 'Buzz', emoji: '🐝', file: '/sounds/match/buzz.mp3', fallback: 'buzz' },
+  { id: 'bird', name: 'Bird', emoji: '🐦', file: '/sounds/match/bird.mp3', fallback: 'bird' },
+  { id: 'boop', name: 'Boop', emoji: '🎵', file: '/sounds/match/boop.mp3', fallback: 'boop' },
+  { id: 'siren', name: 'Siren', emoji: '🚨', file: '/sounds/match/siren.mp3', fallback: 'siren' },
+  { id: 'pop', name: 'Pop', emoji: '🎈', file: '/sounds/match/pop.mp3', fallback: 'pop' },
+  { id: 'horn', name: 'Horn', emoji: '📢', file: '/sounds/match/horn.mp3', fallback: 'horn' },
+  { id: 'chime', name: 'Chime', emoji: '🎐', file: '/sounds/match/chime.mp3', fallback: 'chime' },
+  { id: 'dog', name: 'Dog', emoji: '🐕', file: '/sounds/match/dog.mp3', fallback: 'dog' },
+  { id: 'cat', name: 'Cat', emoji: '🐱', file: '/sounds/match/cat.mp3', fallback: 'cat' },
 ];
 
+// Difficulty settings
+const DIFFICULTY = {
+  easy: { pairs: 3, label: 'Easy', stars: 1 },
+  medium: { pairs: 4, label: 'Medium', stars: 2 },
+  hard: { pairs: 6, label: 'Hard', stars: 3 },
+};
+
+// Card Component
+const SoundCard = ({ card, isFlipped, isMatched, onClick, disabled }) => {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled || isMatched}
+      className={`
+        aspect-square rounded-2xl border-4 transition-all duration-300 transform
+        flex flex-col items-center justify-center gap-2 p-2 relative
+        ${isMatched 
+          ? 'bg-green-100 border-green-400 scale-95' 
+          : isFlipped 
+            ? 'bg-blue-100 border-blue-400 scale-105' 
+            : 'bg-white border-gray-300 hover:border-blue-300 hover:scale-102'
+        }
+        ${disabled && !isMatched ? 'cursor-not-allowed' : ''}
+      `}
+    >
+      {isFlipped || isMatched ? (
+        <>
+          <span className="text-4xl sm:text-5xl">{card.emoji}</span>
+          <span className="font-crayon text-sm text-gray-600">{card.name}</span>
+          {isMatched && <CheckCircle className="text-green-500 absolute top-2 right-2" size={20} />}
+        </>
+      ) : (
+        <>
+          <Volume2 size={32} className="text-gray-400" />
+          <span className="font-crayon text-sm text-gray-400">Tap to hear</span>
+        </>
+      )}
+    </button>
+  );
+};
+
+// Main Component
 const SoundMatch = () => {
   const navigate = useNavigate();
-  const [gameStarted, setGameStarted] = useState(false);
+  const [difficulty, setDifficulty] = useState(null);
+  const [cards, setCards] = useState([]);
+  const [flipped, setFlipped] = useState([]);
+  const [matched, setMatched] = useState([]);
+  const [moves, setMoves] = useState(0);
+  const [isChecking, setIsChecking] = useState(false);
   const [gameComplete, setGameComplete] = useState(false);
-  const [currentItem, setCurrentItem] = useState(null);
-  const [options, setOptions] = useState([]);
-  const [score, setScore] = useState(0);
-  const [totalQuestions, setTotalQuestions] = useState(0);
-  const [questionsAnswered, setQuestionsAnswered] = useState([]);
-  const [feedback, setFeedback] = useState(null);
-  const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const [difficulty, setDifficulty] = useState('medium'); // easy (4), medium (8), hard (12)
-  
-  const audioRef = useRef(null);
+  const [soundsLoaded, setSoundsLoaded] = useState(false);
 
-  // Cleanup audio on unmount
+  // Preload sounds when game starts
   useEffect(() => {
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
-  }, []);
-
-  // Get items based on difficulty
-  const getGameItems = useCallback(() => {
-    const counts = { easy: 4, medium: 8, hard: 12 };
-    const count = counts[difficulty] || 8;
-    return SOUND_ITEMS.slice(0, count);
+    if (difficulty) {
+      // Try to preload sounds
+      const preloadSounds = async () => {
+        for (const sound of SOUND_LIBRARY) {
+          await loadAudio(sound.file);
+        }
+        setSoundsLoaded(true);
+      };
+      preloadSounds();
+    }
   }, [difficulty]);
 
-  // Play a sound from URL
-  const playSound = useCallback(async (item) => {
-    if (!soundEnabled || !item?.url) return;
-    
-    // Stop any currently playing sound
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const audio = new Audio(item.url);
-      audio.volume = 0.7;
-      
-      audio.addEventListener('canplaythrough', () => {
-        setIsLoading(false);
-      }, { once: true });
-
-      audio.addEventListener('error', () => {
-        setIsLoading(false);
-        console.error('Failed to load sound');
-      });
-
-      await audio.play();
-      audioRef.current = audio;
-    } catch (err) {
-      console.error('Play error:', err);
-      setIsLoading(false);
-    }
-  }, [soundEnabled]);
-
-  // Play success sound
-  const playSuccessSound = useCallback(() => {
+  // Play a sound
+  const playSound = async (sound) => {
     if (!soundEnabled) return;
-    try {
-      const audio = new Audio('https://cdn.pixabay.com/audio/2022/03/10/audio_06b9c3b9b3.mp3');
-      audio.volume = 0.5;
-      audio.play();
-    } catch (e) {}
-  }, [soundEnabled]);
+    await playAudioWithFallback(sound.file, sound.fallback, 0.6);
+  };
 
-  // Play error sound
-  const playErrorSound = useCallback(() => {
+  // Play feedback sound
+  const playFeedback = async (success) => {
     if (!soundEnabled) return;
-    try {
-      const audio = new Audio('https://cdn.pixabay.com/audio/2022/03/10/audio_a56c5e0b22.mp3');
-      audio.volume = 0.5;
-      audio.play();
-    } catch (e) {}
-  }, [soundEnabled]);
+    const file = success ? '/sounds/match/success.mp3' : '/sounds/match/error.mp3';
+    const fallback = success ? 'success' : 'error';
+    await playAudioWithFallback(file, fallback, 0.5);
+  };
 
-  // Generate new question
-  const generateQuestion = useCallback(() => {
-    const gameItems = getGameItems();
-    const remaining = gameItems.filter(item => !questionsAnswered.includes(item.id));
+  // Initialize game
+  const initGame = useCallback((diff) => {
+    const numPairs = DIFFICULTY[diff].pairs;
+    const selectedSounds = [...SOUND_LIBRARY]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, numPairs);
     
-    if (remaining.length === 0) {
-      setGameComplete(true);
-      return;
-    }
-
-    const correct = remaining[Math.floor(Math.random() * remaining.length)];
-    const others = gameItems.filter(item => item.id !== correct.id);
-    const wrongAnswers = others.sort(() => Math.random() - 0.5).slice(0, 3);
-    const allOptions = [correct, ...wrongAnswers].sort(() => Math.random() - 0.5);
+    const cardPairs = selectedSounds.flatMap((sound, idx) => [
+      { ...sound, pairId: idx, cardId: idx * 2 },
+      { ...sound, pairId: idx, cardId: idx * 2 + 1 },
+    ]);
     
-    setCurrentItem(correct);
-    setOptions(allOptions);
-    setFeedback(null);
-    setSelectedAnswer(null);
+    const shuffled = cardPairs.sort(() => Math.random() - 0.5);
     
-    // Auto-play sound after a short delay
-    setTimeout(() => playSound(correct), 500);
-  }, [questionsAnswered, playSound, getGameItems]);
-
-  // Start game
-  const startGame = useCallback(() => {
-    setScore(0);
-    setTotalQuestions(0);
-    setQuestionsAnswered([]);
+    setCards(shuffled);
+    setFlipped([]);
+    setMatched([]);
+    setMoves(0);
     setGameComplete(false);
-    setGameStarted(true);
-    setCurrentItem(null);
+    setDifficulty(diff);
   }, []);
 
-  // Initialize first question
-  useEffect(() => {
-    if (gameStarted && !gameComplete && !currentItem) {
-      generateQuestion();
+  // Handle card click
+  const handleCardClick = async (cardId) => {
+    if (isChecking || flipped.includes(cardId) || matched.includes(cardId)) return;
+    
+    const card = cards.find(c => c.cardId === cardId);
+    if (card) {
+      await playSound(card);
     }
-  }, [gameStarted, gameComplete, currentItem, generateQuestion]);
-
-  // Handle answer
-  const handleAnswer = (item) => {
-    if (feedback) return;
     
-    setSelectedAnswer(item.id);
-    setTotalQuestions(prev => prev + 1);
+    const newFlipped = [...flipped, cardId];
+    setFlipped(newFlipped);
     
-    if (item.id === currentItem.id) {
-      setFeedback('correct');
-      setScore(prev => prev + 1);
-      playSuccessSound();
+    if (newFlipped.length === 2) {
+      setMoves(m => m + 1);
+      setIsChecking(true);
       
-      setTimeout(() => {
-        setQuestionsAnswered(prev => [...prev, currentItem.id]);
-        setCurrentItem(null);
-      }, 1500);
-    } else {
-      setFeedback('wrong');
-      playErrorSound();
-      // Replay correct sound
-      setTimeout(() => playSound(currentItem), 500);
+      const [first, second] = newFlipped;
+      const card1 = cards.find(c => c.cardId === first);
+      const card2 = cards.find(c => c.cardId === second);
       
-      setTimeout(() => {
-        setFeedback(null);
-        setSelectedAnswer(null);
-      }, 2500);
+      if (card1.pairId === card2.pairId) {
+        setTimeout(async () => {
+          await playFeedback(true);
+          const newMatched = [...matched, first, second];
+          setMatched(newMatched);
+          setFlipped([]);
+          setIsChecking(false);
+          
+          if (newMatched.length === cards.length) {
+            setGameComplete(true);
+          }
+        }, 500);
+      } else {
+        setTimeout(async () => {
+          await playFeedback(false);
+          setFlipped([]);
+          setIsChecking(false);
+        }, 1000);
+      }
     }
   };
 
-  // Replay current sound
-  const replaySound = () => {
-    if (currentItem) {
-      playSound(currentItem);
-    }
+  // Calculate stars
+  const getStars = () => {
+    if (!difficulty) return 0;
+    const pairs = DIFFICULTY[difficulty].pairs;
+    const perfectMoves = pairs;
+    const ratio = perfectMoves / moves;
+    if (ratio >= 0.8) return 3;
+    if (ratio >= 0.5) return 2;
+    return 1;
   };
 
-  // Start screen
-  if (!gameStarted) {
+  // Difficulty selection screen
+  if (!difficulty) {
     return (
       <div className="min-h-screen bg-[#FFFEF5]">
-        <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#8E6BBF]">
+        <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#4A9FD4]">
           <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
             <button
               onClick={() => navigate('/games')}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#8E6BBF] 
-                         rounded-xl font-display font-bold text-[#8E6BBF] hover:bg-[#8E6BBF] 
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#4A9FD4] 
+                         rounded-xl font-display font-bold text-[#4A9FD4] hover:bg-[#4A9FD4] 
                          hover:text-white transition-all shadow-md"
             >
               <ArrowLeft size={16} />
@@ -265,77 +205,52 @@ const SoundMatch = () => {
             </button>
             <img src="/logo.jpeg" alt="ATLASassist" className="w-10 h-10 rounded-lg shadow-sm" />
             <div className="flex-1">
-              <h1 className="text-lg sm:text-xl font-display text-[#8E6BBF] crayon-text">
-                🎵 Sound Match
+              <h1 className="text-lg sm:text-xl font-display text-[#4A9FD4] crayon-text">
+                🔊 Sound Match
               </h1>
             </div>
           </div>
         </header>
 
         <main className="max-w-md mx-auto px-4 py-8">
-          <div className="bg-white rounded-3xl border-4 border-[#8E6BBF] p-6 shadow-crayon">
-            <h2 className="text-2xl font-display text-center text-[#8E6BBF] mb-2">
-              Match the Sound! 🔊
-            </h2>
-            <p className="text-center text-gray-600 font-crayon mb-6">
-              Listen to the sound and tap the matching picture!
-            </p>
+          <div className="text-center mb-8">
+            <span className="text-7xl block mb-4">🎵</span>
+            <h2 className="font-display text-2xl text-gray-800 mb-2">Sound Match</h2>
+            <p className="font-crayon text-gray-600">Listen carefully and match the sounds!</p>
+          </div>
 
-            {/* Preview */}
-            <div className="mb-6 flex justify-center gap-3 flex-wrap">
-              {SOUND_ITEMS.slice(0, 6).map(item => (
-                <div key={item.id} className="text-3xl">
-                  {item.emoji}
-                </div>
-              ))}
-            </div>
-
-            {/* Difficulty Selection */}
-            <div className="mb-6">
-              <p className="font-crayon text-gray-600 text-center mb-3">Choose difficulty:</p>
-              <div className="flex gap-2 justify-center">
-                {[
-                  { id: 'easy', label: 'Easy', count: 4 },
-                  { id: 'medium', label: 'Medium', count: 8 },
-                  { id: 'hard', label: 'Hard', count: 12 },
-                ].map(d => (
-                  <button
-                    key={d.id}
-                    onClick={() => setDifficulty(d.id)}
-                    className={`px-4 py-2 rounded-xl font-crayon transition-all
-                      ${difficulty === d.id 
-                        ? 'bg-[#8E6BBF] text-white scale-105' 
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
-                  >
-                    {d.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Sound Toggle */}
-            <div className="mb-6 flex items-center justify-center gap-3">
-              <span className="font-crayon text-gray-600">Sound:</span>
+          <div className="space-y-4">
+            {Object.entries(DIFFICULTY).map(([key, value]) => (
               <button
-                onClick={() => setSoundEnabled(!soundEnabled)}
-                className={`p-3 rounded-xl border-3 transition-all
-                  ${soundEnabled 
-                    ? 'border-[#5CB85C] bg-green-50 text-[#5CB85C]' 
-                    : 'border-gray-300 bg-gray-50 text-gray-400'
-                  }`}
+                key={key}
+                onClick={() => initGame(key)}
+                className="w-full p-6 bg-white rounded-2xl border-4 border-[#4A9FD4] 
+                         hover:bg-blue-50 transition-all flex items-center justify-between"
               >
-                {soundEnabled ? <Volume2 size={24} /> : <VolumeX size={24} />}
+                <div className="flex items-center gap-4">
+                  <div className="flex">
+                    {[...Array(value.stars)].map((_, i) => (
+                      <Star key={i} size={24} className="text-yellow-400 fill-yellow-400" />
+                    ))}
+                  </div>
+                  <span className="font-display text-xl text-gray-800">{value.label}</span>
+                </div>
+                <span className="font-crayon text-gray-500">{value.pairs} pairs</span>
               </button>
-            </div>
+            ))}
+          </div>
 
-            <button
-              onClick={startGame}
-              className="w-full py-4 bg-[#5CB85C] text-white rounded-2xl border-4 border-green-600
-                         font-display text-xl hover:scale-105 transition-transform shadow-crayon"
-            >
-              Start Listening! 🎧
-            </button>
+          <div className="mt-8 p-4 bg-blue-50 rounded-2xl border-3 border-blue-200">
+            <h3 className="font-display text-[#4A9FD4] mb-2 flex items-center gap-2">
+              <HelpCircle size={18} />
+              How to Play
+            </h3>
+            <ul className="font-crayon text-sm text-blue-700 space-y-1">
+              <li>• Tap a card to hear its sound</li>
+              <li>• Find the card that makes the same sound</li>
+              <li>• Match all pairs to win!</li>
+              <li>• Try to use fewer moves for more stars</li>
+            </ul>
           </div>
         </main>
       </div>
@@ -344,47 +259,37 @@ const SoundMatch = () => {
 
   // Game complete screen
   if (gameComplete) {
-    const gameItems = getGameItems();
-    const percentage = Math.round((score / gameItems.length) * 100);
-    const stars = percentage >= 90 ? 3 : percentage >= 70 ? 2 : 1;
-
+    const stars = getStars();
+    
     return (
       <div className="min-h-screen bg-[#FFFEF5] flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl border-4 border-[#F8D14A] p-8 shadow-crayon text-center max-w-sm">
-          <Trophy className="w-20 h-20 text-[#F8D14A] mx-auto mb-4 animate-bounce" />
-          <h2 className="text-3xl font-display text-[#5CB85C] mb-4">
-            Great Listening! 🎉
-          </h2>
+        <div className="bg-white rounded-3xl border-4 border-[#5CB85C] p-8 text-center max-w-sm w-full shadow-crayon">
+          <Trophy className="w-20 h-20 text-yellow-500 mx-auto mb-4 animate-bounce" />
+          <h2 className="font-display text-3xl text-[#5CB85C] mb-2">You Win! 🎉</h2>
           
-          <div className="flex justify-center gap-2 mb-4">
-            {[1, 2, 3].map((star) => (
-              <Star
-                key={star}
-                size={40}
-                className={star <= stars ? 'text-[#F8D14A] fill-[#F8D14A]' : 'text-gray-300'}
-              />
+          <div className="flex justify-center gap-2 my-4">
+            {[1, 2, 3].map(i => (
+              <Star key={i} size={40} className={i <= stars ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'} />
             ))}
           </div>
-
-          <p className="font-crayon text-gray-600 mb-6">
-            You got <strong className="text-[#5CB85C]">{score}</strong> out of <strong>{gameItems.length}</strong>!
-          </p>
-
+          
+          <p className="font-crayon text-gray-600 mb-6">Completed in {moves} moves!</p>
+          
           <div className="flex gap-3">
             <button
-              onClick={startGame}
-              className="flex-1 py-3 bg-[#5CB85C] text-white rounded-xl border-3 border-green-600
-                         font-crayon hover:scale-105 transition-transform flex items-center justify-center gap-2"
+              onClick={() => initGame(difficulty)}
+              className="flex-1 py-3 bg-[#4A9FD4] text-white rounded-xl font-crayon
+                       hover:bg-blue-600 transition-all flex items-center justify-center gap-2"
             >
-              <RotateCcw size={20} />
+              <RotateCcw size={18} />
               Play Again
             </button>
             <button
-              onClick={() => navigate('/games')}
-              className="flex-1 py-3 bg-[#4A9FD4] text-white rounded-xl border-3 border-blue-600
-                         font-crayon hover:scale-105 transition-transform"
+              onClick={() => setDifficulty(null)}
+              className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl font-crayon
+                       hover:bg-gray-300 transition-all"
             >
-              More Games
+              Change Level
             </button>
           </div>
         </div>
@@ -393,113 +298,58 @@ const SoundMatch = () => {
   }
 
   // Game screen
-  const gameItems = getGameItems();
+  const gridCols = cards.length <= 6 ? 'grid-cols-3' : 'grid-cols-4';
   
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#8E6BBF]">
-        <div className="max-w-2xl mx-auto px-4 py-2 flex items-center gap-3">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#4A9FD4]">
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
-            onClick={() => setGameStarted(false)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#8E6BBF] 
-                       rounded-xl font-display font-bold text-[#8E6BBF] hover:bg-[#8E6BBF] 
+            onClick={() => setDifficulty(null)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#4A9FD4] 
+                       rounded-xl font-display font-bold text-[#4A9FD4] hover:bg-[#4A9FD4] 
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
-            Menu
+            Back
           </button>
-          <div className="flex-1 text-center">
-            <span className="font-crayon text-gray-600">
-              Score: <strong className="text-[#5CB85C]">{score}</strong>
-            </span>
-            <span className="mx-3">|</span>
-            <span className="font-crayon text-gray-600">
-              {questionsAnswered.length + 1}/{gameItems.length}
-            </span>
+          <div className="flex-1 flex items-center justify-center gap-4">
+            <span className="font-crayon text-gray-600">Moves: {moves}</span>
+            <span className="font-crayon text-gray-600">Matched: {matched.length / 2}/{cards.length / 2}</span>
           </div>
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
-            className="p-2 bg-white border-3 border-gray-300 rounded-full"
+            className={`p-2 rounded-full ${soundEnabled ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}
           >
-            {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+            {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
           </button>
         </div>
       </header>
 
-      <main className="max-w-md mx-auto px-4 py-6">
-        {/* Sound Player */}
-        <div className="bg-white rounded-3xl border-4 border-[#8E6BBF] p-6 mb-6 shadow-crayon text-center">
-          <p className="font-crayon text-gray-600 mb-4">
-            What makes this sound?
-          </p>
-          
+      <main className="max-w-lg mx-auto px-4 py-6">
+        <div className={`grid ${gridCols} gap-3`}>
+          {cards.map(card => (
+            <SoundCard
+              key={card.cardId}
+              card={card}
+              isFlipped={flipped.includes(card.cardId)}
+              isMatched={matched.includes(card.cardId)}
+              onClick={() => handleCardClick(card.cardId)}
+              disabled={isChecking}
+            />
+          ))}
+        </div>
+
+        <div className="mt-6 flex justify-center">
           <button
-            onClick={replaySound}
-            disabled={isLoading}
-            className="w-24 h-24 mx-auto rounded-full bg-[#8E6BBF] text-white 
-                       flex items-center justify-center shadow-lg
-                       hover:scale-110 active:scale-95 transition-transform
-                       disabled:opacity-50"
+            onClick={() => initGame(difficulty)}
+            className="px-6 py-2 bg-white border-2 border-gray-300 rounded-xl font-crayon text-gray-600
+                     hover:bg-gray-100 transition-all flex items-center gap-2"
           >
-            {isLoading ? (
-              <Loader2 size={40} className="animate-spin" />
-            ) : (
-              <Volume2 size={48} />
-            )}
+            <RotateCcw size={18} />
+            Restart
           </button>
-          
-          <p className="font-crayon text-gray-400 text-sm mt-4">
-            Tap to hear again 🔊
-          </p>
         </div>
-
-        {/* Answer Options */}
-        <div className="grid grid-cols-2 gap-4">
-          {options.map((item) => {
-            const isSelected = selectedAnswer === item.id;
-            const isCorrect = item.id === currentItem?.id;
-            const showCorrect = feedback && isCorrect;
-            const showWrong = feedback === 'wrong' && isSelected;
-
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleAnswer(item)}
-                disabled={!!feedback}
-                className={`
-                  p-6 rounded-2xl border-4 transition-all duration-300
-                  ${showCorrect 
-                    ? 'border-[#5CB85C] bg-green-100 scale-105' 
-                    : showWrong 
-                      ? 'border-[#E63B2E] bg-red-100 animate-shake' 
-                      : 'border-gray-300 bg-white hover:border-[#8E6BBF] hover:scale-105'
-                  }
-                  ${feedback && !showCorrect && !showWrong ? 'opacity-50' : ''}
-                `}
-              >
-                <span className="text-5xl sm:text-6xl block mb-2">{item.emoji}</span>
-                <span className="font-crayon text-gray-700">{item.name}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Feedback */}
-        {feedback && (
-          <div className={`
-            mt-6 p-4 rounded-2xl text-center font-crayon text-lg
-            ${feedback === 'correct' 
-              ? 'bg-green-100 text-green-700 border-3 border-green-400' 
-              : 'bg-red-100 text-red-700 border-3 border-red-400'
-            }
-          `}>
-            {feedback === 'correct' ? (
-              <>🎉 Yes! That's a {currentItem?.name}!</>
-            ) : (
-              <>🔊 Listen again for the {currentItem?.name}!</>
-            )}
-          </div>
-        )}
       </main>
     </div>
   );
