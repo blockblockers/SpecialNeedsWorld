@@ -120,32 +120,44 @@ const Activities = () => {
           Fun activities to create, learn & explore! 🌟
         </p>
 
-        {/* Activities Grid - FIXED: Only emoji, no Icon */}
-        <div className="grid grid-cols-2 gap-4">
-          {activityApps.map((app) => (
+        {/* Activities Grid - Updated to match EmotionalWellnessHub style */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          {activityApps.map((app, index) => (
             <button
               key={app.id}
               onClick={() => handleAppClick(app)}
               disabled={!app.ready}
               className={`
-                relative p-4 rounded-2xl border-4 text-white text-center
+                relative p-4 rounded-2xl border-4 text-center
                 transition-all duration-200 shadow-crayon
                 ${app.ready 
-                  ? 'hover:scale-105 hover:-rotate-1 active:scale-95' 
-                  : 'opacity-50 cursor-not-allowed'
+                  ? 'hover:scale-105 hover:-rotate-1 active:scale-95 cursor-pointer' 
+                  : 'opacity-60 cursor-not-allowed'
                 }
               `}
               style={{
-                backgroundColor: app.color,
+                backgroundColor: app.color + '20',
                 borderColor: app.color,
+                borderRadius: index % 2 === 0 ? '20px 8px 20px 8px' : '8px 20px 8px 20px',
               }}
             >
-              {/* FIXED: Only emoji */}
-              <span className="text-4xl mb-2 block">{app.emoji}</span>
-              <span className="font-display text-base block">{app.name}</span>
-              <span className="font-crayon text-xs text-white/80 mt-1 block">
+              {/* Icon container with white background */}
+              <div 
+                className="w-14 h-14 rounded-2xl bg-white/80 flex items-center justify-center mb-2 mx-auto"
+                style={{ border: `2px solid ${app.color}` }}
+              >
+                <span className="text-3xl">{app.emoji}</span>
+              </div>
+              
+              {/* Name - dark text */}
+              <h3 className="font-display text-gray-800 text-sm leading-tight">
+                {app.name}
+              </h3>
+              
+              {/* Description */}
+              <p className="font-crayon text-xs text-gray-500 mt-1">
                 {app.description}
-              </span>
+              </p>
             </button>
           ))}
         </div>

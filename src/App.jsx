@@ -608,6 +608,8 @@ function App() {
             {/* ============================================ */}
             <Route path="/resources" element={<ProtectedRoute><ResourcesHub /></ProtectedRoute>} />
             <Route path="/resources/knowledge" element={<ProtectedRoute><Knowledge /></ProtectedRoute>} />
+            <Route path="/resources/knowledge/:regionId" element={<ProtectedRoute><Knowledge /></ProtectedRoute>} />
+            <Route path="/resources/knowledge/:regionId/:articleSlug" element={<ProtectedRoute><Knowledge /></ProtectedRoute>} />
             <Route path="/resources/research" element={<ProtectedRoute><ResearchHub /></ProtectedRoute>} />
             <Route path="/resources/printables" element={<ProtectedRoute><PrintablesLibrary /></ProtectedRoute>} />
             <Route path="/resources/products" element={<ProtectedRoute><RecommendedProducts /></ProtectedRoute>} />

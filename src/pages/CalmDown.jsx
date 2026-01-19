@@ -583,7 +583,7 @@ const CalmDown = () => {
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#8E6BBF]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
-            onClick={() => navigate('/emotional-wellness')}
+            onClick={() => navigate('/wellness')}
             className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#8E6BBF] 
                        rounded-xl font-display font-bold text-[#8E6BBF] hover:bg-[#8E6BBF] 
                        hover:text-white transition-all shadow-md"

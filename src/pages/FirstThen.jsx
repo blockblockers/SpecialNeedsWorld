@@ -71,12 +71,30 @@ const ACTIVITY_ICONS = [
 ];
 
 // =====================================================
-// ADD TO SCHEDULE MODAL
+// ADD TO SCHEDULE MODAL - Fixed to match ChoiceBoard pattern
 // =====================================================
 const AddToScheduleModal = ({ isOpen, onClose, firstThen, onAdd }) => {
-  const [selectedDate, setSelectedDate] = useState(getToday());
+  // Get today's date in local timezone (not UTC) - fixes date pre-population
+  const getLocalToday = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const [selectedDate, setSelectedDate] = useState(getLocalToday());
   const [selectedTime, setSelectedTime] = useState('09:00');
   const [enableReminder, setEnableReminder] = useState(true);
+
+  // Reset form when modal opens - always start with today's date
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedDate(getLocalToday());
+      setSelectedTime('09:00');
+      setEnableReminder(true);
+    }
+  }, [isOpen]);
 
   if (!isOpen || !firstThen) return null;
 
@@ -138,40 +156,22 @@ const AddToScheduleModal = ({ isOpen, onClose, firstThen, onAdd }) => {
             </div>
           </div>
 
-          {/* Date Selection */}
+          {/* Date Selection - No Today/Tomorrow buttons, just date picker */}
           <div>
             <label className="block font-crayon text-gray-600 mb-2">
               <Calendar size={16} className="inline mr-1" />
               When?
             </label>
-            <div className="flex gap-2 mb-2">
-              <button
-                type="button"
-                onClick={() => setSelectedDate(getToday())}
-                className={`flex-1 py-2 rounded-xl font-crayon text-sm border-2 transition-all
-                          ${selectedDate === getToday() 
-                            ? 'border-[#F5A623] bg-orange-50 text-[#F5A623]' 
-                            : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
-              >
-                Today
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedDate(getTomorrow())}
-                className={`flex-1 py-2 rounded-xl font-crayon text-sm border-2 transition-all
-                          ${selectedDate === getTomorrow() 
-                            ? 'border-[#F5A623] bg-orange-50 text-[#F5A623]' 
-                            : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
-              >
-                Tomorrow
-              </button>
-            </div>
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full p-2 border-2 border-gray-200 rounded-xl font-crayon"
+              min={getLocalToday()}
+              className="w-full p-3 border-2 border-gray-200 rounded-xl font-crayon"
             />
+            <p className="font-crayon text-xs text-gray-400 mt-1">
+              {formatDateDisplay(selectedDate)}
+            </p>
           </div>
 
           {/* Time Selection */}
@@ -187,7 +187,7 @@ const AddToScheduleModal = ({ isOpen, onClose, firstThen, onAdd }) => {
               className="w-full p-3 border-2 border-gray-200 rounded-xl font-crayon text-lg"
             />
             <p className="font-crayon text-xs text-gray-400 mt-1">
-              You'll get a reminder at this time to start the "First" activity
+              {formatTimeDisplay(selectedTime)} - You'll get a reminder to start
             </p>
           </div>
 

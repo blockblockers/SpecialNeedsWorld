@@ -26,15 +26,6 @@ const tools = [
     ready: true,
   },
   {
-    id: 'calm-down',
-    name: 'Calm Down',
-    description: 'Breathing & relaxation',
-    color: '#4A9FD4',
-    emoji: '😌',
-    path: '/tools/calm-down',
-    ready: true,
-  },
-  {
     id: 'sound-board',
     name: 'Sound Board',
     description: 'Fun sounds to play',
@@ -58,7 +49,7 @@ const tools = [
     description: 'Morning & bedtime help',
     color: '#20B2AA',
     emoji: '📋',
-    path: '/tools/routines',
+    path: '/tools/daily-routines',
     ready: true,
   },
 ];
@@ -103,32 +94,44 @@ const Tools = () => {
           Helpful tools for everyday! Tap to open.
         </p>
 
-        {/* Tools Grid - FIXED: Only emoji, no Icon */}
-        <div className="grid grid-cols-2 gap-4">
-          {tools.map((tool) => (
+        {/* Tools Grid - Updated to match EmotionalWellnessHub style */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          {tools.map((tool, index) => (
             <button
               key={tool.id}
               onClick={() => handleToolClick(tool)}
               disabled={!tool.ready}
               className={`
-                relative p-4 rounded-2xl border-4 text-white text-center
+                relative p-4 rounded-2xl border-4 text-center
                 transition-all duration-200 shadow-crayon
                 ${tool.ready 
-                  ? 'hover:scale-105 hover:-rotate-1 active:scale-95' 
-                  : 'opacity-50 cursor-not-allowed'
+                  ? 'hover:scale-105 hover:-rotate-1 active:scale-95 cursor-pointer' 
+                  : 'opacity-60 cursor-not-allowed'
                 }
               `}
               style={{
-                backgroundColor: tool.color,
+                backgroundColor: tool.color + '20',
                 borderColor: tool.color,
+                borderRadius: index % 2 === 0 ? '20px 8px 20px 8px' : '8px 20px 8px 20px',
               }}
             >
-              {/* FIXED: Only emoji */}
-              <span className="text-4xl mb-2 block">{tool.emoji}</span>
-              <span className="font-display text-base block">{tool.name}</span>
-              <span className="font-crayon text-xs text-white/80 mt-1 block">
+              {/* Icon container with white background */}
+              <div 
+                className="w-14 h-14 rounded-2xl bg-white/80 flex items-center justify-center mb-2 mx-auto"
+                style={{ border: `2px solid ${tool.color}` }}
+              >
+                <span className="text-3xl">{tool.emoji}</span>
+              </div>
+              
+              {/* Name - dark text */}
+              <h3 className="font-display text-gray-800 text-sm leading-tight">
+                {tool.name}
+              </h3>
+              
+              {/* Description */}
+              <p className="font-crayon text-xs text-gray-500 mt-1">
                 {tool.description}
-              </span>
+              </p>
             </button>
           ))}
         </div>

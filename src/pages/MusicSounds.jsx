@@ -1,5 +1,6 @@
 // MusicSounds.jsx - Calming music and ambient sounds for ATLASassist
-// Tries to load sounds from /sounds/ambient/, falls back to synthesized
+// FIXED: Seamless looping using Web Audio API buffer instead of HTML5 Audio
+// This eliminates the pause when ambient sounds restart
 
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -14,7 +15,7 @@ import {
   Timer,
   X,
 } from 'lucide-react';
-import { getAudioContext, loadAudio, createNoiseBuffer } from '../services/soundUtils';
+import { getAudioContext, createNoiseBuffer } from '../services/soundUtils';
 
 // Timer presets
 const TIMER_PRESETS = [
@@ -78,7 +79,7 @@ const SOUND_CATEGORIES = [
 
 // Active audio nodes management
 const activeNodes = new Map();
-const activeAudioElements = new Map();
+const activeBufferSources = new Map();
 
 // Stop a specific sound
 const stopSound = (soundId) => {
@@ -91,23 +92,21 @@ const stopSound = (soundId) => {
     activeNodes.delete(soundId);
   }
   
-  // Stop audio element
-  const audio = activeAudioElements.get(soundId);
-  if (audio) {
-    audio.pause();
-    audio.currentTime = 0;
-    activeAudioElements.delete(soundId);
+  // Stop buffer sources (for seamless looping)
+  const bufferData = activeBufferSources.get(soundId);
+  if (bufferData) {
+    try {
+      bufferData.source.stop();
+      bufferData.gainNode.disconnect();
+    } catch (e) {}
+    activeBufferSources.delete(soundId);
   }
 };
 
 // Stop all sounds
 const stopAllSounds = () => {
   activeNodes.forEach((_, id) => stopSound(id));
-  activeAudioElements.forEach((audio, id) => {
-    audio.pause();
-    audio.currentTime = 0;
-  });
-  activeAudioElements.clear();
+  activeBufferSources.forEach((_, id) => stopSound(id));
 };
 
 // Start synthesized sound
@@ -226,6 +225,30 @@ const startSynthSound = (soundId, synthType, volume) => {
       break;
     }
     
+    case 'shimmer': {
+      const frequencies = [880, 1047, 1319, 1568, 1760];
+      frequencies.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now);
+        const lfo = ctx.createOscillator();
+        const lfoGain = ctx.createGain();
+        lfo.frequency.setValueAtTime(0.2 + i * 0.1, now);
+        lfoGain.gain.setValueAtTime(volume * 0.05, now);
+        lfo.connect(lfoGain);
+        lfoGain.connect(gain.gain);
+        gain.gain.setValueAtTime(volume * 0.08, now);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        lfo.start();
+        osc.start();
+        nodes.oscillators.push(osc, lfo);
+        nodes.gains.push(gain);
+      });
+      break;
+    }
+    
     case 'hum': {
       [1, 2, 3].forEach((harmonic) => {
         const osc = ctx.createOscillator();
@@ -242,72 +265,44 @@ const startSynthSound = (soundId, synthType, volume) => {
       break;
     }
     
-    case 'shimmer': {
-      const frequencies = [261, 329, 392, 523, 659];
-      frequencies.forEach((freq, i) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        const lfo = ctx.createOscillator();
-        const lfoGain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, now);
-        lfo.frequency.setValueAtTime(0.2 + i * 0.1, now);
-        lfoGain.gain.setValueAtTime(volume * 0.15, now);
-        lfo.connect(lfoGain);
-        lfoGain.connect(gain.gain);
-        gain.gain.setValueAtTime(volume * 0.08, now);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        lfo.start();
-        osc.start();
-        nodes.oscillators.push(osc, lfo);
-        nodes.gains.push(gain);
-      });
-      break;
-    }
-    
     case 'space': {
-      // Base drone
-      const droneOsc = ctx.createOscillator();
-      const droneGain = ctx.createGain();
-      droneOsc.type = 'sine';
-      droneOsc.frequency.setValueAtTime(80, now);
-      droneGain.gain.setValueAtTime(volume * 0.2, now);
-      droneOsc.connect(droneGain);
-      droneGain.connect(ctx.destination);
-      droneOsc.start();
-      nodes.oscillators.push(droneOsc);
-      nodes.gains.push(droneGain);
-      
-      // Random tones
-      const playRandomTone = () => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        const freq = 200 + Math.random() * 600;
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, ctx.currentTime);
-        gain.gain.setValueAtTime(0, ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(volume * 0.15, ctx.currentTime + 0.5);
-        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 3);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 3);
-      };
-      const interval = setInterval(playRandomTone, 2000);
-      nodes.interval = interval;
+      const buffer = createNoiseBuffer(ctx, 2);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(100, now);
+      filter.Q.setValueAtTime(5, now);
+      const lfo = ctx.createOscillator();
+      const lfoGain = ctx.createGain();
+      lfo.frequency.setValueAtTime(0.02, now);
+      lfoGain.gain.setValueAtTime(50, now);
+      lfo.connect(lfoGain);
+      lfoGain.connect(filter.frequency);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(volume * 0.15, now);
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      lfo.start();
+      source.start();
+      nodes.oscillators.push(lfo);
+      nodes.sources.push(source);
+      nodes.gains.push(gain);
       break;
     }
     
     case 'binaural-focus': {
-      // 10 Hz beta waves for focus
+      const merger = ctx.createChannelMerger(2);
       const leftOsc = ctx.createOscillator();
       const rightOsc = ctx.createOscillator();
-      const merger = ctx.createChannelMerger(2);
       const leftGain = ctx.createGain();
       const rightGain = ctx.createGain();
       leftOsc.frequency.setValueAtTime(200, now);
-      rightOsc.frequency.setValueAtTime(210, now);
+      rightOsc.frequency.setValueAtTime(214, now);
+      leftOsc.type = 'sine';
+      rightOsc.type = 'sine';
       leftGain.gain.setValueAtTime(volume * 0.3, now);
       rightGain.gain.setValueAtTime(volume * 0.3, now);
       leftOsc.connect(leftGain);
@@ -323,14 +318,15 @@ const startSynthSound = (soundId, synthType, volume) => {
     }
     
     case 'binaural-sleep': {
-      // 2 Hz delta waves for sleep
+      const merger = ctx.createChannelMerger(2);
       const leftOsc = ctx.createOscillator();
       const rightOsc = ctx.createOscillator();
-      const merger = ctx.createChannelMerger(2);
       const leftGain = ctx.createGain();
       const rightGain = ctx.createGain();
       leftOsc.frequency.setValueAtTime(100, now);
-      rightOsc.frequency.setValueAtTime(102, now);
+      rightOsc.frequency.setValueAtTime(104, now);
+      leftOsc.type = 'sine';
+      rightOsc.type = 'sine';
       leftGain.gain.setValueAtTime(volume * 0.3, now);
       rightGain.gain.setValueAtTime(volume * 0.3, now);
       leftOsc.connect(leftGain);
@@ -346,14 +342,15 @@ const startSynthSound = (soundId, synthType, volume) => {
     }
     
     case 'binaural-relax': {
-      // 8 Hz alpha waves for relaxation
+      const merger = ctx.createChannelMerger(2);
       const leftOsc = ctx.createOscillator();
       const rightOsc = ctx.createOscillator();
-      const merger = ctx.createChannelMerger(2);
       const leftGain = ctx.createGain();
       const rightGain = ctx.createGain();
       leftOsc.frequency.setValueAtTime(150, now);
-      rightOsc.frequency.setValueAtTime(158, now);
+      rightOsc.frequency.setValueAtTime(160, now);
+      leftOsc.type = 'sine';
+      rightOsc.type = 'sine';
       leftGain.gain.setValueAtTime(volume * 0.3, now);
       rightGain.gain.setValueAtTime(volume * 0.3, now);
       leftOsc.connect(leftGain);
@@ -369,14 +366,15 @@ const startSynthSound = (soundId, synthType, volume) => {
     }
     
     case 'binaural-dream': {
-      // 5 Hz theta waves for creativity/dreaming
+      const merger = ctx.createChannelMerger(2);
       const leftOsc = ctx.createOscillator();
       const rightOsc = ctx.createOscillator();
-      const merger = ctx.createChannelMerger(2);
       const leftGain = ctx.createGain();
       const rightGain = ctx.createGain();
-      leftOsc.frequency.setValueAtTime(180, now);
-      rightOsc.frequency.setValueAtTime(185, now);
+      leftOsc.frequency.setValueAtTime(120, now);
+      rightOsc.frequency.setValueAtTime(127, now);
+      leftOsc.type = 'sine';
+      rightOsc.type = 'sine';
       leftGain.gain.setValueAtTime(volume * 0.3, now);
       rightGain.gain.setValueAtTime(volume * 0.3, now);
       leftOsc.connect(leftGain);
@@ -465,19 +463,40 @@ const startSynthSound = (soundId, synthType, volume) => {
   activeNodes.set(soundId, nodes);
 };
 
-// Start sound (try file first, fall back to synth)
+// Start sound using Web Audio API buffer for SEAMLESS looping (no pause on restart)
 const startSound = async (sound, volume) => {
-  // If has file, try to load and play it
+  // If has file, try to load and play with Web Audio API for seamless looping
   if (sound.file) {
-    const buffer = await loadAudio(sound.file);
-    if (buffer) {
-      // Play looped audio
-      const audio = new Audio(sound.file);
-      audio.loop = true;
-      audio.volume = volume;
-      await audio.play();
-      activeAudioElements.set(sound.id, audio);
-      return;
+    try {
+      const ctx = getAudioContext();
+      const response = await fetch(sound.file);
+      if (response.ok) {
+        const arrayBuffer = await response.arrayBuffer();
+        const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+        
+        // Create buffer source with seamless looping
+        const source = ctx.createBufferSource();
+        source.buffer = audioBuffer;
+        source.loop = true;
+        // Set loop points to the entire buffer for seamless playback
+        source.loopStart = 0;
+        source.loopEnd = audioBuffer.duration;
+        
+        // Create gain node for volume control
+        const gainNode = ctx.createGain();
+        gainNode.gain.setValueAtTime(volume, ctx.currentTime);
+        
+        // Connect and start
+        source.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        source.start(0);
+        
+        // Store reference for stopping and volume control
+        activeBufferSources.set(sound.id, { source, gainNode });
+        return;
+      }
+    } catch (e) {
+      console.log('Using synthesized fallback for:', sound.id);
     }
   }
   
@@ -518,53 +537,59 @@ const MusicSounds = () => {
           return prev - 1;
         });
       }, 1000);
+      return () => clearInterval(timerRef.current);
     }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [timer]);
+  }, [timeRemaining]);
 
-  // Toggle sound
+  // Update volume for playing sounds
+  useEffect(() => {
+    activeBufferSources.forEach(({ gainNode }) => {
+      try {
+        gainNode.gain.setValueAtTime(volume, getAudioContext().currentTime);
+      } catch (e) {}
+    });
+    activeNodes.forEach(({ gains }) => {
+      gains?.forEach(g => {
+        try { g.gain.setValueAtTime(volume * 0.3, getAudioContext().currentTime); } catch (e) {}
+      });
+    });
+  }, [volume]);
+
   const toggleSound = async (sound) => {
-    const newPlaying = new Set(playing);
-    
     if (playing.has(sound.id)) {
       stopSound(sound.id);
-      newPlaying.delete(sound.id);
+      setPlaying(prev => {
+        const next = new Set(prev);
+        next.delete(sound.id);
+        return next;
+      });
     } else {
       await startSound(sound, volume);
-      newPlaying.add(sound.id);
+      setPlaying(prev => new Set(prev).add(sound.id));
     }
-    
-    setPlaying(newPlaying);
   };
 
-  // Format time
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  const handleStopAll = () => {
+    stopAllSounds();
+    setPlaying(new Set());
   };
 
-  // Set timer
   const handleSetTimer = (seconds) => {
     setTimer(seconds);
     setTimeRemaining(seconds);
     setShowTimer(false);
   };
 
-  // Stop all
-  const handleStopAll = () => {
-    stopAllSounds();
-    setPlaying(new Set());
-    setTimeRemaining(null);
-    setTimer(null);
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-indigo-950">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-indigo-900/95 backdrop-blur-sm border-b-2 border-purple-500/30">
+      <header className="sticky top-0 z-40 bg-indigo-900/90 backdrop-blur-sm border-b-2 border-purple-500/30">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => {

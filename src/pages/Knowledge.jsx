@@ -264,11 +264,11 @@ const Knowledge = () => {
   };
   
   const handleRegionSelect = (region) => {
-    navigate(`/knowledge/${region.id}`);
+    navigate(`/resources/knowledge/${region.id}`);
   };
   
   const handleArticleSelect = (article) => {
-    navigate(`/knowledge/${currentRegion.id}/${article.slug}`);
+    navigate(`/resources/knowledge/${currentRegion.id}/${article.slug}`);
   };
   
   const handleSearch = async () => {
@@ -280,11 +280,11 @@ const Knowledge = () => {
   
   const handleBack = () => {
     if (view === 'article') {
-      navigate(`/knowledge/${currentRegion.id}`);
+      navigate(`/resources/knowledge/${currentRegion.id}`);
     } else if (view === 'articles') {
-      navigate('/knowledge');
+      navigate('/resources/knowledge');
     } else {
-      navigate('/hub');
+      navigate('/resources');
     }
   };
   

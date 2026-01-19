@@ -118,42 +118,42 @@ const Services = () => {
           </div>
         </div>
 
-        {/* Trackers Grid - Using consistent button style */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {trackers.map((tracker) => {
-            const IconComponent = tracker.icon;
-            return (
-              <button
-                key={tracker.id}
-                onClick={() => navigate(tracker.path)}
-                className="p-4 rounded-2xl border-4 text-center
-                         transition-all duration-200 shadow-crayon
-                         hover:scale-105 hover:-rotate-1 active:scale-95"
-                style={{
-                  backgroundColor: `${tracker.color}15`,
-                  borderColor: tracker.color,
-                }}
+        {/* Trackers Grid - Updated to match EmotionalWellnessHub style */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          {trackers.map((tracker, index) => (
+            <button
+              key={tracker.id}
+              onClick={() => navigate(tracker.path)}
+              className={`
+                relative p-4 rounded-2xl border-4 text-center
+                transition-all duration-200 shadow-crayon
+                hover:scale-105 hover:-rotate-1 active:scale-95 cursor-pointer
+              `}
+              style={{
+                backgroundColor: tracker.color + '20',
+                borderColor: tracker.color,
+                borderRadius: index % 2 === 0 ? '20px 8px 20px 8px' : '8px 20px 8px 20px',
+              }}
+            >
+              {/* Icon container with white background */}
+              <div 
+                className="w-14 h-14 rounded-2xl bg-white/80 flex items-center justify-center mb-2 mx-auto"
+                style={{ border: `2px solid ${tracker.color}` }}
               >
-                {/* Emoji */}
-                <div className="text-3xl mb-2">{tracker.emoji}</div>
-
-                {/* Icon - centered */}
-                <div className="flex justify-center mb-2">
-                  <IconComponent size={28} style={{ color: tracker.color }} />
-                </div>
-
-                {/* Name */}
-                <h3 className="font-display text-base" style={{ color: tracker.color }}>
-                  {tracker.name}
-                </h3>
-
-                {/* Description */}
-                <p className="text-xs text-gray-500 font-crayon mt-1">
-                  {tracker.description}
-                </p>
-              </button>
-            );
-          })}
+                <span className="text-3xl">{tracker.emoji}</span>
+              </div>
+              
+              {/* Name - dark text */}
+              <h3 className="font-display text-gray-800 text-sm leading-tight">
+                {tracker.name}
+              </h3>
+              
+              {/* Description */}
+              <p className="font-crayon text-xs text-gray-500 mt-1">
+                {tracker.description}
+              </p>
+            </button>
+          ))}
         </div>
 
         {/* Info Note */}
