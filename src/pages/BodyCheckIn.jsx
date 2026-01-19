@@ -1,343 +1,396 @@
-// BodyCheckIn.jsx - Body sensations and pain tracker
-// NAVIGATION: Back button goes to /wellness (parent hub)
+// BodyCheckIn.jsx - Body awareness check-in for ATLASassist
+// UPDATED: Added Visual Schedule integration
+// Schedule regular body check-ins throughout the day
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  Save, 
-  History, 
-  X, 
-  Info,
-  CheckCircle2,
-  Frown,
-  Meh,
-  Smile,
-  AlertCircle
+import {
+  ArrowLeft,
+  Save,
+  Sparkles,
+  X,
+  Check,
+  CalendarPlus,
+  Bell,
+  BellOff,
+  Clock,
+  Calendar,
+  History,
+  BarChart3,
+  User,
 } from 'lucide-react';
+import { 
+  addActivityToSchedule, 
+  addMultipleActivitiesToSchedule,
+  SCHEDULE_SOURCES, 
+  SOURCE_COLORS,
+  getToday,
+  getTomorrow,
+  formatDateDisplay,
+  formatTimeDisplay 
+} from '../services/scheduleHelper';
+import { useToast } from '../components/ThemedToast';
 
-// Storage key
-const STORAGE_KEY = 'snw_body_checkins';
+const STORAGE_KEY = 'snw_body_checkin';
 
 // Body parts to check
 const BODY_PARTS = [
-  { id: 'head', name: 'Head', emoji: '🤕', x: 50, y: 8 },
-  { id: 'eyes', name: 'Eyes', emoji: '👀', x: 50, y: 12 },
-  { id: 'ears', name: 'Ears', emoji: '👂', x: 50, y: 14 },
-  { id: 'throat', name: 'Throat', emoji: '🗣️', x: 50, y: 20 },
-  { id: 'chest', name: 'Chest', emoji: '💗', x: 50, y: 30 },
-  { id: 'stomach', name: 'Stomach', emoji: '🤢', x: 50, y: 42 },
-  { id: 'leftArm', name: 'Left Arm', emoji: '💪', x: 25, y: 38 },
-  { id: 'rightArm', name: 'Right Arm', emoji: '💪', x: 75, y: 38 },
-  { id: 'back', name: 'Back', emoji: '🔙', x: 50, y: 35 },
-  { id: 'leftLeg', name: 'Left Leg', emoji: '🦵', x: 38, y: 70 },
-  { id: 'rightLeg', name: 'Right Leg', emoji: '🦵', x: 62, y: 70 },
-  { id: 'feet', name: 'Feet', emoji: '🦶', x: 50, y: 92 },
+  { id: 'head', name: 'Head', emoji: '🧠', position: { top: '5%', left: '50%' } },
+  { id: 'face', name: 'Face', emoji: '😊', position: { top: '12%', left: '50%' } },
+  { id: 'shoulders', name: 'Shoulders', emoji: '💪', position: { top: '22%', left: '50%' } },
+  { id: 'chest', name: 'Chest', emoji: '❤️', position: { top: '32%', left: '50%' } },
+  { id: 'tummy', name: 'Tummy', emoji: '🦋', position: { top: '45%', left: '50%' } },
+  { id: 'hands', name: 'Hands', emoji: '✋', position: { top: '50%', left: '25%' } },
+  { id: 'legs', name: 'Legs', emoji: '🦵', position: { top: '70%', left: '50%' } },
+  { id: 'feet', name: 'Feet', emoji: '🦶', position: { top: '90%', left: '50%' } },
 ];
 
-// Feeling options for each body part
+// Feeling options
 const FEELINGS = [
-  { id: 'good', label: 'Feels Good', emoji: '😊', color: '#5CB85C' },
-  { id: 'okay', label: 'Okay', emoji: '😐', color: '#F5A623' },
-  { id: 'hurts', label: 'Hurts a Little', emoji: '😟', color: '#E86B9A' },
-  { id: 'hurts-lot', label: 'Hurts a Lot', emoji: '😢', color: '#E63B2E' },
-  { id: 'weird', label: 'Feels Weird', emoji: '🤔', color: '#8E6BBF' },
-  { id: 'tingly', label: 'Tingly', emoji: '⚡', color: '#4A9FD4' },
-  { id: 'tired', label: 'Tired/Heavy', emoji: '😴', color: '#6B5B95' },
+  { id: 'great', emoji: '😄', label: 'Great', color: '#5CB85C' },
+  { id: 'good', emoji: '🙂', label: 'Good', color: '#4A9FD4' },
+  { id: 'okay', emoji: '😐', label: 'Okay', color: '#F5A623' },
+  { id: 'uncomfortable', emoji: '😕', label: 'Uncomfortable', color: '#E86B9A' },
+  { id: 'hurting', emoji: '😣', label: 'Hurting', color: '#E63B2E' },
 ];
 
-// Simple body outline SVG
-const BodyOutline = ({ selectedParts, onPartClick }) => (
-  <svg viewBox="0 0 100 100" className="w-full max-w-xs mx-auto">
-    {/* Head */}
-    <circle cx="50" cy="12" r="10" fill="#FFE4C4" stroke="#DEB887" strokeWidth="1" />
-    
-    {/* Neck */}
-    <rect x="47" y="22" width="6" height="6" fill="#FFE4C4" stroke="#DEB887" strokeWidth="0.5" />
-    
-    {/* Body */}
-    <ellipse cx="50" cy="40" rx="15" ry="18" fill="#FFE4C4" stroke="#DEB887" strokeWidth="1" />
-    
-    {/* Arms */}
-    <ellipse cx="30" cy="38" rx="5" ry="15" fill="#FFE4C4" stroke="#DEB887" strokeWidth="1" transform="rotate(-15 30 38)" />
-    <ellipse cx="70" cy="38" rx="5" ry="15" fill="#FFE4C4" stroke="#DEB887" strokeWidth="1" transform="rotate(15 70 38)" />
-    
-    {/* Legs */}
-    <ellipse cx="42" cy="72" rx="6" ry="18" fill="#FFE4C4" stroke="#DEB887" strokeWidth="1" />
-    <ellipse cx="58" cy="72" rx="6" ry="18" fill="#FFE4C4" stroke="#DEB887" strokeWidth="1" />
-    
-    {/* Clickable areas with status indicators */}
-    {BODY_PARTS.map(part => {
-      const status = selectedParts[part.id];
-      const feeling = status ? FEELINGS.find(f => f.id === status) : null;
-      
-      return (
-        <g key={part.id} onClick={() => onPartClick(part)} className="cursor-pointer">
-          <circle
-            cx={part.x}
-            cy={part.y}
-            r="6"
-            fill={feeling ? feeling.color : 'transparent'}
-            stroke={feeling ? feeling.color : '#999'}
-            strokeWidth="1.5"
-            strokeDasharray={feeling ? '0' : '2,2'}
-            opacity={feeling ? 0.7 : 0.3}
-            className="hover:opacity-100 transition-opacity"
-          />
-          {feeling && (
-            <text
-              x={part.x}
-              y={part.y + 1}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fontSize="6"
-            >
-              {feeling.emoji}
-            </text>
-          )}
-        </g>
-      );
-    })}
-  </svg>
-);
+// =====================================================
+// ADD TO SCHEDULE MODAL
+// =====================================================
+const AddToScheduleModal = ({ isOpen, onClose, onAdd }) => {
+  const [selectedDate, setSelectedDate] = useState(getToday());
+  const [selectedTime, setSelectedTime] = useState('10:00');
+  const [enableReminder, setEnableReminder] = useState(true);
+  const [scheduleMultiple, setScheduleMultiple] = useState(false);
+  const [times, setTimes] = useState(['09:00', '12:00', '15:00']);
 
-// Body part selection modal
-const BodyPartModal = ({ part, currentFeeling, onSelect, onClose }) => {
-  if (!part) return null;
+  if (!isOpen) return null;
+
+  const handleAdd = () => {
+    onAdd({
+      date: selectedDate,
+      time: selectedTime,
+      times: scheduleMultiple ? times : [selectedTime],
+      reminder: enableReminder,
+      multiple: scheduleMultiple,
+    });
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden">
+      <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="bg-[#4A9FD4] text-white p-4 flex items-center gap-3">
-          <span className="text-2xl">{part.emoji}</span>
-          <h3 className="font-display text-xl flex-1">How does your {part.name} feel?</h3>
+        <div className="bg-[#E86B9A] text-white p-4 flex items-center gap-3 sticky top-0">
+          <CalendarPlus size={24} />
+          <h3 className="font-display text-xl flex-1">Schedule Body Check-In</h3>
           <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
             <X size={24} />
           </button>
         </div>
 
-        {/* Feeling Options */}
-        <div className="p-4 space-y-2">
-          {FEELINGS.map(feeling => (
-            <button
-              key={feeling.id}
-              onClick={() => onSelect(part.id, feeling.id)}
-              className={`w-full p-3 rounded-xl border-3 flex items-center gap-3 transition-all
-                        ${currentFeeling === feeling.id 
-                          ? 'border-current scale-[1.02] shadow-md' 
-                          : 'border-gray-200 hover:border-gray-300'}`}
-              style={{ 
-                borderColor: currentFeeling === feeling.id ? feeling.color : undefined,
-                backgroundColor: currentFeeling === feeling.id ? `${feeling.color}15` : undefined 
-              }}
-            >
-              <span className="text-2xl">{feeling.emoji}</span>
-              <span className="font-crayon text-gray-700">{feeling.label}</span>
-              {currentFeeling === feeling.id && (
-                <CheckCircle2 size={20} className="ml-auto" style={{ color: feeling.color }} />
-              )}
-            </button>
-          ))}
-          
-          {/* Clear option */}
-          {currentFeeling && (
-            <button
-              onClick={() => onSelect(part.id, null)}
-              className="w-full p-2 text-gray-500 font-crayon text-sm hover:bg-gray-100 rounded-lg mt-2"
-            >
-              Clear selection
-            </button>
+        {/* Content */}
+        <div className="p-4 space-y-4">
+          {/* Use Case Description */}
+          <div className="p-3 bg-pink-50 rounded-xl border-2 border-pink-200">
+            <p className="font-crayon text-sm text-pink-700">
+              🧘 <strong>Why schedule body check-ins?</strong> Regular check-ins help build 
+              body awareness and recognize how your body feels. This is important for 
+              self-regulation and identifying needs before they become overwhelming.
+            </p>
+          </div>
+
+          {/* Preview */}
+          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-[#E86B9A]">
+              <User size={24} className="text-white" />
+            </div>
+            <div>
+              <p className="font-display text-gray-800">Body Check-In</p>
+              <p className="font-crayon text-sm text-gray-500">How does your body feel?</p>
+            </div>
+          </div>
+
+          {/* Single vs Multiple */}
+          <div>
+            <label className="block font-crayon text-gray-600 mb-2">📋 How many check-ins?</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setScheduleMultiple(false)}
+                className={`flex-1 py-2 rounded-xl font-crayon text-sm border-2 transition-all
+                  ${!scheduleMultiple 
+                    ? 'border-[#E86B9A] bg-pink-50 text-[#E86B9A]' 
+                    : 'border-gray-200 text-gray-600'}`}
+              >
+                One Check-In
+              </button>
+              <button
+                onClick={() => setScheduleMultiple(true)}
+                className={`flex-1 py-2 rounded-xl font-crayon text-sm border-2 transition-all
+                  ${scheduleMultiple 
+                    ? 'border-[#E86B9A] bg-pink-50 text-[#E86B9A]' 
+                    : 'border-gray-200 text-gray-600'}`}
+              >
+                Multiple Times
+              </button>
+            </div>
+          </div>
+
+          {/* Date Selection */}
+          <div>
+            <label className="block font-crayon text-gray-600 mb-2">
+              <Calendar size={16} className="inline mr-1" />
+              When?
+            </label>
+            <div className="flex gap-2 mb-2">
+              <button
+                type="button"
+                onClick={() => setSelectedDate(getToday())}
+                className={`flex-1 py-2 rounded-xl font-crayon text-sm border-2 transition-all
+                          ${selectedDate === getToday() 
+                            ? 'border-[#E86B9A] bg-pink-50 text-[#E86B9A]' 
+                            : 'border-gray-200 text-gray-600'}`}
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedDate(getTomorrow())}
+                className={`flex-1 py-2 rounded-xl font-crayon text-sm border-2 transition-all
+                          ${selectedDate === getTomorrow() 
+                            ? 'border-[#E86B9A] bg-pink-50 text-[#E86B9A]' 
+                            : 'border-gray-200 text-gray-600'}`}
+              >
+                Tomorrow
+              </button>
+            </div>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-full p-2 border-2 border-gray-200 rounded-xl font-crayon"
+            />
+          </div>
+
+          {/* Time Selection */}
+          {!scheduleMultiple ? (
+            <div>
+              <label className="block font-crayon text-gray-600 mb-2">
+                <Clock size={16} className="inline mr-1" />
+                What time?
+              </label>
+              <input
+                type="time"
+                value={selectedTime}
+                onChange={(e) => setSelectedTime(e.target.value)}
+                className="w-full p-3 border-2 border-gray-200 rounded-xl font-crayon text-lg"
+              />
+            </div>
+          ) : (
+            <div>
+              <label className="block font-crayon text-gray-600 mb-2">
+                <Clock size={16} className="inline mr-1" />
+                Check-in times (add 3 reminders throughout the day)
+              </label>
+              <div className="space-y-2">
+                {times.map((time, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <span className="font-crayon text-gray-500 w-20">
+                      {idx === 0 ? 'Morning' : idx === 1 ? 'Midday' : 'Afternoon'}
+                    </span>
+                    <input
+                      type="time"
+                      value={time}
+                      onChange={(e) => {
+                        const newTimes = [...times];
+                        newTimes[idx] = e.target.value;
+                        setTimes(newTimes);
+                      }}
+                      className="flex-1 p-2 border-2 border-gray-200 rounded-xl font-crayon"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
+
+          {/* Reminder Toggle */}
+          <button
+            type="button"
+            onClick={() => setEnableReminder(!enableReminder)}
+            className={`w-full p-3 rounded-xl border-2 flex items-center gap-3 transition-all
+              ${enableReminder 
+                ? 'bg-pink-50 border-[#E86B9A]' 
+                : 'bg-gray-50 border-gray-200'}`}
+          >
+            <div className={`p-2 rounded-full ${enableReminder ? 'bg-[#E86B9A]' : 'bg-gray-300'}`}>
+              {enableReminder ? (
+                <Bell size={16} className="text-white" />
+              ) : (
+                <BellOff size={16} className="text-white" />
+              )}
+            </div>
+            <span className="font-crayon text-gray-700 flex-1 text-left">
+              {enableReminder ? 'Reminders on' : 'No reminders'}
+            </span>
+          </button>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3 p-4 pt-0 sticky bottom-0 bg-white">
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 border-3 border-gray-300 rounded-xl font-crayon text-gray-600
+                       hover:bg-gray-100 transition-all"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleAdd}
+            className="flex-1 py-3 bg-[#5CB85C] border-3 border-green-600 rounded-xl font-crayon text-white
+                       hover:bg-green-600 transition-all flex items-center justify-center gap-2"
+          >
+            <Check size={20} />
+            {scheduleMultiple ? `Add ${times.length} Check-Ins` : 'Add to Schedule'}
+          </button>
         </div>
       </div>
     </div>
   );
 };
 
-// History modal
-const HistoryModal = ({ history, onClose, onClear }) => (
-  <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-    <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl max-h-[80vh] overflow-hidden">
-      {/* Header */}
-      <div className="bg-[#8E6BBF] text-white p-4 flex items-center gap-3">
-        <History size={24} />
-        <h3 className="font-display text-xl flex-1">Check-In History</h3>
-        <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
-          <X size={24} />
-        </button>
-      </div>
-
-      {/* Content */}
-      <div className="p-4 overflow-y-auto max-h-[50vh]">
-        {history.length === 0 ? (
-          <div className="text-center py-8">
-            <History size={48} className="mx-auto text-gray-300 mb-3" />
-            <p className="font-crayon text-gray-500">No check-ins yet</p>
-            <p className="font-crayon text-sm text-gray-400 mt-1">
-              Your body check-ins will appear here
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {history.slice().reverse().map((entry, index) => (
-              <div 
-                key={index}
-                className="p-3 bg-gray-50 rounded-xl"
-              >
-                <p className="font-crayon text-xs text-gray-400 mb-2">
-                  {new Date(entry.timestamp).toLocaleString()}
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {Object.entries(entry.parts).map(([partId, feelingId]) => {
-                    const part = BODY_PARTS.find(p => p.id === partId);
-                    const feeling = FEELINGS.find(f => f.id === feelingId);
-                    if (!part || !feeling) return null;
-                    return (
-                      <span 
-                        key={partId}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-crayon"
-                        style={{ backgroundColor: `${feeling.color}20`, color: feeling.color }}
-                      >
-                        {part.emoji} {feeling.emoji}
-                      </span>
-                    );
-                  })}
-                </div>
-                {entry.notes && (
-                  <p className="font-crayon text-sm text-gray-600 mt-2 italic">
-                    "{entry.notes}"
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Footer */}
-      <div className="p-4 bg-gray-50 border-t">
-        {history.length > 0 && (
-          <button
-            onClick={onClear}
-            className="w-full py-2 text-red-500 font-crayon text-sm hover:bg-red-50 rounded-lg mb-2"
-          >
-            Clear History
-          </button>
-        )}
-        <button
-          onClick={onClose}
-          className="w-full py-3 bg-gray-200 rounded-xl font-crayon text-gray-600 hover:bg-gray-300"
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-);
-
 // Main Component
 const BodyCheckIn = () => {
   const navigate = useNavigate();
-  
-  // State
-  const [selectedParts, setSelectedParts] = useState({});
+  const toast = useToast();
   const [selectedPart, setSelectedPart] = useState(null);
+  const [bodyStatus, setBodyStatus] = useState({});
   const [notes, setNotes] = useState('');
   const [history, setHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [showInfo, setShowInfo] = useState(false);
-  const [saved, setSaved] = useState(false);
+  
+  // Schedule modal state
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
 
-  // Load history
+  // Load data
   useEffect(() => {
-    const savedHistory = localStorage.getItem(STORAGE_KEY);
-    if (savedHistory) {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
       try {
-        setHistory(JSON.parse(savedHistory));
-      } catch (e) {
-        console.error('Error loading history:', e);
-      }
+        const data = JSON.parse(saved);
+        setHistory(data.history || []);
+        // Load today's check-in if exists
+        const today = new Date().toISOString().split('T')[0];
+        const todayEntry = (data.history || []).find(e => e.date === today);
+        if (todayEntry) {
+          setBodyStatus(todayEntry.status || {});
+          setNotes(todayEntry.notes || '');
+        }
+      } catch (e) {}
     }
   }, []);
 
-  // Handle body part click
-  const handlePartClick = (part) => {
-    setSelectedPart(part);
-  };
-
-  // Handle feeling selection
-  const handleFeelingSelect = (partId, feelingId) => {
-    if (feelingId === null) {
-      const newParts = { ...selectedParts };
-      delete newParts[partId];
-      setSelectedParts(newParts);
-    } else {
-      setSelectedParts(prev => ({ ...prev, [partId]: feelingId }));
-    }
-    setSelectedPart(null);
-    setSaved(false);
-  };
-
   // Save check-in
-  const handleSave = () => {
-    if (Object.keys(selectedParts).length === 0) return;
-
-    const newEntry = {
+  const saveCheckIn = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const entry = {
+      id: Date.now(),
+      date: today,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: bodyStatus,
+      notes,
       timestamp: new Date().toISOString(),
-      parts: selectedParts,
-      notes: notes.trim() || null,
     };
 
-    const newHistory = [...history, newEntry].slice(-50); // Keep last 50
+    const newHistory = [entry, ...history.filter(h => h.date !== today)].slice(0, 30);
     setHistory(newHistory);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newHistory));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ history: newHistory }));
     
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    toast.success('Check-In Saved!', 'Your body check-in has been recorded');
   };
 
-  // Clear current check-in
-  const handleClear = () => {
-    setSelectedParts({});
-    setNotes('');
-    setSaved(false);
+  // Set body part feeling
+  const setFeeling = (partId, feelingId) => {
+    setBodyStatus(prev => ({
+      ...prev,
+      [partId]: feelingId
+    }));
+    setSelectedPart(null);
   };
 
-  // Clear history
-  const handleClearHistory = () => {
-    if (confirm('Clear all body check-in history?')) {
-      setHistory([]);
-      localStorage.removeItem(STORAGE_KEY);
+  // Handle schedule
+  const handleAddToSchedule = ({ date, times, reminder, multiple }) => {
+    if (multiple && times.length > 1) {
+      const activities = times.map(time => ({
+        name: 'Body Check-In',
+        time,
+        emoji: '🧘',
+        color: '#E86B9A',
+      }));
+
+      const result = addMultipleActivitiesToSchedule({
+        date,
+        activities,
+        source: SCHEDULE_SOURCES.SENSORY_BREAK,
+        notify: reminder,
+      });
+
+      setShowScheduleModal(false);
+
+      if (result && result.success) {
+        toast.schedule(
+          'Check-Ins Scheduled!',
+          `${times.length} body check-ins added to your schedule for ${formatDateDisplay(date)}`
+        );
+      } else {
+        toast.error('Oops!', 'Could not add to schedule. Please try again.');
+      }
+    } else {
+      const result = addActivityToSchedule({
+        date,
+        name: 'Body Check-In',
+        time: times[0],
+        emoji: '🧘',
+        color: '#E86B9A',
+        source: SCHEDULE_SOURCES.SENSORY_BREAK,
+        notify: reminder,
+        metadata: {
+          type: 'body-checkin',
+        },
+      });
+
+      setShowScheduleModal(false);
+
+      if (result && result.success) {
+        toast.schedule(
+          'Check-In Scheduled!',
+          `Body check-in added for ${formatDateDisplay(date)} at ${formatTimeDisplay(times[0])}`
+        );
+      } else {
+        toast.error('Oops!', 'Could not add to schedule. Please try again.');
+      }
     }
   };
 
-  // Calculate overall status
+  // Get overall status
   const getOverallStatus = () => {
-    const parts = Object.values(selectedParts);
-    if (parts.length === 0) return null;
-    
-    const hasHurtsLot = parts.includes('hurts-lot');
-    const hasHurts = parts.includes('hurts');
-    const allGood = parts.every(p => p === 'good' || p === 'okay');
-    
-    if (hasHurtsLot) return { text: 'Some parts hurt a lot', icon: Frown, color: '#E63B2E' };
-    if (hasHurts) return { text: 'Some parts hurt a little', icon: Meh, color: '#E86B9A' };
-    if (allGood) return { text: 'Body feels okay!', icon: Smile, color: '#5CB85C' };
-    return { text: 'Some parts feel different', icon: Meh, color: '#F5A623' };
+    const statuses = Object.values(bodyStatus);
+    if (statuses.length === 0) return null;
+    const hasHurting = statuses.includes('hurting');
+    const hasUncomfortable = statuses.includes('uncomfortable');
+    if (hasHurting) return FEELINGS.find(f => f.id === 'hurting');
+    if (hasUncomfortable) return FEELINGS.find(f => f.id === 'uncomfortable');
+    return FEELINGS.find(f => f.id === 'good');
   };
-
-  const overallStatus = getOverallStatus();
 
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#4A9FD4]">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#E86B9A]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
-            onClick={() => navigate('/wellness')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#4A9FD4] 
-                       rounded-xl font-display font-bold text-[#4A9FD4] hover:bg-[#4A9FD4] 
+            onClick={() => navigate('/emotional-wellness')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#E86B9A] 
+                       rounded-xl font-display font-bold text-[#E86B9A] hover:bg-[#E86B9A] 
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
@@ -345,204 +398,217 @@ const BodyCheckIn = () => {
           </button>
           <img src="/logo.jpeg" alt="ATLASassist" className="w-10 h-10 rounded-lg shadow-sm" />
           <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-display text-[#4A9FD4] crayon-text">
-              🫀 Body Check-In
+            <h1 className="text-lg sm:text-xl font-display text-[#E86B9A] crayon-text">
+              🧘 Body Check-In
             </h1>
           </div>
           <button
-            onClick={() => setShowInfo(true)}
-            className="p-2 text-gray-400 hover:text-[#4A9FD4]"
+            onClick={() => setShowHistory(!showHistory)}
+            className="p-2 bg-white border-2 border-gray-200 rounded-xl"
           >
-            <Info size={20} />
-          </button>
-          <button
-            onClick={() => setShowHistory(true)}
-            className="p-2 text-gray-400 hover:text-[#8E6BBF]"
-          >
-            <History size={20} />
+            <History size={20} className="text-gray-500" />
           </button>
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="max-w-2xl mx-auto px-4 py-6">
-        <p className="text-center text-gray-600 font-crayon mb-4">
-          Tap on a body part to say how it feels! 👆
-        </p>
+        {/* Schedule Button */}
+        <button
+          onClick={() => setShowScheduleModal(true)}
+          className="w-full mb-6 p-4 bg-gradient-to-r from-[#E86B9A] to-[#8E6BBF] text-white 
+                     rounded-2xl font-display flex items-center justify-center gap-3 shadow-lg
+                     hover:opacity-90 transition-all"
+        >
+          <CalendarPlus size={24} />
+          Schedule Regular Check-Ins
+        </button>
 
-        {/* Body Diagram */}
-        <div className="bg-white rounded-2xl border-3 border-gray-200 p-4 mb-4">
-          <BodyOutline 
-            selectedParts={selectedParts} 
-            onPartClick={handlePartClick}
-          />
-          
+        {/* Instructions */}
+        <div className="text-center mb-6">
+          <p className="font-crayon text-gray-600">
+            Tap a body part to check how it feels
+          </p>
+        </div>
+
+        {/* Body Map */}
+        <div className="bg-white rounded-3xl border-4 border-[#E86B9A] shadow-crayon p-6 mb-6">
+          <div className="relative w-48 mx-auto" style={{ height: '400px' }}>
+            {/* Body outline */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-9xl opacity-20">🧍</div>
+            </div>
+            
+            {/* Body part buttons */}
+            {BODY_PARTS.map(part => {
+              const status = bodyStatus[part.id];
+              const feeling = FEELINGS.find(f => f.id === status);
+              
+              return (
+                <button
+                  key={part.id}
+                  onClick={() => setSelectedPart(part)}
+                  className="absolute transform -translate-x-1/2 -translate-y-1/2 
+                           w-12 h-12 rounded-full border-3 flex items-center justify-center
+                           transition-all hover:scale-110 shadow-md"
+                  style={{ 
+                    ...part.position,
+                    backgroundColor: feeling ? `${feeling.color}30` : 'white',
+                    borderColor: feeling ? feeling.color : '#E5E7EB',
+                  }}
+                >
+                  <span className="text-xl">{feeling ? feeling.emoji : part.emoji}</span>
+                </button>
+              );
+            })}
+          </div>
+
           {/* Legend */}
-          <div className="mt-4 flex flex-wrap justify-center gap-2">
-            {FEELINGS.slice(0, 4).map(feeling => (
-              <div 
-                key={feeling.id}
-                className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-crayon"
-                style={{ backgroundColor: `${feeling.color}20`, color: feeling.color }}
-              >
-                <span>{feeling.emoji}</span>
-                <span>{feeling.label}</span>
+          <div className="flex justify-center gap-2 mt-4 flex-wrap">
+            {FEELINGS.map(feeling => (
+              <div key={feeling.id} className="flex items-center gap-1 text-xs font-crayon">
+                <span className="text-lg">{feeling.emoji}</span>
+                <span style={{ color: feeling.color }}>{feeling.label}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Quick Body Part Buttons */}
-        <div className="bg-white rounded-2xl border-3 border-gray-200 p-4 mb-4">
-          <h3 className="font-display text-gray-700 mb-3">Quick Select Body Part:</h3>
-          <div className="flex flex-wrap gap-2">
-            {BODY_PARTS.map(part => {
-              const feeling = selectedParts[part.id] 
-                ? FEELINGS.find(f => f.id === selectedParts[part.id]) 
-                : null;
-              return (
-                <button
-                  key={part.id}
-                  onClick={() => handlePartClick(part)}
-                  className="px-3 py-2 rounded-xl border-2 font-crayon text-sm flex items-center gap-1.5 transition-all"
-                  style={{
-                    borderColor: feeling?.color || '#e5e7eb',
-                    backgroundColor: feeling ? `${feeling.color}15` : 'white',
-                  }}
-                >
-                  <span>{part.emoji}</span>
-                  <span>{part.name}</span>
-                  {feeling && <span>{feeling.emoji}</span>}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Overall Status */}
-        {overallStatus && (
-          <div 
-            className="rounded-2xl border-3 p-4 mb-4 flex items-center gap-3"
-            style={{ 
-              borderColor: overallStatus.color, 
-              backgroundColor: `${overallStatus.color}10` 
-            }}
-          >
-            <overallStatus.icon size={32} style={{ color: overallStatus.color }} />
-            <div>
-              <p className="font-display" style={{ color: overallStatus.color }}>
-                {overallStatus.text}
-              </p>
-              <p className="font-crayon text-sm text-gray-500">
-                {Object.keys(selectedParts).length} body parts checked
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* Notes */}
-        <div className="bg-white rounded-2xl border-3 border-gray-200 p-4 mb-4">
+        <div className="bg-white rounded-2xl border-3 border-gray-200 p-4 mb-6">
           <label className="block font-crayon text-gray-600 mb-2">
-            📝 Any notes? (optional)
+            📝 Any notes about how you feel?
           </label>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Tell us more about how you feel..."
+            placeholder="Optional: Describe how you're feeling..."
             className="w-full p-3 border-2 border-gray-200 rounded-xl font-crayon resize-none
-                     focus:border-[#4A9FD4] focus:outline-none"
-            rows={2}
+                     focus:border-[#E86B9A] focus:outline-none"
+            rows={3}
           />
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-3">
-          <button
-            onClick={handleClear}
-            className="flex-1 py-3 border-3 border-gray-300 rounded-xl font-crayon text-gray-600
-                     hover:bg-gray-50 transition-colors"
-          >
-            Clear
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={Object.keys(selectedParts).length === 0}
-            className="flex-1 py-3 bg-[#5CB85C] border-3 border-green-600 rounded-xl font-display 
-                     text-white flex items-center justify-center gap-2 hover:bg-green-600
-                     disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-          >
-            {saved ? (
-              <>
-                <CheckCircle2 size={20} />
-                Saved!
-              </>
-            ) : (
-              <>
-                <Save size={20} />
-                Save Check-In
-              </>
-            )}
-          </button>
-        </div>
+        {/* Save Button */}
+        <button
+          onClick={saveCheckIn}
+          disabled={Object.keys(bodyStatus).length === 0}
+          className="w-full py-4 bg-[#5CB85C] text-white rounded-2xl font-display text-lg
+                   flex items-center justify-center gap-2 shadow-lg
+                   disabled:opacity-50 disabled:cursor-not-allowed
+                   hover:bg-green-600 transition-all"
+        >
+          <Save size={24} />
+          Save Check-In
+        </button>
 
-        {/* Helpful Tip */}
-        <div className="mt-6 p-4 bg-[#4A9FD4]/10 rounded-2xl border-3 border-[#4A9FD4]/30">
-          <div className="flex items-start gap-3">
-            <AlertCircle size={24} className="text-[#4A9FD4] flex-shrink-0 mt-1" />
-            <div>
-              <h3 className="font-display text-[#4A9FD4]">Important!</h3>
-              <p className="font-crayon text-sm text-gray-600 mt-1">
-                If something hurts a lot or you feel very sick, tell a grown-up right away!
-                This tool helps you tell others how you feel.
-              </p>
-            </div>
-          </div>
+        {/* Tips */}
+        <div className="mt-6 p-4 bg-pink-50 rounded-2xl border-3 border-pink-200">
+          <h3 className="font-display text-[#E86B9A] mb-2 flex items-center gap-2">
+            <Sparkles size={18} />
+            Body Awareness Tips
+          </h3>
+          <ul className="font-crayon text-sm text-pink-700 space-y-1">
+            <li>• Check in with your body several times a day</li>
+            <li>• Notice without judging - all feelings are okay</li>
+            <li>• If something hurts, tell a grown-up</li>
+            <li>• Deep breathing can help tense areas relax</li>
+          </ul>
         </div>
       </main>
 
-      {/* Body Part Modal */}
-      <BodyPartModal
-        part={selectedPart}
-        currentFeeling={selectedPart ? selectedParts[selectedPart.id] : null}
-        onSelect={handleFeelingSelect}
-        onClose={() => setSelectedPart(null)}
-      />
-
-      {/* History Modal */}
-      {showHistory && (
-        <HistoryModal
-          history={history}
-          onClose={() => setShowHistory(false)}
-          onClear={handleClearHistory}
-        />
-      )}
-
-      {/* Info Modal */}
-      {showInfo && (
+      {/* Body Part Selector Modal */}
+      {selectedPart && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display text-xl text-[#4A9FD4]">How to Use</h2>
-              <button onClick={() => setShowInfo(false)} className="p-2 rounded-full hover:bg-gray-100">
-                <X size={20} className="text-gray-400" />
+          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden">
+            <div className="bg-[#E86B9A] text-white p-4 flex items-center justify-between">
+              <h3 className="font-display text-xl">
+                {selectedPart.emoji} How does your {selectedPart.name} feel?
+              </h3>
+              <button onClick={() => setSelectedPart(null)} className="p-1 hover:bg-white/20 rounded-full">
+                <X size={24} />
               </button>
             </div>
-            <div className="space-y-3 font-crayon text-gray-600">
-              <p><strong>1. Tap a body part:</strong> Click on the body or use the buttons below.</p>
-              <p><strong>2. Say how it feels:</strong> Pick from options like "feels good" or "hurts".</p>
-              <p><strong>3. Add notes:</strong> Write anything extra you want to share.</p>
-              <p><strong>4. Save it:</strong> Press "Save Check-In" to remember how you felt.</p>
-              <p><strong>5. Show others:</strong> Use this to help doctors or parents understand how you feel!</p>
+            <div className="p-4 grid grid-cols-5 gap-2">
+              {FEELINGS.map(feeling => (
+                <button
+                  key={feeling.id}
+                  onClick={() => setFeeling(selectedPart.id, feeling.id)}
+                  className={`p-3 rounded-xl border-3 transition-all hover:scale-105
+                    ${bodyStatus[selectedPart.id] === feeling.id 
+                      ? 'border-[#E86B9A]' 
+                      : 'border-gray-200'}`}
+                  style={{ backgroundColor: `${feeling.color}20` }}
+                >
+                  <span className="text-3xl block text-center">{feeling.emoji}</span>
+                  <span className="font-crayon text-xs text-gray-600 block text-center mt-1">{feeling.label}</span>
+                </button>
+              ))}
             </div>
-            <button
-              onClick={() => setShowInfo(false)}
-              className="w-full mt-4 py-3 bg-[#4A9FD4] text-white rounded-xl font-display"
-            >
-              Got it!
-            </button>
           </div>
         </div>
       )}
+
+      {/* History Modal */}
+      {showHistory && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-hidden">
+            <div className="bg-[#E86B9A] text-white p-4 flex items-center justify-between">
+              <h3 className="font-display text-xl flex items-center gap-2">
+                <BarChart3 size={20} />
+                Check-In History
+              </h3>
+              <button onClick={() => setShowHistory(false)} className="p-1 hover:bg-white/20 rounded-full">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto max-h-[60vh]">
+              {history.length === 0 ? (
+                <p className="text-center font-crayon text-gray-500 py-8">
+                  No check-ins yet. Start by checking in above!
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {history.slice(0, 10).map(entry => (
+                    <div key={entry.id} className="p-3 bg-gray-50 rounded-xl">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-crayon text-gray-600">{entry.date}</span>
+                        <span className="font-crayon text-sm text-gray-400">{entry.time}</span>
+                      </div>
+                      <div className="flex gap-1 flex-wrap">
+                        {Object.entries(entry.status || {}).map(([partId, feelingId]) => {
+                          const part = BODY_PARTS.find(p => p.id === partId);
+                          const feeling = FEELINGS.find(f => f.id === feelingId);
+                          return (
+                            <span 
+                              key={partId} 
+                              className="text-sm px-2 py-1 rounded-lg"
+                              style={{ backgroundColor: `${feeling?.color}20` }}
+                            >
+                              {part?.name}: {feeling?.emoji}
+                            </span>
+                          );
+                        })}
+                      </div>
+                      {entry.notes && (
+                        <p className="font-crayon text-sm text-gray-500 mt-2 italic">
+                          "{entry.notes}"
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Schedule Modal */}
+      <AddToScheduleModal
+        isOpen={showScheduleModal}
+        onClose={() => setShowScheduleModal(false)}
+        onAdd={handleAddToSchedule}
+      />
     </div>
   );
 };
