@@ -1,43 +1,25 @@
-// AppHub.jsx - Main navigation hub for ATLASassist v2.1
-// FIXED: Community is included
-// FIXED: Care Team path is /services
-// v3: Removed "NEW" badges, restored Finn footer
+// AppHub.jsx - Main navigation hub for ATLASassist
+// FIXED: Single icon (emoji only, no duplicate Lucide icon)
+// FIXED: Daily Tools uses darker color (#B8860B instead of #F8D14A)
 
 import { useNavigate } from 'react-router-dom';
 import { 
-  Calendar, 
-  MessageCircle, 
-  Wrench, 
-  Heart, 
-  Gamepad2, 
-  Palette, 
-  BookOpen,
-  Users,
   LogOut,
   Star,
   Sparkles,
   Cloud,
-  Smartphone,
   Settings,
-  HeartHandshake,
-  FileText,
-  FolderOpen,
-  Library,
-  MessageSquare
 } from 'lucide-react';
 import { useIsAppInstalled } from '../components/PWAInstallPrompt';
 import PushNotificationPrompt from '../components/PushNotificationPrompt';
 import { useAuth } from '../App';
 
-// ============================================
-// APP CATEGORIES - All apps with correct paths
-// ============================================
+// App categories - FIXED: Removed icon property, only emoji is rendered
 const appCategories = [
   {
     id: 'visual-schedule',
     name: 'Visual Schedule',
     description: 'Plan your day with pictures!',
-    icon: Calendar,
     color: 'bg-[#E63B2E]',
     borderColor: 'border-red-700',
     hoverRotate: 'hover:rotate-2',
@@ -48,7 +30,6 @@ const appCategories = [
     id: 'point-to-talk',
     name: 'Point to Talk',
     description: 'Say what you need!',
-    icon: MessageCircle,
     color: 'bg-[#F5A623]',
     borderColor: 'border-orange-600',
     hoverRotate: 'hover:-rotate-2',
@@ -56,12 +37,12 @@ const appCategories = [
     emoji: '💬',
   },
   {
+    // FIXED: Using darker gold instead of light yellow
     id: 'tools',
     name: 'Daily Tools',
     description: 'Helpful everyday tools!',
-    icon: Wrench,
-    color: 'bg-[#F8D14A]',
-    borderColor: 'border-yellow-600',
+    color: 'bg-[#B8860B]',
+    borderColor: 'border-yellow-700',
     hoverRotate: 'hover:rotate-1',
     path: '/tools',
     emoji: '🔧',
@@ -70,7 +51,6 @@ const appCategories = [
     id: 'wellness',
     name: 'Emotional Wellness',
     description: 'Tools to understand feelings',
-    icon: HeartHandshake,
     color: 'bg-[#20B2AA]',
     borderColor: 'border-teal-600',
     hoverRotate: 'hover:-rotate-1',
@@ -81,18 +61,16 @@ const appCategories = [
     id: 'care-team',
     name: 'My Care Team',
     description: 'Your support network!',
-    icon: Users,
     color: 'bg-[#008B8B]',
     borderColor: 'border-teal-700',
     hoverRotate: 'hover:rotate-1',
-    path: '/services', // FIXED: was /care-team
+    path: '/care-team',
     emoji: '👥',
   },
   {
     id: 'health',
     name: 'Health & Wellness',
     description: 'Track your body & health!',
-    icon: Heart,
     color: 'bg-[#E86B9A]',
     borderColor: 'border-pink-600',
     hoverRotate: 'hover:-rotate-1',
@@ -103,7 +81,6 @@ const appCategories = [
     id: 'games',
     name: 'Games',
     description: 'Fun games to play!',
-    icon: Gamepad2,
     color: 'bg-[#5CB85C]',
     borderColor: 'border-green-600',
     hoverRotate: 'hover:rotate-2',
@@ -114,7 +91,6 @@ const appCategories = [
     id: 'activities',
     name: 'Activities & Learning',
     description: 'Create, learn & explore!',
-    icon: Palette,
     color: 'bg-[#4A9FD4]',
     borderColor: 'border-blue-600',
     hoverRotate: 'hover:-rotate-2',
@@ -125,7 +101,6 @@ const appCategories = [
     id: 'planning',
     name: 'Planning & Documents',
     description: 'Important documents & planning',
-    icon: FileText,
     color: 'bg-[#CD853F]',
     borderColor: 'border-amber-700',
     hoverRotate: 'hover:rotate-1',
@@ -136,19 +111,16 @@ const appCategories = [
     id: 'resources',
     name: 'Resources & Research',
     description: 'Laws, research & printables!',
-    icon: Library,
     color: 'bg-[#8E6BBF]',
     borderColor: 'border-purple-600',
     hoverRotate: 'hover:-rotate-1',
     path: '/resources',
     emoji: '📚',
   },
-  // COMMUNITY IS INCLUDED
   {
     id: 'community',
     name: 'Community',
     description: 'Connect with others!',
-    icon: MessageSquare,
     color: 'bg-[#FF7F7F]',
     borderColor: 'border-red-400',
     hoverRotate: 'hover:rotate-1',
@@ -171,8 +143,8 @@ const AppHub = () => {
   const { user, signOut } = useAuth();
   const isAppInstalled = useIsAppInstalled();
 
-  const handleSignOut = async () => {
-    await signOut();
+  const handleSignOut = () => {
+    signOut();
     navigate('/');
   };
 
@@ -180,44 +152,61 @@ const AppHub = () => {
     navigate(path);
   };
 
-  const displayName = user?.displayName || user?.email?.split('@')[0] || 'Friend';
+  // Get display name or default
+  const displayName = user?.displayName || user?.user_metadata?.display_name || 'Friend';
+  const firstName = displayName.split(' ')[0];
 
   return (
-    <div className="min-h-screen bg-[#FFFEF5] flex flex-col">
-      {/* Floating decorations */}
-      <FloatingDecoration Icon={Star} className="text-crayon-yellow w-5 h-5 top-20 left-4 opacity-60" delay="0s" fill />
-      <FloatingDecoration Icon={Sparkles} className="text-crayon-purple w-4 h-4 top-32 right-6 opacity-50" delay="0.5s" />
-      <FloatingDecoration Icon={Cloud} className="text-crayon-blue w-6 h-6 top-48 left-8 opacity-40" delay="1s" />
-      <FloatingDecoration Icon={Star} className="text-crayon-green w-4 h-4 bottom-32 right-4 opacity-50" delay="1.5s" fill />
+    <div className="min-h-screen bg-[#FFFEF5] relative overflow-hidden flex flex-col">
+      {/* Background Decorations */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        {/* Sun - top right */}
+        <div className="absolute top-8 right-8 w-16 h-16 sm:w-20 sm:h-20">
+          <div className="w-full h-full rounded-full bg-[#F8D14A] animate-pulse" style={{ boxShadow: '0 0 30px #F5A623' }}></div>
+          {/* Sun rays */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            {[...Array(8)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute w-1 h-6 bg-[#F5A623] origin-center"
+                style={{
+                  transform: `rotate(${i * 45}deg) translateY(-30px)`,
+                  borderRadius: '10px',
+                  opacity: 0.6,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Floating decorations */}
+        <FloatingDecoration Icon={Star} className="top-32 left-8 text-[#F8D14A] w-6 h-6" delay="0.5s" fill />
+        <FloatingDecoration Icon={Sparkles} className="bottom-40 right-12 text-[#E86B9A] w-8 h-8" delay="1s" />
+        <FloatingDecoration Icon={Star} className="top-48 right-1/4 text-[#4A9FD4] w-5 h-5" delay="1.5s" fill />
+        <FloatingDecoration Icon={Cloud} className="top-20 left-1/3 text-white w-12 h-12" delay="2s" fill />
+        <FloatingDecoration Icon={Star} className="bottom-32 left-16 text-[#5CB85C] w-4 h-4" delay="0.8s" fill />
+      </div>
 
       {/* PWA Install Prompt */}
       {!isAppInstalled && (
-        <div className="bg-gradient-to-r from-[#8E6BBF] to-[#4A9FD4] text-white px-4 py-2">
-          <div className="max-w-4xl mx-auto flex items-center justify-center gap-2">
-            <Smartphone size={16} />
-            <span className="font-crayon text-sm">
-              Install ATLASassist for the best experience!
-            </span>
-          </div>
+        <div className="fixed bottom-4 left-4 right-4 z-50 max-w-md mx-auto">
+          <PushNotificationPrompt />
         </div>
       )}
 
-      {/* Push Notification Prompt */}
-      <PushNotificationPrompt />
-
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#87CEEB] px-4 py-3">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#4A9FD4]">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           {/* Logo and Greeting */}
           <div className="flex items-center gap-3">
             <img 
               src="/logo.jpeg" 
               alt="ATLASassist" 
-              className="w-12 h-12 rounded-xl shadow-crayon border-2 border-white"
+              className="w-12 h-12 rounded-xl shadow-crayon"
             />
             <div>
-              <h1 className="text-lg sm:text-xl font-display text-gray-800">
-                Hi, {displayName}! 👋
+              <h1 className="text-lg sm:text-xl font-display text-[#4A9FD4] crayon-text">
+                Hi, {firstName}! 👋
               </h1>
               <p className="text-gray-600 font-crayon text-sm">
                 What would you like to do today?
@@ -269,7 +258,7 @@ const AppHub = () => {
             </p>
           </div>
           
-          {/* App Grid - Responsive */}
+          {/* App Grid - FIXED: Only emoji shown, no duplicate Icon */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {appCategories.map((app) => (
               <button
@@ -279,35 +268,67 @@ const AppHub = () => {
                            shadow-crayon hover:shadow-crayon-lg transition-all duration-200 
                            ${app.hoverRotate} hover:scale-105 active:scale-95
                            flex flex-col items-center gap-2 text-white`}
+                style={{
+                  borderRadius: '20px 40px 20px 40px / 40px 20px 40px 20px',
+                }}
               >
-                {/* Emoji */}
-                <span className="text-3xl sm:text-4xl">{app.emoji}</span>
+                {/* FIXED: Only emoji icon - no separate Icon component */}
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/20 rounded-xl flex items-center justify-center
+                               group-hover:bg-white/30 transition-colors">
+                  <span className="text-2xl sm:text-3xl">{app.emoji}</span>
+                </div>
                 
-                {/* Icon */}
-                <app.icon size={28} strokeWidth={2.5} />
-                
-                {/* Name */}
-                <h3 className="font-display text-base sm:text-lg text-center crayon-text leading-tight">
-                  {app.name}
-                </h3>
-                
-                {/* Description - hidden on small screens */}
-                <p className="hidden sm:block font-crayon text-xs text-center opacity-90">
-                  {app.description}
-                </p>
+                {/* Text */}
+                <div className="text-center">
+                  <h3 className="font-display text-sm sm:text-base leading-tight">
+                    {app.name}
+                  </h3>
+                  <p className="font-crayon text-xs text-white/80 mt-1 hidden sm:block">
+                    {app.description}
+                  </p>
+                </div>
               </button>
             ))}
           </div>
+
+          {/* Guest Mode Notice */}
+          {user?.isGuest && (
+            <div 
+              className="mt-8 p-4 bg-white border-4 border-dashed border-crayon-orange rounded-2xl text-center"
+              style={{ borderRadius: '255px 15px 225px 15px/15px 225px 15px 255px' }}
+            >
+              <p className="font-crayon text-gray-600">
+                🌟 <strong>You're exploring as a guest!</strong> Your progress won't be saved.
+              </p>
+              <button 
+                onClick={() => navigate('/')}
+                className="mt-2 text-crayon-blue hover:text-crayon-purple font-crayon underline"
+              >
+                Create an account to save your work
+              </button>
+            </div>
+          )}
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="relative z-10 bg-[#FFFEF5] border-t-4 border-dashed border-[#F5A623] px-4 py-4 mt-auto">
-        <div className="max-w-4xl mx-auto text-center">
-          <p className="text-[#8E6BBF] font-crayon text-sm italic">
-            For Finn, and for people like him. 💜
+      {/* Push Notification Prompt */}
+      <PushNotificationPrompt user={user} />
+
+      {/* Footer - For Finn */}
+      <footer className="relative z-10 text-center py-6 px-4">
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <img 
+            src="/logo.jpeg" 
+            alt="" 
+            className="w-8 h-8 rounded-md"
+          />
+          <p className="text-gray-700 font-display text-lg crayon-text">
+            ATLASassist
           </p>
         </div>
+        <p className="text-crayon-purple font-display text-sm italic">
+          For Finn, and for people like him. 💜
+        </p>
       </footer>
     </div>
   );

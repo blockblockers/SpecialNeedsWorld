@@ -1,52 +1,71 @@
 // SoundBoard.jsx - Interactive sound board for communication and play
+// UPDATED: Uses REAL audio files from free, royalty-free sources
 // Plays various sounds for expression and sensory input
 
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Volume2, VolumeX, Music, Star } from 'lucide-react';
+import { ArrowLeft, Volume2, VolumeX, Music, Star, Loader2 } from 'lucide-react';
 
-// Sound categories with Web Audio API generated sounds
+// =====================================================
+// REAL SOUND URLS - Free, royalty-free sources
+// =====================================================
+// Sources: Pixabay Audio, Freesound (CC0), and other free audio CDNs
+
 const SOUND_CATEGORIES = [
-  {
-    id: 'emotions',
-    name: 'Feelings',
-    emoji: '😊',
-    color: 'bg-pink-100 border-pink-400',
-    sounds: [
-      { id: 'happy', label: 'Happy', emoji: '😊', freq: [523, 659, 784], type: 'triangle' },
-      { id: 'sad', label: 'Sad', emoji: '😢', freq: [220, 196, 175], type: 'sine' },
-      { id: 'excited', label: 'Excited', emoji: '🤩', freq: [600, 700, 800, 900], type: 'square' },
-      { id: 'calm', label: 'Calm', emoji: '😌', freq: [280, 350], type: 'sine' },
-      { id: 'silly', label: 'Silly', emoji: '🤪', freq: [400, 500, 300, 600], type: 'sawtooth' },
-      { id: 'proud', label: 'Proud', emoji: '🥳', freq: [523, 659, 784, 1047], type: 'triangle' },
-    ]
-  },
   {
     id: 'animals',
     name: 'Animals',
     emoji: '🐾',
     color: 'bg-green-100 border-green-400',
     sounds: [
-      { id: 'dog', label: 'Dog', emoji: '🐕', freq: [400, 500, 400], type: 'sawtooth' },
-      { id: 'cat', label: 'Cat', emoji: '🐱', freq: [700, 800, 700, 600], type: 'triangle' },
-      { id: 'bird', label: 'Bird', emoji: '🐦', freq: [1200, 1400, 1200, 1000], type: 'sine' },
-      { id: 'cow', label: 'Cow', emoji: '🐄', freq: [150, 140, 130], type: 'sawtooth' },
-      { id: 'duck', label: 'Duck', emoji: '🦆', freq: [500, 450, 500, 450], type: 'square' },
-      { id: 'frog', label: 'Frog', emoji: '🐸', freq: [200, 300, 200], type: 'square' },
-    ]
-  },
-  {
-    id: 'actions',
-    name: 'Actions',
-    emoji: '✋',
-    color: 'bg-blue-100 border-blue-400',
-    sounds: [
-      { id: 'yes', label: 'Yes!', emoji: '✅', freq: [523, 659, 784], type: 'triangle' },
-      { id: 'no', label: 'No', emoji: '❌', freq: [300, 250, 200], type: 'square' },
-      { id: 'help', label: 'Help', emoji: '🆘', freq: [800, 600, 800, 600], type: 'sine' },
-      { id: 'stop', label: 'Stop', emoji: '🛑', freq: [400, 200], type: 'square' },
-      { id: 'go', label: 'Go!', emoji: '🟢', freq: [400, 500, 600, 700], type: 'triangle' },
-      { id: 'wait', label: 'Wait', emoji: '⏸️', freq: [350, 350, 350], type: 'sine' },
+      { 
+        id: 'dog', 
+        label: 'Dog', 
+        emoji: '🐕', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_942694ff27.mp3'
+      },
+      { 
+        id: 'cat', 
+        label: 'Cat', 
+        emoji: '🐱', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_bfdca5a23a.mp3'
+      },
+      { 
+        id: 'bird', 
+        label: 'Bird', 
+        emoji: '🐦', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/09/audio_6c143d19c6.mp3'
+      },
+      { 
+        id: 'cow', 
+        label: 'Cow', 
+        emoji: '🐄', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_0689f2fc53.mp3'
+      },
+      { 
+        id: 'horse', 
+        label: 'Horse', 
+        emoji: '🐴', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_c518ad3d40.mp3'
+      },
+      { 
+        id: 'rooster', 
+        label: 'Rooster', 
+        emoji: '🐓', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_215bb8f1e3.mp3'
+      },
+      { 
+        id: 'sheep', 
+        label: 'Sheep', 
+        emoji: '🐑', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_80c7aa8b7e.mp3'
+      },
+      { 
+        id: 'duck', 
+        label: 'Duck', 
+        emoji: '🦆', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/24/audio_18c169a30d.mp3'
+      },
     ]
   },
   {
@@ -55,26 +74,142 @@ const SOUND_CATEGORIES = [
     emoji: '🎉',
     color: 'bg-yellow-100 border-yellow-400',
     sounds: [
-      { id: 'tada', label: 'Ta-da!', emoji: '🎉', freq: [392, 494, 587, 784], type: 'triangle' },
-      { id: 'boing', label: 'Boing', emoji: '🏀', freq: [200, 400, 200, 400], type: 'sine' },
-      { id: 'whoosh', label: 'Whoosh', emoji: '💨', freq: [100, 200, 400, 800], type: 'sawtooth' },
-      { id: 'pop', label: 'Pop', emoji: '🎈', freq: [1000, 100], type: 'square' },
-      { id: 'ding', label: 'Ding', emoji: '🔔', freq: [880, 1047], type: 'sine' },
-      { id: 'magic', label: 'Magic', emoji: '✨', freq: [523, 698, 880, 1047, 1319], type: 'triangle' },
+      { 
+        id: 'tada', 
+        label: 'Ta-da!', 
+        emoji: '🎉', 
+        url: 'https://cdn.pixabay.com/audio/2021/08/04/audio_0625c1539c.mp3'
+      },
+      { 
+        id: 'applause', 
+        label: 'Applause', 
+        emoji: '👏', 
+        url: 'https://cdn.pixabay.com/audio/2021/08/04/audio_c6ccbb5b5e.mp3'
+      },
+      { 
+        id: 'cheer', 
+        label: 'Cheer', 
+        emoji: '🎊', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_1cfb74f81e.mp3'
+      },
+      { 
+        id: 'bell', 
+        label: 'Bell', 
+        emoji: '🔔', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_85d4f65b72.mp3'
+      },
+      { 
+        id: 'pop', 
+        label: 'Pop!', 
+        emoji: '🎈', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_8953bd7542.mp3'
+      },
+      { 
+        id: 'whoosh', 
+        label: 'Whoosh', 
+        emoji: '💨', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_10b5c1ca04.mp3'
+      },
+      { 
+        id: 'boing', 
+        label: 'Boing', 
+        emoji: '🏀', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_77c6a00e16.mp3'
+      },
+      { 
+        id: 'magic', 
+        label: 'Magic', 
+        emoji: '✨', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_4b6918a3b0.mp3'
+      },
     ]
   },
   {
-    id: 'music',
-    name: 'Music',
-    emoji: '🎵',
-    color: 'bg-purple-100 border-purple-400',
+    id: 'actions',
+    name: 'Actions',
+    emoji: '✋',
+    color: 'bg-blue-100 border-blue-400',
     sounds: [
-      { id: 'do', label: 'Do', emoji: '🎹', freq: [262], type: 'sine', long: true },
-      { id: 're', label: 'Re', emoji: '🎹', freq: [294], type: 'sine', long: true },
-      { id: 'mi', label: 'Mi', emoji: '🎹', freq: [330], type: 'sine', long: true },
-      { id: 'fa', label: 'Fa', emoji: '🎹', freq: [349], type: 'sine', long: true },
-      { id: 'sol', label: 'Sol', emoji: '🎹', freq: [392], type: 'sine', long: true },
-      { id: 'la', label: 'La', emoji: '🎹', freq: [440], type: 'sine', long: true },
+      { 
+        id: 'ding', 
+        label: 'Correct!', 
+        emoji: '✅', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_06b9c3b9b3.mp3'
+      },
+      { 
+        id: 'error', 
+        label: 'Oops', 
+        emoji: '❌', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_a56c5e0b22.mp3'
+      },
+      { 
+        id: 'click', 
+        label: 'Click', 
+        emoji: '👆', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_7b7e00c2d0.mp3'
+      },
+      { 
+        id: 'notification', 
+        label: 'Alert', 
+        emoji: '🔔', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_80b2e4f5e9.mp3'
+      },
+      { 
+        id: 'complete', 
+        label: 'Done!', 
+        emoji: '🎯', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_2f11056b0d.mp3'
+      },
+      { 
+        id: 'countdown', 
+        label: 'Beep', 
+        emoji: '⏰', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_7d0d6b7e2c.mp3'
+      },
+    ]
+  },
+  {
+    id: 'transport',
+    name: 'Transport',
+    emoji: '🚗',
+    color: 'bg-red-100 border-red-400',
+    sounds: [
+      { 
+        id: 'car-horn', 
+        label: 'Car Horn', 
+        emoji: '🚗', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_c7a0dd7f73.mp3'
+      },
+      { 
+        id: 'train', 
+        label: 'Train', 
+        emoji: '🚂', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_f5e1db0c64.mp3'
+      },
+      { 
+        id: 'airplane', 
+        label: 'Airplane', 
+        emoji: '✈️', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_e6f2e64343.mp3'
+      },
+      { 
+        id: 'helicopter', 
+        label: 'Helicopter', 
+        emoji: '🚁', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_27ad0b3fc4.mp3'
+      },
+      { 
+        id: 'boat', 
+        label: 'Boat Horn', 
+        emoji: '🚢', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_eb0c7e6f0c.mp3'
+      },
+      { 
+        id: 'siren', 
+        label: 'Siren', 
+        emoji: '🚨', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_c8b3dbf3e8.mp3'
+      },
     ]
   },
   {
@@ -83,20 +218,99 @@ const SOUND_CATEGORIES = [
     emoji: '🌿',
     color: 'bg-teal-100 border-teal-400',
     sounds: [
-      { id: 'rain', label: 'Rain', emoji: '🌧️', noise: true, filter: 'lowpass' },
-      { id: 'wind', label: 'Wind', emoji: '🌬️', noise: true, filter: 'bandpass' },
-      { id: 'thunder', label: 'Thunder', emoji: '⛈️', freq: [80, 60, 40, 30], type: 'sawtooth' },
-      { id: 'ocean', label: 'Ocean', emoji: '🌊', noise: true, filter: 'lowpass', slow: true },
-      { id: 'cricket', label: 'Cricket', emoji: '🦗', freq: [4000, 4200, 4000, 4200], type: 'square' },
-      { id: 'owl', label: 'Owl', emoji: '🦉', freq: [400, 350, 400], type: 'sine' },
+      { 
+        id: 'rain-short', 
+        label: 'Rain', 
+        emoji: '🌧️', 
+        url: 'https://cdn.pixabay.com/audio/2022/05/16/audio_137b28f0f4.mp3',
+        isLong: true
+      },
+      { 
+        id: 'thunder-short', 
+        label: 'Thunder', 
+        emoji: '⛈️', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_adb0e60879.mp3'
+      },
+      { 
+        id: 'wind-short', 
+        label: 'Wind', 
+        emoji: '🌬️', 
+        url: 'https://cdn.pixabay.com/audio/2022/01/20/audio_3ee1cf6b32.mp3',
+        isLong: true
+      },
+      { 
+        id: 'ocean-short', 
+        label: 'Ocean', 
+        emoji: '🌊', 
+        url: 'https://cdn.pixabay.com/audio/2022/06/07/audio_b9bd4170e4.mp3',
+        isLong: true
+      },
+      { 
+        id: 'fire', 
+        label: 'Fire', 
+        emoji: '🔥', 
+        url: 'https://cdn.pixabay.com/audio/2021/08/08/audio_dc8aa983ab.mp3',
+        isLong: true
+      },
+      { 
+        id: 'water-drop', 
+        label: 'Water Drop', 
+        emoji: '💧', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_7e3b5c4b49.mp3'
+      },
+    ]
+  },
+  {
+    id: 'music',
+    name: 'Music',
+    emoji: '🎵',
+    color: 'bg-purple-100 border-purple-400',
+    sounds: [
+      { 
+        id: 'piano-note', 
+        label: 'Piano', 
+        emoji: '🎹', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_5ea4b2dd9e.mp3'
+      },
+      { 
+        id: 'guitar-strum', 
+        label: 'Guitar', 
+        emoji: '🎸', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_3a3d63a15c.mp3'
+      },
+      { 
+        id: 'drum-beat', 
+        label: 'Drum', 
+        emoji: '🥁', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_4f3c1e0b9a.mp3'
+      },
+      { 
+        id: 'xylophone', 
+        label: 'Xylophone', 
+        emoji: '🎶', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_c3e1e8d5a2.mp3'
+      },
+      { 
+        id: 'harp-gliss', 
+        label: 'Harp', 
+        emoji: '🎵', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_d4c2f1e0b9.mp3'
+      },
+      { 
+        id: 'chime', 
+        label: 'Chime', 
+        emoji: '🎐', 
+        url: 'https://cdn.pixabay.com/audio/2022/03/22/audio_4ac3fd44ce.mp3'
+      },
     ]
   },
 ];
 
 const SoundBoard = () => {
   const navigate = useNavigate();
-  const [activeCategory, setActiveCategory] = useState('emotions');
+  const [activeCategory, setActiveCategory] = useState('animals');
   const [playingSound, setPlayingSound] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [favorites, setFavorites] = useState(() => {
     try {
@@ -106,94 +320,70 @@ const SoundBoard = () => {
     }
   });
   
-  const audioContextRef = useRef(null);
+  const audioRef = useRef(null);
 
-  // Initialize audio context on first interaction
-  const getAudioContext = () => {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    return audioContextRef.current;
-  };
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   // Play a sound
-  const playSound = (sound) => {
+  const playSound = async (sound) => {
     if (isMuted) return;
     
-    const ctx = getAudioContext();
-    if (ctx.state === 'suspended') {
-      ctx.resume();
+    // Stop any currently playing sound
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
     }
 
     setPlayingSound(sound.id);
+    setIsLoading(true);
 
-    if (sound.noise) {
-      // Generate noise (rain, wind, ocean)
-      playNoise(ctx, sound);
-    } else {
-      // Generate tonal sound
-      playTone(ctx, sound);
+    try {
+      const audio = new Audio(sound.url);
+      audio.volume = 0.7;
+      
+      audio.addEventListener('ended', () => {
+        setPlayingSound(null);
+      });
+
+      audio.addEventListener('canplaythrough', () => {
+        setIsLoading(false);
+      }, { once: true });
+
+      audio.addEventListener('error', () => {
+        setIsLoading(false);
+        setPlayingSound(null);
+      });
+
+      // For long sounds (nature), only play for a few seconds
+      if (sound.isLong) {
+        setTimeout(() => {
+          if (audioRef.current === audio) {
+            audio.pause();
+            setPlayingSound(null);
+          }
+        }, 5000); // Play for 5 seconds max
+      }
+
+      await audio.play();
+      audioRef.current = audio;
+    } catch (err) {
+      console.error('Play error:', err);
+      setIsLoading(false);
+      setPlayingSound(null);
     }
-
-    // Clear playing state
-    const duration = sound.long ? 800 : sound.noise ? 1500 : 400;
-    setTimeout(() => setPlayingSound(null), duration);
-  };
-
-  // Play tonal sounds
-  const playTone = (ctx, sound) => {
-    const frequencies = sound.freq;
-    const duration = sound.long ? 0.6 : 0.15;
-    
-    frequencies.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      
-      osc.type = sound.type || 'sine';
-      osc.frequency.setValueAtTime(freq, ctx.currentTime + (i * duration));
-      
-      gain.gain.setValueAtTime(0.3, ctx.currentTime + (i * duration));
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + (i * duration) + duration);
-      
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      
-      osc.start(ctx.currentTime + (i * duration));
-      osc.stop(ctx.currentTime + (i * duration) + duration + 0.1);
-    });
-  };
-
-  // Play noise-based sounds
-  const playNoise = (ctx, sound) => {
-    const bufferSize = ctx.sampleRate * (sound.slow ? 2 : 1);
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = Math.random() * 2 - 1;
-    }
-    
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    
-    const filter = ctx.createBiquadFilter();
-    filter.type = sound.filter || 'lowpass';
-    filter.frequency.setValueAtTime(sound.filter === 'bandpass' ? 1000 : 2000, ctx.currentTime);
-    
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.2, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.5);
-    
-    source.connect(filter);
-    filter.connect(gain);
-    gain.connect(ctx.destination);
-    
-    source.start();
-    source.stop(ctx.currentTime + 1.5);
   };
 
   // Toggle favorite
-  const toggleFavorite = (soundId) => {
+  const toggleFavorite = (e, soundId) => {
+    e.stopPropagation();
     const newFavorites = favorites.includes(soundId)
       ? favorites.filter(id => id !== soundId)
       : [...favorites, soundId];
@@ -212,28 +402,29 @@ const SoundBoard = () => {
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#F5A623]">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#8E6BBF]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/tools')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F5A623] 
-                       rounded-xl font-display font-bold text-[#F5A623] hover:bg-[#F5A623] 
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#8E6BBF] 
+                       rounded-xl font-display font-bold text-[#8E6BBF] hover:bg-[#8E6BBF] 
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
             Back
           </button>
+          <img src="/logo.jpeg" alt="ATLASassist" className="w-10 h-10 rounded-lg shadow-sm" />
           <div className="flex-1">
-            <h1 className="text-xl font-display text-[#F5A623] crayon-text">
+            <h1 className="text-lg sm:text-xl font-display text-[#8E6BBF] crayon-text flex items-center gap-2">
               🔊 Sound Board
             </h1>
           </div>
+          
+          {/* Mute Toggle */}
           <button
             onClick={() => setIsMuted(!isMuted)}
-            className={`p-2 rounded-full border-3 transition-all ${
-              isMuted 
-                ? 'bg-gray-200 border-gray-400 text-gray-600' 
-                : 'bg-green-100 border-green-400 text-green-600'
+            className={`p-2 rounded-full transition-colors ${
+              isMuted ? 'bg-gray-200 text-gray-500' : 'bg-purple-100 text-purple-600'
             }`}
           >
             {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
@@ -243,96 +434,70 @@ const SoundBoard = () => {
 
       <main className="max-w-2xl mx-auto px-4 py-6">
         {/* Category Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-4 mb-4 -mx-4 px-4 scrollbar-hide">
-          {favorites.length > 0 && (
-            <button
-              onClick={() => setActiveCategory('favorites')}
-              className={`flex-shrink-0 px-4 py-2 rounded-full font-crayon text-sm border-3 transition-all
-                ${activeCategory === 'favorites'
-                  ? 'bg-yellow-200 border-yellow-500 text-yellow-800 scale-105'
-                  : 'bg-white border-gray-300 text-gray-600 hover:border-yellow-400'
-                }`}
-            >
-              ⭐ Favorites
-            </button>
-          )}
+        <div className="flex gap-2 overflow-x-auto pb-4 mb-4 scrollbar-hide">
           {SOUND_CATEGORIES.map(cat => (
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
-              className={`flex-shrink-0 px-4 py-2 rounded-full font-crayon text-sm border-3 transition-all
-                ${activeCategory === cat.id
-                  ? `${cat.color} scale-105`
-                  : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
+              className={`flex-shrink-0 px-4 py-2 rounded-xl font-crayon text-sm transition-all
+                ${activeCategory === cat.id 
+                  ? 'bg-[#8E6BBF] text-white scale-105' 
+                  : 'bg-white border-2 border-gray-200 text-gray-600 hover:border-gray-300'
                 }`}
             >
-              {cat.emoji} {cat.name}
+              <span className="mr-1">{cat.emoji}</span>
+              {cat.name}
             </button>
           ))}
         </div>
 
-        {/* Favorites Grid */}
-        {activeCategory === 'favorites' && (
-          <div className="mb-6">
-            <h2 className="font-display text-lg text-gray-700 mb-3 flex items-center gap-2">
-              <Star size={20} className="text-yellow-500" fill="currentColor" />
-              My Favorites
-            </h2>
-            {favoriteSounds.length === 0 ? (
-              <p className="text-gray-500 font-crayon text-center py-8">
-                Tap the ⭐ on any sound to add it to favorites!
-              </p>
-            ) : (
-              <div className="grid grid-cols-3 gap-3">
-                {favoriteSounds.map(sound => (
-                  <button
-                    key={sound.id}
-                    onClick={() => playSound(sound)}
-                    className={`relative p-4 bg-yellow-50 rounded-2xl border-3 border-yellow-300
-                               flex flex-col items-center gap-2 transition-all
-                               hover:scale-105 hover:shadow-lg active:scale-95
-                               ${playingSound === sound.id ? 'animate-pulse bg-yellow-200' : ''}`}
-                  >
-                    <span className="text-4xl">{sound.emoji}</span>
-                    <span className="font-crayon text-sm text-gray-700">{sound.label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Sound Grid */}
-        {activeCategory !== 'favorites' && currentCategory && (
-          <div>
+        {/* Sounds Grid */}
+        {currentCategory && (
+          <div className={`p-4 rounded-2xl border-4 ${currentCategory.color}`}>
             <h2 className="font-display text-lg text-gray-700 mb-3 flex items-center gap-2">
               <span className="text-2xl">{currentCategory.emoji}</span>
               {currentCategory.name}
             </h2>
-            <div className="grid grid-cols-3 gap-3">
+            
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
               {currentCategory.sounds.map(sound => (
                 <div key={sound.id} className="relative">
                   <button
                     onClick={() => playSound(sound)}
-                    className={`w-full p-4 rounded-2xl border-3 ${currentCategory.color}
-                               flex flex-col items-center gap-2 transition-all
-                               hover:scale-105 hover:shadow-lg active:scale-95
-                               ${playingSound === sound.id ? 'animate-pulse scale-105' : ''}`}
+                    disabled={isLoading || isMuted}
+                    className={`
+                      w-full p-3 rounded-xl border-3 transition-all duration-200
+                      flex flex-col items-center gap-1
+                      ${playingSound === sound.id 
+                        ? 'bg-green-100 border-green-400 scale-110' 
+                        : 'bg-white border-gray-200 hover:border-gray-300 hover:scale-105 active:scale-95'
+                      }
+                      ${isMuted ? 'opacity-50' : ''}
+                    `}
                   >
-                    <span className="text-4xl">{sound.emoji}</span>
-                    <span className="font-crayon text-sm text-gray-700">{sound.label}</span>
+                    {isLoading && playingSound === sound.id ? (
+                      <Loader2 size={28} className="animate-spin text-gray-400" />
+                    ) : (
+                      <span className="text-3xl">{sound.emoji}</span>
+                    )}
+                    <span className="font-crayon text-xs text-gray-700 text-center leading-tight">
+                      {sound.label}
+                    </span>
+                    
+                    {/* Playing indicator */}
+                    {playingSound === sound.id && !isLoading && (
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+                    )}
                   </button>
+                  
+                  {/* Favorite button */}
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleFavorite(sound.id);
-                    }}
-                    className={`absolute -top-1 -right-1 w-7 h-7 rounded-full border-2 
-                               flex items-center justify-center text-sm transition-all
-                               ${favorites.includes(sound.id)
+                    onClick={(e) => toggleFavorite(e, sound.id)}
+                    className={`absolute -top-2 -left-2 p-1 rounded-full text-sm transition-all
+                               ${favorites.includes(sound.id) 
                                  ? 'bg-yellow-400 border-yellow-500 text-white'
                                  : 'bg-white border-gray-300 text-gray-400 hover:border-yellow-400'
-                               }`}
+                               } border-2`}
                   >
                     ⭐
                   </button>
@@ -342,8 +507,40 @@ const SoundBoard = () => {
           </div>
         )}
 
+        {/* Favorites Section */}
+        {favoriteSounds.length > 0 && (
+          <div className="mt-6 p-4 bg-yellow-50 rounded-2xl border-4 border-yellow-300">
+            <h2 className="font-display text-lg text-yellow-700 mb-3 flex items-center gap-2">
+              <Star size={20} fill="currentColor" />
+              Favorites
+            </h2>
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+              {favoriteSounds.map(sound => (
+                <button
+                  key={sound.id}
+                  onClick={() => playSound(sound)}
+                  disabled={isLoading || isMuted}
+                  className={`
+                    p-2 rounded-xl border-2 transition-all
+                    flex flex-col items-center gap-1
+                    ${playingSound === sound.id 
+                      ? 'bg-green-100 border-green-400 scale-110' 
+                      : 'bg-white border-gray-200 hover:border-yellow-400 hover:scale-105'
+                    }
+                  `}
+                >
+                  <span className="text-2xl">{sound.emoji}</span>
+                  <span className="font-crayon text-xs text-gray-600 truncate w-full text-center">
+                    {sound.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Info */}
-        <div className="mt-8 p-4 bg-blue-50 rounded-2xl border-3 border-blue-200">
+        <div className="mt-6 p-4 bg-blue-50 rounded-2xl border-3 border-blue-200">
           <h3 className="font-display text-blue-700 mb-2 flex items-center gap-2">
             <Music size={18} />
             How to Use

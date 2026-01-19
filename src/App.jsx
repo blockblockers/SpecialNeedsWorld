@@ -71,6 +71,7 @@ const ColorSort = lazy(() => import('./pages/ColorSort'));
 const ShapeMatch = lazy(() => import('./pages/ShapeMatch'));
 const SimplePuzzles = lazy(() => import('./pages/SimplePuzzles'));
 const PatternSequence = lazy(() => import('./pages/PatternSequence'));
+const SoundMatch = lazy(() => import('./pages/SoundMatch'));
 
 // Activities Hub
 const Activities = lazy(() => import('./pages/Activities'));
@@ -566,12 +567,19 @@ function App() {
             {/* ============================================ */}
             <Route path="/games" element={<ProtectedRoute><Games /></ProtectedRoute>} />
             <Route path="/games/matching" element={<ProtectedRoute><MatchingGame /></ProtectedRoute>} />
+            <Route path="/games/memory" element={<ProtectedRoute><MatchingGame /></ProtectedRoute>} />
             <Route path="/games/emotion-match" element={<ProtectedRoute><EmotionMatch /></ProtectedRoute>} />
+            <Route path="/games/emotions" element={<ProtectedRoute><EmotionMatch /></ProtectedRoute>} />
             <Route path="/games/bubble-pop" element={<ProtectedRoute><BubblePop /></ProtectedRoute>} />
+            <Route path="/games/bubbles" element={<ProtectedRoute><BubblePop /></ProtectedRoute>} />
             <Route path="/games/color-sort" element={<ProtectedRoute><ColorSort /></ProtectedRoute>} />
+            <Route path="/games/sorting" element={<ProtectedRoute><ColorSort /></ProtectedRoute>} />
             <Route path="/games/shape-match" element={<ProtectedRoute><ShapeMatch /></ProtectedRoute>} />
+            <Route path="/games/shapes" element={<ProtectedRoute><ShapeMatch /></ProtectedRoute>} />
             <Route path="/games/puzzles" element={<ProtectedRoute><SimplePuzzles /></ProtectedRoute>} />
             <Route path="/games/patterns" element={<ProtectedRoute><PatternSequence /></ProtectedRoute>} />
+            <Route path="/games/pattern" element={<ProtectedRoute><PatternSequence /></ProtectedRoute>} />
+            <Route path="/games/sound-match" element={<ProtectedRoute><SoundMatch /></ProtectedRoute>} />
 
             {/* ============================================ */}
             {/* ACTIVITIES HUB */}

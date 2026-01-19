@@ -1,66 +1,67 @@
-// PlanningHub.jsx - Planning & Documents Hub
-// FIXED: Consistent button style matching other hubs
-// FIXED: All routes correct including Memorandum of Intent
+// PlanningHub.jsx - Planning & Documents hub for ATLASassist
+// FIXED: Single icon (emoji only)
 
 import { useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  FileText,
-  User,
-  Heart,
-  Target,
-  ScrollText,
-  FolderOpen
-} from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
-// Planning documents with correct paths
-const planningDocs = [
+// Planning apps - FIXED: Removed icon property from render
+const planningApps = [
   {
     id: 'student-profile',
-    name: 'Student Profile',
-    description: 'One-page student summary',
-    icon: User,
+    name: 'Student Profile & One-Pager',
+    description: 'Info sheets for teachers & providers',
     color: '#4A9FD4',
     emoji: '👤',
     path: '/planning/student-profile',
+    ready: true,
+    priority: 'high',
   },
   {
     id: 'file-of-life',
     name: 'File of Life',
-    description: 'Emergency info card',
-    icon: Heart,
+    description: 'Emergency medical info card',
     color: '#E63B2E',
-    emoji: '🆘',
+    emoji: '🏥',
     path: '/planning/file-of-life',
+    ready: true,
+    priority: 'high',
   },
   {
     id: 'person-centered',
     name: 'Person-Centered Plan',
-    description: 'Goals, dreams & preferences',
-    icon: Target,
-    color: '#5CB85C',
-    emoji: '🎯',
+    description: 'Transition & IEP planning template',
+    color: '#E86B9A',
+    emoji: '💜',
     path: '/planning/person-centered',
+    ready: true,
+    priority: 'medium',
   },
   {
-    id: 'memorandum',
+    id: 'memo-intent',
     name: 'Memorandum of Intent',
-    description: 'Future care instructions',
-    icon: ScrollText,
+    description: 'Future care planning document',
     color: '#8E6BBF',
     emoji: '📜',
-    path: '/planning/memorandum',
+    path: '/planning/memo-intent',
+    ready: true,
+    priority: 'low',
   },
 ];
 
 const PlanningHub = () => {
   const navigate = useNavigate();
 
+  const handleAppClick = (app) => {
+    if (app.ready) {
+      navigate(app.path);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#CD853F]">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/hub')}
             className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#CD853F] 
@@ -70,66 +71,63 @@ const PlanningHub = () => {
             <ArrowLeft size={16} />
             Back
           </button>
-          <img 
-            src="/logo.jpeg" 
-            alt="ATLASassist" 
-            className="w-10 h-10 rounded-lg shadow-sm"
-          />
-          <h1 className="text-xl sm:text-2xl font-display text-[#CD853F] crayon-text flex items-center gap-2">
-            <FolderOpen size={24} />
-            Planning & Documents
-          </h1>
+          <img src="/logo.jpeg" alt="ATLASassist" className="w-10 h-10 rounded-lg shadow-sm" />
+          <div className="flex-1">
+            <h1 className="text-lg sm:text-xl font-display text-[#CD853F] crayon-text">
+              📋 Planning & Documents
+            </h1>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-6">
+      {/* Main Content */}
+      <main className="max-w-2xl mx-auto px-4 py-6">
         <p className="text-center text-gray-600 font-crayon mb-6">
-          Important documents for planning and care
+          Important documents & planning tools for advocacy.
         </p>
 
-        {/* Planning Docs Grid - Consistent button style */}
-        <div className="grid grid-cols-2 gap-4">
-          {planningDocs.map((doc) => {
-            const IconComponent = doc.icon;
-            return (
-              <button
-                key={doc.id}
-                onClick={() => navigate(doc.path)}
-                className="p-4 rounded-2xl border-4 text-center
-                         transition-all duration-200 shadow-crayon
-                         hover:scale-105 hover:-rotate-1 active:scale-95"
-                style={{
-                  backgroundColor: `${doc.color}15`,
-                  borderColor: doc.color,
-                }}
-              >
-                {/* Emoji - centered */}
-                <div className="text-3xl mb-2">{doc.emoji}</div>
-
-                {/* Icon - centered */}
-                <div className="flex justify-center mb-2">
-                  <IconComponent size={28} style={{ color: doc.color }} />
+        {/* Apps Grid - FIXED: Only emoji, no Icon */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {planningApps.map((app) => (
+            <button
+              key={app.id}
+              onClick={() => handleAppClick(app)}
+              disabled={!app.ready}
+              className={`
+                relative p-4 rounded-2xl border-4 text-white text-center
+                transition-all duration-200 shadow-crayon
+                ${app.ready 
+                  ? 'hover:scale-105 hover:-rotate-1 active:scale-95' 
+                  : 'opacity-50 cursor-not-allowed'
+                }
+              `}
+              style={{
+                backgroundColor: app.color,
+                borderColor: app.color,
+              }}
+            >
+              {/* Priority Badge */}
+              {app.priority === 'high' && (
+                <div className="absolute -top-2 -right-2 bg-amber-500 text-white text-xs px-2 py-1 rounded-full font-crayon">
+                  Important
                 </div>
-
-                {/* Name - centered */}
-                <h3 className="font-display text-base" style={{ color: doc.color }}>
-                  {doc.name}
-                </h3>
-
-                {/* Description - centered */}
-                <p className="text-xs text-gray-500 font-crayon mt-1">
-                  {doc.description}
-                </p>
-              </button>
-            );
-          })}
+              )}
+              
+              {/* FIXED: Only emoji */}
+              <span className="text-4xl mb-2 block">{app.emoji}</span>
+              <span className="font-display text-base block">{app.name}</span>
+              <span className="font-crayon text-xs text-white/80 mt-1 block">
+                {app.description}
+              </span>
+            </button>
+          ))}
         </div>
 
         {/* Info Note */}
-        <div className="mt-8 p-4 bg-amber-50 rounded-2xl border-3 border-amber-300">
-          <p className="text-center text-amber-800 font-crayon text-sm">
-            📋 These documents help ensure your loved one receives the best care.
-            All information stays on your device for privacy.
+        <div className="mt-8 p-4 bg-white rounded-2xl border-3 border-[#CD853F] shadow-sm">
+          <p className="text-center text-gray-600 font-crayon text-sm">
+            📝 These documents help communicate your child's needs to schools, 
+            healthcare providers, and caregivers.
           </p>
         </div>
       </main>

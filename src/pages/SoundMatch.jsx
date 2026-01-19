@@ -1,57 +1,86 @@
 // SoundMatch.jsx - Match sounds to pictures game
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, RotateCcw, Trophy, Star, Volume2, VolumeX } from 'lucide-react';
+// UPDATED: Uses REAL audio files from Pixabay (royalty-free)
+// Listen to a sound and tap the matching picture!
 
-// Sound categories with Web Audio synthesis
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, RotateCcw, Trophy, Star, Volume2, VolumeX, Loader2 } from 'lucide-react';
+
+// =====================================================
+// REAL SOUND URLS - Free, royalty-free from Pixabay
+// =====================================================
 const SOUND_ITEMS = [
   { 
     id: 'dog', 
     emoji: '🐕', 
     name: 'Dog', 
-    sound: { type: 'bark', freq: 400, duration: 0.3 }
+    url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_942694ff27.mp3'
   },
   { 
     id: 'cat', 
     emoji: '🐱', 
     name: 'Cat', 
-    sound: { type: 'meow', freq: 600, duration: 0.4 }
+    url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_bfdca5a23a.mp3'
   },
   { 
     id: 'bird', 
     emoji: '🐦', 
     name: 'Bird', 
-    sound: { type: 'chirp', freq: 1200, duration: 0.2 }
+    url: 'https://cdn.pixabay.com/audio/2022/03/09/audio_6c143d19c6.mp3'
   },
   { 
     id: 'cow', 
     emoji: '🐄', 
     name: 'Cow', 
-    sound: { type: 'moo', freq: 150, duration: 0.6 }
+    url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_0689f2fc53.mp3'
+  },
+  { 
+    id: 'rooster', 
+    emoji: '🐓', 
+    name: 'Rooster', 
+    url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_215bb8f1e3.mp3'
+  },
+  { 
+    id: 'horse', 
+    emoji: '🐴', 
+    name: 'Horse', 
+    url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_c518ad3d40.mp3'
+  },
+  { 
+    id: 'sheep', 
+    emoji: '🐑', 
+    name: 'Sheep', 
+    url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_80c7aa8b7e.mp3'
+  },
+  { 
+    id: 'duck', 
+    emoji: '🦆', 
+    name: 'Duck', 
+    url: 'https://cdn.pixabay.com/audio/2022/03/24/audio_18c169a30d.mp3'
   },
   { 
     id: 'bell', 
     emoji: '🔔', 
     name: 'Bell', 
-    sound: { type: 'bell', freq: 800, duration: 0.5 }
+    url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_85d4f65b72.mp3'
   },
   { 
-    id: 'drum', 
-    emoji: '🥁', 
-    name: 'Drum', 
-    sound: { type: 'drum', freq: 100, duration: 0.2 }
+    id: 'train', 
+    emoji: '🚂', 
+    name: 'Train', 
+    url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_f5e1db0c64.mp3'
   },
   { 
-    id: 'whistle', 
-    emoji: '📯', 
-    name: 'Whistle', 
-    sound: { type: 'whistle', freq: 1000, duration: 0.4 }
+    id: 'car', 
+    emoji: '🚗', 
+    name: 'Car Horn', 
+    url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_c7a0dd7f73.mp3'
   },
   { 
-    id: 'horn', 
-    emoji: '📢', 
-    name: 'Horn', 
-    sound: { type: 'horn', freq: 300, duration: 0.5 }
+    id: 'applause', 
+    emoji: '👏', 
+    name: 'Applause', 
+    url: 'https://cdn.pixabay.com/audio/2021/08/04/audio_c6ccbb5b5e.mp3'
   },
 ];
 
@@ -67,97 +96,85 @@ const SoundMatch = () => {
   const [feedback, setFeedback] = useState(null);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [audioContext, setAudioContext] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [difficulty, setDifficulty] = useState('medium'); // easy (4), medium (8), hard (12)
+  
+  const audioRef = useRef(null);
 
-  // Initialize audio context
+  // Cleanup audio on unmount
   useEffect(() => {
     return () => {
-      if (audioContext) {
-        audioContext.close();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
       }
     };
-  }, [audioContext]);
+  }, []);
 
-  // Play a synthesized sound
-  const playSound = useCallback((soundConfig) => {
-    if (!soundEnabled) return;
+  // Get items based on difficulty
+  const getGameItems = useCallback(() => {
+    const counts = { easy: 4, medium: 8, hard: 12 };
+    const count = counts[difficulty] || 8;
+    return SOUND_ITEMS.slice(0, count);
+  }, [difficulty]);
+
+  // Play a sound from URL
+  const playSound = useCallback(async (item) => {
+    if (!soundEnabled || !item?.url) return;
     
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      setAudioContext(ctx);
-      
-      const oscillator = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(ctx.destination);
-      
-      const { type, freq, duration } = soundConfig;
-      
-      // Different sound types
-      switch (type) {
-        case 'bark':
-          oscillator.type = 'sawtooth';
-          oscillator.frequency.setValueAtTime(freq, ctx.currentTime);
-          oscillator.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + duration);
-          break;
-        case 'meow':
-          oscillator.type = 'sine';
-          oscillator.frequency.setValueAtTime(freq, ctx.currentTime);
-          oscillator.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + duration);
-          break;
-        case 'chirp':
-          oscillator.type = 'sine';
-          oscillator.frequency.setValueAtTime(freq, ctx.currentTime);
-          oscillator.frequency.setValueAtTime(freq * 1.5, ctx.currentTime + 0.1);
-          oscillator.frequency.setValueAtTime(freq, ctx.currentTime + 0.2);
-          break;
-        case 'moo':
-          oscillator.type = 'sawtooth';
-          oscillator.frequency.setValueAtTime(freq, ctx.currentTime);
-          oscillator.frequency.linearRampToValueAtTime(freq * 1.2, ctx.currentTime + duration / 2);
-          oscillator.frequency.linearRampToValueAtTime(freq, ctx.currentTime + duration);
-          break;
-        case 'bell':
-          oscillator.type = 'sine';
-          oscillator.frequency.setValueAtTime(freq, ctx.currentTime);
-          gainNode.gain.setValueAtTime(0.5, ctx.currentTime);
-          gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
-          break;
-        case 'drum':
-          oscillator.type = 'triangle';
-          oscillator.frequency.setValueAtTime(freq, ctx.currentTime);
-          oscillator.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + duration);
-          break;
-        case 'whistle':
-          oscillator.type = 'sine';
-          oscillator.frequency.setValueAtTime(freq, ctx.currentTime);
-          oscillator.frequency.linearRampToValueAtTime(freq * 1.5, ctx.currentTime + duration);
-          break;
-        case 'horn':
-          oscillator.type = 'square';
-          oscillator.frequency.setValueAtTime(freq, ctx.currentTime);
-          break;
-        default:
-          oscillator.type = 'sine';
-          oscillator.frequency.setValueAtTime(freq, ctx.currentTime);
-      }
-      
-      gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-      if (type !== 'bell') {
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
-      }
-      
-      oscillator.start(ctx.currentTime);
-      oscillator.stop(ctx.currentTime + duration);
-    } catch (e) {
-      console.error('Audio error:', e);
+    // Stop any currently playing sound
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
     }
+
+    setIsLoading(true);
+
+    try {
+      const audio = new Audio(item.url);
+      audio.volume = 0.7;
+      
+      audio.addEventListener('canplaythrough', () => {
+        setIsLoading(false);
+      }, { once: true });
+
+      audio.addEventListener('error', () => {
+        setIsLoading(false);
+        console.error('Failed to load sound');
+      });
+
+      await audio.play();
+      audioRef.current = audio;
+    } catch (err) {
+      console.error('Play error:', err);
+      setIsLoading(false);
+    }
+  }, [soundEnabled]);
+
+  // Play success sound
+  const playSuccessSound = useCallback(() => {
+    if (!soundEnabled) return;
+    try {
+      const audio = new Audio('https://cdn.pixabay.com/audio/2022/03/10/audio_06b9c3b9b3.mp3');
+      audio.volume = 0.5;
+      audio.play();
+    } catch (e) {}
+  }, [soundEnabled]);
+
+  // Play error sound
+  const playErrorSound = useCallback(() => {
+    if (!soundEnabled) return;
+    try {
+      const audio = new Audio('https://cdn.pixabay.com/audio/2022/03/10/audio_a56c5e0b22.mp3');
+      audio.volume = 0.5;
+      audio.play();
+    } catch (e) {}
   }, [soundEnabled]);
 
   // Generate new question
   const generateQuestion = useCallback(() => {
-    const remaining = SOUND_ITEMS.filter(item => !questionsAnswered.includes(item.id));
+    const gameItems = getGameItems();
+    const remaining = gameItems.filter(item => !questionsAnswered.includes(item.id));
     
     if (remaining.length === 0) {
       setGameComplete(true);
@@ -165,7 +182,7 @@ const SoundMatch = () => {
     }
 
     const correct = remaining[Math.floor(Math.random() * remaining.length)];
-    const others = SOUND_ITEMS.filter(item => item.id !== correct.id);
+    const others = gameItems.filter(item => item.id !== correct.id);
     const wrongAnswers = others.sort(() => Math.random() - 0.5).slice(0, 3);
     const allOptions = [correct, ...wrongAnswers].sort(() => Math.random() - 0.5);
     
@@ -175,8 +192,8 @@ const SoundMatch = () => {
     setSelectedAnswer(null);
     
     // Auto-play sound after a short delay
-    setTimeout(() => playSound(correct.sound), 500);
-  }, [questionsAnswered, playSound]);
+    setTimeout(() => playSound(correct), 500);
+  }, [questionsAnswered, playSound, getGameItems]);
 
   // Start game
   const startGame = useCallback(() => {
@@ -205,6 +222,7 @@ const SoundMatch = () => {
     if (item.id === currentItem.id) {
       setFeedback('correct');
       setScore(prev => prev + 1);
+      playSuccessSound();
       
       setTimeout(() => {
         setQuestionsAnswered(prev => [...prev, currentItem.id]);
@@ -212,19 +230,21 @@ const SoundMatch = () => {
       }, 1500);
     } else {
       setFeedback('wrong');
-      playSound(currentItem.sound); // Replay correct sound
+      playErrorSound();
+      // Replay correct sound
+      setTimeout(() => playSound(currentItem), 500);
       
       setTimeout(() => {
         setFeedback(null);
         setSelectedAnswer(null);
-      }, 2000);
+      }, 2500);
     }
   };
 
   // Replay current sound
   const replaySound = () => {
     if (currentItem) {
-      playSound(currentItem.sound);
+      playSound(currentItem);
     }
   };
 
@@ -243,6 +263,7 @@ const SoundMatch = () => {
               <ArrowLeft size={16} />
               Back
             </button>
+            <img src="/logo.jpeg" alt="ATLASassist" className="w-10 h-10 rounded-lg shadow-sm" />
             <div className="flex-1">
               <h1 className="text-lg sm:text-xl font-display text-[#8E6BBF] crayon-text">
                 🎵 Sound Match
@@ -262,14 +283,35 @@ const SoundMatch = () => {
 
             {/* Preview */}
             <div className="mb-6 flex justify-center gap-3 flex-wrap">
-              {SOUND_ITEMS.slice(0, 4).map(item => (
-                <div
-                  key={item.id}
-                  className="text-4xl"
-                >
+              {SOUND_ITEMS.slice(0, 6).map(item => (
+                <div key={item.id} className="text-3xl">
                   {item.emoji}
                 </div>
               ))}
+            </div>
+
+            {/* Difficulty Selection */}
+            <div className="mb-6">
+              <p className="font-crayon text-gray-600 text-center mb-3">Choose difficulty:</p>
+              <div className="flex gap-2 justify-center">
+                {[
+                  { id: 'easy', label: 'Easy', count: 4 },
+                  { id: 'medium', label: 'Medium', count: 8 },
+                  { id: 'hard', label: 'Hard', count: 12 },
+                ].map(d => (
+                  <button
+                    key={d.id}
+                    onClick={() => setDifficulty(d.id)}
+                    className={`px-4 py-2 rounded-xl font-crayon transition-all
+                      ${difficulty === d.id 
+                        ? 'bg-[#8E6BBF] text-white scale-105' 
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Sound Toggle */}
@@ -302,7 +344,8 @@ const SoundMatch = () => {
 
   // Game complete screen
   if (gameComplete) {
-    const percentage = Math.round((score / totalQuestions) * 100);
+    const gameItems = getGameItems();
+    const percentage = Math.round((score / gameItems.length) * 100);
     const stars = percentage >= 90 ? 3 : percentage >= 70 ? 2 : 1;
 
     return (
@@ -324,7 +367,7 @@ const SoundMatch = () => {
           </div>
 
           <p className="font-crayon text-gray-600 mb-6">
-            You got <strong className="text-[#5CB85C]">{score}</strong> out of <strong>{totalQuestions}</strong>!
+            You got <strong className="text-[#5CB85C]">{score}</strong> out of <strong>{gameItems.length}</strong>!
           </p>
 
           <div className="flex gap-3">
@@ -350,6 +393,8 @@ const SoundMatch = () => {
   }
 
   // Game screen
+  const gameItems = getGameItems();
+  
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#8E6BBF]">
@@ -369,7 +414,7 @@ const SoundMatch = () => {
             </span>
             <span className="mx-3">|</span>
             <span className="font-crayon text-gray-600">
-              {questionsAnswered.length + 1}/{SOUND_ITEMS.length}
+              {questionsAnswered.length + 1}/{gameItems.length}
             </span>
           </div>
           <button
@@ -390,11 +435,17 @@ const SoundMatch = () => {
           
           <button
             onClick={replaySound}
+            disabled={isLoading}
             className="w-24 h-24 mx-auto rounded-full bg-[#8E6BBF] text-white 
                        flex items-center justify-center shadow-lg
-                       hover:scale-110 active:scale-95 transition-transform"
+                       hover:scale-110 active:scale-95 transition-transform
+                       disabled:opacity-50"
           >
-            <Volume2 size={48} />
+            {isLoading ? (
+              <Loader2 size={40} className="animate-spin" />
+            ) : (
+              <Volume2 size={48} />
+            )}
           </button>
           
           <p className="font-crayon text-gray-400 text-sm mt-4">
@@ -420,13 +471,13 @@ const SoundMatch = () => {
                   ${showCorrect 
                     ? 'border-[#5CB85C] bg-green-100 scale-105' 
                     : showWrong 
-                      ? 'border-[#E63B2E] bg-red-100' 
+                      ? 'border-[#E63B2E] bg-red-100 animate-shake' 
                       : 'border-gray-300 bg-white hover:border-[#8E6BBF] hover:scale-105'
                   }
                   ${feedback && !showCorrect && !showWrong ? 'opacity-50' : ''}
                 `}
               >
-                <span className="text-6xl block mb-2">{item.emoji}</span>
+                <span className="text-5xl sm:text-6xl block mb-2">{item.emoji}</span>
                 <span className="font-crayon text-gray-700">{item.name}</span>
               </button>
             );
@@ -445,7 +496,7 @@ const SoundMatch = () => {
             {feedback === 'correct' ? (
               <>🎉 Yes! That's a {currentItem?.name}!</>
             ) : (
-              <>Listen again for the {currentItem?.name}!</>
+              <>🔊 Listen again for the {currentItem?.name}!</>
             )}
           </div>
         )}

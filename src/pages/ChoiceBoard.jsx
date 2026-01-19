@@ -126,43 +126,33 @@ const PRESET_ICONS = {
 };
 
 // =====================================================
-// ADD TO SCHEDULE MODAL - FIXED
+// ADD TO SCHEDULE MODAL - SIMPLIFIED
+// Removed Today/Tomorrow buttons, pre-populates with today's date
 // =====================================================
 const AddToScheduleModal = ({ isOpen, onClose, option, onAdd }) => {
-  // Calculate dates directly - more reliable than helper functions
-  const getTodayDate = () => new Date().toISOString().split('T')[0];
-  const getTomorrowDate = () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toISOString().split('T')[0];
+  // Get today's date in local timezone (not UTC)
+  const getLocalToday = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
-  const [selectedDate, setSelectedDate] = useState(getTodayDate());
+  const [selectedDate, setSelectedDate] = useState(getLocalToday());
   const [selectedTime, setSelectedTime] = useState('10:00');
   const [enableReminder, setEnableReminder] = useState(true);
 
-  // Reset form when modal opens
+  // Reset form when modal opens - always start with today's date
   useEffect(() => {
     if (isOpen) {
-      setSelectedDate(getTodayDate());
+      setSelectedDate(getLocalToday());
       setSelectedTime('10:00');
       setEnableReminder(true);
     }
   }, [isOpen]);
 
   if (!isOpen || !option) return null;
-
-  // FIXED: Direct date setters that actually work
-  const handleSetToday = () => {
-    const today = new Date().toISOString().split('T')[0];
-    setSelectedDate(today);
-  };
-
-  const handleSetTomorrow = () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    setSelectedDate(tomorrow.toISOString().split('T')[0]);
-  };
 
   const handleAdd = () => {
     onAdd({
@@ -173,11 +163,7 @@ const AddToScheduleModal = ({ isOpen, onClose, option, onAdd }) => {
     });
   };
 
-  // Check which button should be highlighted
-  const todayStr = getTodayDate();
-  const tomorrowStr = getTomorrowDate();
-  const isToday = selectedDate === todayStr;
-  const isTomorrow = selectedDate === tomorrowStr;
+  const todayStr = getLocalToday();
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -215,41 +201,19 @@ const AddToScheduleModal = ({ isOpen, onClose, option, onAdd }) => {
             </div>
           </div>
 
-          {/* Date Selection - FIXED */}
+          {/* Date Selection - Simplified with just date picker */}
           <div>
             <label className="block font-crayon text-gray-600 mb-2">📅 When?</label>
-            <div className="flex gap-2 mb-2">
-              {/* FIXED: Today button with type="button" and direct onClick */}
-              <button
-                type="button"
-                onClick={handleSetToday}
-                className={`flex-1 py-2 rounded-xl font-crayon text-sm border-2 transition-all
-                          ${isToday 
-                            ? 'bg-[#8E6BBF] border-[#8E6BBF] text-white font-bold' 
-                            : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'}`}
-              >
-                Today
-              </button>
-              {/* FIXED: Tomorrow button with type="button" and direct onClick */}
-              <button
-                type="button"
-                onClick={handleSetTomorrow}
-                className={`flex-1 py-2 rounded-xl font-crayon text-sm border-2 transition-all
-                          ${isTomorrow 
-                            ? 'bg-[#8E6BBF] border-[#8E6BBF] text-white font-bold' 
-                            : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'}`}
-              >
-                Tomorrow
-              </button>
-            </div>
-            {/* Custom date picker */}
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               min={todayStr}
-              className="w-full p-2 border-2 border-gray-200 rounded-xl font-crayon text-sm focus:border-[#8E6BBF] outline-none"
+              className="w-full p-3 border-2 border-gray-200 rounded-xl font-crayon text-lg focus:border-[#8E6BBF] outline-none"
             />
+            <p className="text-xs text-gray-400 font-crayon mt-1">
+              Pre-filled with today's date. Tap to change.
+            </p>
           </div>
 
           {/* Time Selection */}
