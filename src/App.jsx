@@ -555,7 +555,6 @@ function App() {
             {/* ============================================ */}
             <Route path="/health" element={<ProtectedRoute><Health /></ProtectedRoute>} />
             <Route path="/health/nutrition" element={<ProtectedRoute><Nutrition /></ProtectedRoute>} />
-            <Route path="/health/feelings" element={<ProtectedRoute><FeelingsTracker /></ProtectedRoute>} />
             <Route path="/health/water" element={<ProtectedRoute><WaterTracker /></ProtectedRoute>} />
             <Route path="/health/sleep" element={<ProtectedRoute><SleepTracker /></ProtectedRoute>} />
             <Route path="/health/exercise" element={<ProtectedRoute><MoveExercise /></ProtectedRoute>} />
@@ -589,7 +588,6 @@ function App() {
             <Route path="/activities/coloring" element={<ProtectedRoute><ColoringBook /></ProtectedRoute>} />
             <Route path="/activities/pronunciation" element={<ProtectedRoute><PronunciationPractice /></ProtectedRoute>} />
             <Route path="/activities/choice-board" element={<ProtectedRoute><ChoiceBoard /></ProtectedRoute>} />
-            <Route path="/activities/sensory-breaks" element={<ProtectedRoute><SensoryBreaks /></ProtectedRoute>} />
             <Route path="/activities/music" element={<ProtectedRoute><MusicSounds /></ProtectedRoute>} />
             <Route path="/activities/photo-journal" element={<ProtectedRoute><PhotoJournal /></ProtectedRoute>} />
             <Route path="/activities/rewards" element={<ProtectedRoute><RewardChart /></ProtectedRoute>} />

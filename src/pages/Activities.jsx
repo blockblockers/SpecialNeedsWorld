@@ -1,20 +1,11 @@
 // Activities.jsx - Activities hub for ATLASassist
-// FIXED: Single icon (emoji only), darker Reward Chart color
+// UPDATED: Removed Sensory Breaks (now only in Wellness hub)
 
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 
-// Activity apps - FIXED: Removed icon property from render
+// Activity apps - Sensory Breaks REMOVED (only in Wellness hub now)
 const activityApps = [
-  {
-    id: 'sensory-breaks',
-    name: 'Sensory Breaks',
-    description: 'Calming activities with timers',
-    color: '#8E6BBF',
-    emoji: '🧘',
-    path: '/activities/sensory-breaks',
-    ready: true,
-  },
   {
     id: 'choice-board',
     name: 'Choice Board',
@@ -70,7 +61,6 @@ const activityApps = [
     ready: true,
   },
   {
-    // FIXED: Darker gold color (#DAA520) instead of light yellow (#F8D14A)
     id: 'rewards',
     name: 'Reward Chart',
     description: 'Earn stars for achievements',
@@ -120,7 +110,7 @@ const Activities = () => {
           Fun activities to create, learn & explore! 🌟
         </p>
 
-        {/* Activities Grid - Updated to match EmotionalWellnessHub style */}
+        {/* Activities Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {activityApps.map((app, index) => (
             <button

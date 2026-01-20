@@ -1,5 +1,7 @@
 // CopingSkillsChart.jsx - Visual coping strategies chart
+// FIXED: Updated category buttons to match hub button style (light bg, emoji container, dark text)
 // NAVIGATION: Back button goes to /wellness (parent hub)
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, Star, Volume2, Printer, X, HelpCircle, Check, Calendar } from 'lucide-react';
@@ -221,7 +223,6 @@ const CopingSkillsChart = () => {
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#5CB85C]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
-          {/* IMPORTANT: Back button goes to /wellness (parent hub) */}
           <button
             onClick={() => navigate('/wellness')}
             className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#5CB85C] 
@@ -247,19 +248,38 @@ const CopingSkillsChart = () => {
           {selectedCategory ? 'Pick a strategy to try!' : 'What kind of help do you need?'}
         </p>
 
-        {/* Category Selection */}
+        {/* Category Selection - FIXED: Updated to match hub button style */}
         {!selectedCategory ? (
           <div className="grid grid-cols-2 gap-4">
-            {Object.entries(COPING_STRATEGIES).map(([key, cat]) => (
+            {Object.entries(COPING_STRATEGIES).map(([key, cat], index) => (
               <button
                 key={key}
                 onClick={() => setSelectedCategory(key)}
-                className="p-6 rounded-2xl text-white text-center transition-all hover:scale-105 shadow-lg"
-                style={{ backgroundColor: cat.color }}
+                className="p-4 rounded-2xl border-4 text-center transition-all duration-200 shadow-crayon
+                         hover:scale-105 hover:-rotate-1 active:scale-95"
+                style={{
+                  backgroundColor: cat.color + '20',
+                  borderColor: cat.color,
+                  borderRadius: index % 2 === 0 ? '20px 8px 20px 8px' : '8px 20px 8px 20px',
+                }}
               >
-                <span className="text-4xl block mb-2">{cat.emoji}</span>
-                <h3 className="font-display text-lg">{cat.name}</h3>
-                <p className="text-xs opacity-90 font-crayon mt-1">{cat.description}</p>
+                {/* Icon container with white background */}
+                <div 
+                  className="w-14 h-14 rounded-2xl bg-white/80 flex items-center justify-center mb-2 mx-auto"
+                  style={{ border: `2px solid ${cat.color}` }}
+                >
+                  <span className="text-3xl">{cat.emoji}</span>
+                </div>
+                
+                {/* Name - dark text */}
+                <h3 className="font-display text-gray-800 text-sm leading-tight">
+                  {cat.name}
+                </h3>
+                
+                {/* Description */}
+                <p className="font-crayon text-xs text-gray-500 mt-1">
+                  {cat.description}
+                </p>
               </button>
             ))}
           </div>

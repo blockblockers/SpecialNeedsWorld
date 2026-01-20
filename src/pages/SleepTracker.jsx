@@ -38,7 +38,7 @@ const SleepTracker = () => {
 
   // Sleep reminder presets
   const SLEEP_REMINDERS = {
-    bedtime: { emoji: '🌙', name: 'Bedtime Routine', defaultTime: '20:00', color: SOURCE_COLORS[SCHEDULE_SOURCES.SLEEP_TRACKER] },
+    bedtime: { emoji: '🌙', name: 'Bedtime Routine', defaultTime: '20:00', color: SOURCE_COLORS[SCHEDULE_SOURCES.SLEEP] || '#6B5B95' },
     waketime: { emoji: '🌅', name: 'Wake Up Time', defaultTime: '07:00', color: '#F5A623' },
   };
 
@@ -430,7 +430,7 @@ const SleepTracker = () => {
         itemName={SLEEP_REMINDERS[reminderType]?.name}
         itemEmoji={SLEEP_REMINDERS[reminderType]?.emoji}
         itemColor={SLEEP_REMINDERS[reminderType]?.color}
-        itemSource={SCHEDULE_SOURCES.SLEEP_TRACKER}
+        itemSource={SCHEDULE_SOURCES.SLEEP}
         defaultTime={formData[reminderType] || SLEEP_REMINDERS[reminderType]?.defaultTime}
         showTimeSelection={true}
         showNotifyOption={true}

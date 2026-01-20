@@ -1,11 +1,11 @@
 // Health.jsx - Health hub with multiple apps including Emotional Wellness
+// UPDATED: Removed "How Do I Feel?" (now only in Wellness hub)
 // NAVIGATION: Back button goes to /hub
-// FIXED: Single icon (emoji only)
 
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 
-// Health app categories - FIXED: Removed icon property from render
+// Health app categories - Feelings Tracker REMOVED (only in Wellness hub now)
 const healthApps = [
   {
     id: 'emotional-wellness',
@@ -24,15 +24,6 @@ const healthApps = [
     color: '#5CB85C',
     emoji: '🍳',
     path: '/health/nutrition',
-    ready: true,
-  },
-  {
-    id: 'feelings',
-    name: 'How Do I Feel?',
-    description: 'Track your feelings',
-    color: '#F5A623',
-    emoji: '😊',
-    path: '/health/feelings',
     ready: true,
   },
   {
@@ -135,7 +126,7 @@ const Health = () => {
           </button>
         ))}
 
-        {/* Apps Grid - Updated to match EmotionalWellnessHub style */}
+        {/* Apps Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {healthApps.filter(app => !app.featured).map((app, index) => (
             <button

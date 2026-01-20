@@ -1,7 +1,8 @@
 // OTExercises.jsx - Occupational Therapy exercises and stretches
+// UPDATED: Added Visual Schedule integration
 // Age-appropriate exercises for different muscle groups and disabilities
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -15,8 +16,22 @@ import {
   Heart,
   Target,
   Users,
-  Filter
+  Filter,
+  X,
+  CalendarPlus,
+  Calendar,
+  Bell,
+  BellOff,
+  Check,
 } from 'lucide-react';
+import { 
+  addActivityToSchedule, 
+  SCHEDULE_SOURCES, 
+  SOURCE_COLORS,
+  formatDateDisplay,
+  formatTimeDisplay 
+} from '../services/scheduleHelper';
+import { useToast } from '../components/ThemedToast';
 
 // ============================================
 // AGE RANGES
@@ -224,17 +239,17 @@ const EXERCISES = [
     reps: '10 circles each direction',
     disabilities: ['coordination', 'hypotonia', 'adhd'],
     instructions: [
-      'Stand with arms out to sides',
+      'Stand with feet shoulder-width apart',
+      'Stretch arms out to the sides',
       'Make small circles forward',
-      'Make circles bigger',
-      'Then reverse direction',
-      'Let arms rest at sides'
+      'Gradually make bigger circles',
+      'Switch to backward circles'
     ],
-    benefits: 'Warms up shoulders and improves range of motion',
-    tip: 'Pretend you are drawing circles in the air!',
+    benefits: 'Improves shoulder mobility and body awareness',
+    tip: 'Pretend you\'re drawing circles in the air!',
   },
   {
-    id: 'wall-pushups',
+    id: 'wall-push-ups',
     name: 'Wall Push-Ups',
     muscleGroup: 'arms',
     emoji: '🧱',
@@ -243,14 +258,14 @@ const EXERCISES = [
     reps: '10 push-ups',
     disabilities: ['hypotonia', 'coordination'],
     instructions: [
-      'Stand arm length from wall',
-      'Put hands flat on wall',
+      'Stand facing a wall, arm\'s length away',
+      'Place hands flat on wall, shoulder height',
       'Bend elbows and lean toward wall',
-      'Push back to start',
-      'Keep body straight'
+      'Push back to starting position',
+      'Keep body straight like a plank'
     ],
-    benefits: 'Builds upper body and core strength',
-    tip: 'Step further from wall to make it harder',
+    benefits: 'Builds arm and core strength safely',
+    tip: 'Count out loud as you push!',
   },
   {
     id: 'shoulder-shrugs',
@@ -258,37 +273,18 @@ const EXERCISES = [
     muscleGroup: 'arms',
     emoji: '🤷',
     ages: ['toddler', 'preschool', 'early-school', 'school-age', 'teen'],
-    duration: 30,
+    duration: 45,
     reps: '10 shrugs',
     disabilities: ['autism', 'adhd', 'hypotonia'],
     instructions: [
-      'Stand or sit up tall',
-      'Lift shoulders up to ears',
+      'Let arms hang relaxed at sides',
+      'Lift shoulders up toward ears',
       'Hold for 3 seconds',
       'Drop shoulders down',
-      'Repeat'
+      'Repeat slowly'
     ],
-    benefits: 'Releases tension and increases body awareness',
-    tip: 'Squeeze shoulders up tight like a turtle hiding!',
-  },
-  {
-    id: 'arm-stretches',
-    name: 'Cross-Body Arm Stretch',
-    muscleGroup: 'arms',
-    emoji: '💪',
-    ages: ['early-school', 'school-age', 'teen'],
-    duration: 60,
-    reps: '15 seconds each arm',
-    disabilities: ['coordination', 'cerebral-palsy'],
-    instructions: [
-      'Bring right arm across chest',
-      'Use left hand to gently pull',
-      'Hold for 15 seconds',
-      'Switch arms',
-      'Breathe deeply'
-    ],
-    benefits: 'Stretches shoulder muscles and improves flexibility',
-    tip: 'Don\'t bounce - hold the stretch steady',
+    benefits: 'Releases tension and improves body awareness',
+    tip: 'Pretend you\'re saying "I don\'t know!"',
   },
 
   // CORE & TRUNK
@@ -299,98 +295,60 @@ const EXERCISES = [
     emoji: '🦸',
     ages: ['preschool', 'early-school', 'school-age', 'teen'],
     duration: 60,
-    reps: '5 holds of 10 seconds',
+    reps: '5 holds, 5 seconds each',
     disabilities: ['hypotonia', 'coordination'],
     instructions: [
-      'Lie on tummy',
-      'Stretch arms out in front',
-      'Lift arms, chest, and legs off floor',
-      'Hold like Superman flying!',
-      'Lower and rest'
+      'Lie on tummy with arms stretched forward',
+      'Lift arms and legs off the ground',
+      'Hold like Superman flying',
+      'Lower down slowly',
+      'Rest and repeat'
     ],
-    benefits: 'Strengthens back and core muscles',
-    tip: 'Make a swooshing sound like flying!',
+    benefits: 'Strengthens back muscles and core',
+    tip: 'Imagine you\'re flying through the clouds!',
   },
   {
     id: 'dead-bug',
     name: 'Dead Bug',
     muscleGroup: 'core',
-    emoji: '🐛',
+    emoji: '🪲',
     ages: ['early-school', 'school-age', 'teen'],
     duration: 90,
     reps: '10 times each side',
     disabilities: ['coordination', 'hypotonia'],
     instructions: [
-      'Lie on back',
-      'Raise arms and legs to ceiling',
-      'Slowly lower right arm and left leg',
+      'Lie on back with arms up and knees bent',
+      'Lower right arm and left leg toward floor',
+      'Keep back flat on floor',
       'Return to start',
-      'Switch sides'
+      'Switch to left arm and right leg'
     ],
-    benefits: 'Builds core strength and coordination',
-    tip: 'Keep your back flat on the floor!',
-  },
-  {
-    id: 'seated-twist',
-    name: 'Seated Twist',
-    muscleGroup: 'core',
-    emoji: '🔄',
-    ages: ['preschool', 'early-school', 'school-age', 'teen'],
-    duration: 60,
-    reps: '10 twists each side',
-    disabilities: ['autism', 'adhd'],
-    instructions: [
-      'Sit cross-legged',
-      'Put hands on shoulders',
-      'Twist body to look behind you',
-      'Come back to center',
-      'Twist the other way'
-    ],
-    benefits: 'Stretches spine and improves trunk rotation',
-    tip: 'Move slowly and smoothly',
+    benefits: 'Builds core stability and coordination',
+    tip: 'Move slowly like a sleepy bug!',
   },
   {
     id: 'bridge',
     name: 'Bridge Pose',
     muscleGroup: 'core',
     emoji: '🌉',
-    ages: ['early-school', 'school-age', 'teen'],
+    ages: ['preschool', 'early-school', 'school-age', 'teen'],
     duration: 60,
-    reps: '5 holds of 10 seconds',
+    reps: '5 holds, 10 seconds each',
     disabilities: ['hypotonia', 'coordination'],
     instructions: [
-      'Lie on back with knees bent',
-      'Feet flat on floor',
-      'Push hips up toward ceiling',
+      'Lie on back with knees bent, feet flat',
+      'Push through feet to lift hips up',
       'Make a bridge with your body',
-      'Hold, then lower down'
+      'Hold and squeeze your bottom',
+      'Lower down slowly'
     ],
-    benefits: 'Strengthens glutes and core',
-    tip: 'Squeeze your bottom at the top!',
+    benefits: 'Strengthens core, glutes, and back',
+    tip: 'Drive a toy car under your bridge!',
   },
 
   // LEGS & FEET
   {
-    id: 'heel-walks',
-    name: 'Heel Walking',
-    muscleGroup: 'legs',
-    emoji: '🚶',
-    ages: ['preschool', 'early-school', 'school-age', 'teen'],
-    duration: 60,
-    reps: '20 steps',
-    disabilities: ['hypotonia', 'coordination'],
-    instructions: [
-      'Stand up tall',
-      'Lift toes off the ground',
-      'Walk on just your heels',
-      'Take 20 steps forward',
-      'Then walk back normally'
-    ],
-    benefits: 'Strengthens shins and improves balance',
-    tip: 'Keep your arms out for balance!',
-  },
-  {
-    id: 'toe-walks',
+    id: 'toe-walking',
     name: 'Tip-Toe Walking',
     muscleGroup: 'legs',
     emoji: '🩰',
@@ -399,52 +357,71 @@ const EXERCISES = [
     reps: '20 steps',
     disabilities: ['hypotonia', 'coordination'],
     instructions: [
-      'Stand up tall',
-      'Rise up on your tip-toes',
+      'Stand tall with good posture',
+      'Rise up onto tip-toes',
       'Walk forward on tip-toes',
-      'Take 20 steps',
-      'Lower heels and rest'
+      'Keep balance and don\'t wobble',
+      'Walk back to start'
     ],
-    benefits: 'Strengthens calves and improves balance',
-    tip: 'Pretend you are a ballerina!',
+    benefits: 'Strengthens calf muscles and improves balance',
+    tip: 'Pretend you\'re a ballerina or sneaking quietly!',
   },
   {
-    id: 'squats',
-    name: 'Frog Squats',
+    id: 'heel-walking',
+    name: 'Heel Walking',
     muscleGroup: 'legs',
-    emoji: '🐸',
+    emoji: '🦶',
     ages: ['preschool', 'early-school', 'school-age', 'teen'],
     duration: 60,
-    reps: '10 squats',
-    disabilities: ['hypotonia', 'coordination', 'adhd'],
+    reps: '20 steps',
+    disabilities: ['hypotonia', 'coordination'],
     instructions: [
-      'Stand with feet apart',
-      'Bend knees and squat down',
-      'Touch the floor like a frog',
-      'Jump up (or stand up)',
-      'Land softly and repeat'
+      'Stand with feet flat',
+      'Lift toes up, balancing on heels',
+      'Walk forward on heels only',
+      'Keep arms out for balance',
+      'Walk back to start'
     ],
-    benefits: 'Strengthens leg muscles',
-    tip: 'Ribbit like a frog when you jump!',
+    benefits: 'Strengthens shin muscles and improves balance',
+    tip: 'It\'s tricky! Go slowly at first.',
   },
   {
-    id: 'calf-stretch',
-    name: 'Calf Stretch',
+    id: 'single-leg-stand',
+    name: 'Flamingo Stand',
     muscleGroup: 'legs',
-    emoji: '🦵',
-    ages: ['early-school', 'school-age', 'teen'],
+    emoji: '🦩',
+    ages: ['preschool', 'early-school', 'school-age', 'teen'],
     duration: 60,
-    reps: '15 seconds each leg',
-    disabilities: ['cerebral-palsy', 'coordination'],
+    reps: '30 seconds each leg',
+    disabilities: ['coordination', 'hypotonia', 'autism'],
     instructions: [
-      'Face a wall, hands on wall',
-      'Step one foot back',
-      'Keep back heel on floor',
-      'Lean forward until you feel stretch',
+      'Stand on one foot',
+      'Hold arms out for balance',
+      'Try not to wobble',
+      'Count to 30',
       'Switch legs'
     ],
-    benefits: 'Stretches calf muscles and Achilles tendon',
-    tip: 'Don\'t let your back heel lift up!',
+    benefits: 'Improves balance and leg strength',
+    tip: 'Stand near a wall if you need help!',
+  },
+  {
+    id: 'jumping-jacks',
+    name: 'Jumping Jacks',
+    muscleGroup: 'legs',
+    emoji: '⭐',
+    ages: ['preschool', 'early-school', 'school-age', 'teen'],
+    duration: 60,
+    reps: '20 jumps',
+    disabilities: ['adhd', 'coordination'],
+    instructions: [
+      'Stand with feet together, arms at sides',
+      'Jump and spread legs apart',
+      'At same time, raise arms overhead',
+      'Jump back to start',
+      'Repeat in rhythm'
+    ],
+    benefits: 'Gets blood flowing and improves coordination',
+    tip: 'Great for when you need to wake up your body!',
   },
 
   // HEAD & NECK
@@ -455,36 +432,36 @@ const EXERCISES = [
     emoji: '😌',
     ages: ['early-school', 'school-age', 'teen'],
     duration: 60,
-    reps: '5 rolls each direction',
+    reps: '5 circles each direction',
     disabilities: ['autism', 'adhd'],
     instructions: [
-      'Sit up tall',
+      'Sit or stand with good posture',
       'Drop chin to chest',
-      'Slowly roll head to right',
-      'Continue rolling back and to left',
-      'Return to start, reverse direction'
+      'Slowly roll head to one side',
+      'Continue rolling in a circle',
+      'Reverse direction'
     ],
-    benefits: 'Releases neck tension',
-    tip: 'Move slowly and gently - never force it',
+    benefits: 'Releases neck tension and improves mobility',
+    tip: 'Move very slowly and stop if anything hurts',
   },
   {
     id: 'chin-tucks',
     name: 'Chin Tucks',
     muscleGroup: 'neck',
     emoji: '🐢',
-    ages: ['early-school', 'school-age', 'teen'],
+    ages: ['school-age', 'teen'],
     duration: 45,
     reps: '10 tucks',
-    disabilities: ['hypotonia', 'coordination'],
+    disabilities: ['autism'],
     instructions: [
-      'Sit or stand tall',
-      'Look straight ahead',
-      'Pull chin back (make a double chin)',
+      'Sit tall with shoulders back',
+      'Pull chin straight back (make a double chin)',
       'Hold for 5 seconds',
-      'Release and repeat'
+      'Return to normal',
+      'Repeat'
     ],
-    benefits: 'Strengthens neck muscles and improves posture',
-    tip: 'Pretend you are a turtle going into your shell!',
+    benefits: 'Strengthens neck and improves posture',
+    tip: 'Pretend you\'re a turtle pulling into your shell!',
   },
 
   // FULL BODY
@@ -494,83 +471,283 @@ const EXERCISES = [
     muscleGroup: 'full-body',
     emoji: '🐻',
     ages: ['toddler', 'preschool', 'early-school', 'school-age'],
-    duration: 120,
-    reps: '2 minutes',
-    disabilities: ['adhd', 'coordination', 'hypotonia', 'autism'],
+    duration: 180,
+    reps: '3 minutes of different animals',
+    disabilities: ['coordination', 'hypotonia', 'adhd', 'autism'],
     instructions: [
-      'Bear walk: hands and feet, bottom up',
-      'Crab walk: on back, hands and feet',
-      'Frog jump: squat and hop',
-      'Snake slither: slide on tummy',
-      'Do each for 30 seconds!'
+      'Bear Walk: hands and feet, bottom up',
+      'Crab Walk: hands and feet, tummy up',
+      'Frog Jumps: squat and jump forward',
+      'Snake Slither: army crawl on tummy',
+      'Penguin Walk: waddle with feet together'
     ],
-    benefits: 'Full body strengthening and coordination',
-    tip: 'Make the animal sounds while moving!',
-  },
-  {
-    id: 'jumping-jacks',
-    name: 'Jumping Jacks',
-    muscleGroup: 'full-body',
-    emoji: '⭐',
-    ages: ['preschool', 'early-school', 'school-age', 'teen'],
-    duration: 60,
-    reps: '20 jumps',
-    disabilities: ['adhd', 'coordination'],
-    instructions: [
-      'Stand with feet together',
-      'Jump and spread legs wide',
-      'At same time, raise arms above head',
-      'Jump back to start position',
-      'Repeat with rhythm'
-    ],
-    benefits: 'Cardio and coordination',
-    tip: 'Clap your hands at the top!',
-  },
-  {
-    id: 'yoga-child-pose',
-    name: 'Child\'s Pose',
-    muscleGroup: 'full-body',
-    emoji: '🧘',
-    ages: ['toddler', 'preschool', 'early-school', 'school-age', 'teen'],
-    duration: 60,
-    reps: '30-60 seconds',
-    disabilities: ['autism', 'adhd', 'cerebral-palsy'],
-    instructions: [
-      'Kneel on floor',
-      'Sit back on heels',
-      'Fold forward, forehead to floor',
-      'Arms can be forward or by sides',
-      'Breathe deeply and relax'
-    ],
-    benefits: 'Calming and stretches back',
-    tip: 'This is a great calming pose anytime!',
+    benefits: 'Full body workout that\'s fun and engaging',
+    tip: 'Make animal sounds while you move!',
   },
   {
     id: 'starfish-stretch',
     name: 'Starfish Stretch',
     muscleGroup: 'full-body',
     emoji: '⭐',
-    ages: ['toddler', 'preschool', 'early-school', 'school-age'],
+    ages: ['toddler', 'preschool', 'early-school', 'school-age', 'teen'],
     duration: 45,
-    reps: '3 stretches of 10 seconds',
-    disabilities: ['autism', 'hypotonia'],
+    reps: '5 holds, 10 seconds each',
+    disabilities: ['autism', 'adhd', 'hypotonia'],
     instructions: [
-      'Lie on back',
-      'Spread arms and legs wide',
-      'Make yourself as big as possible',
-      'Stretch every finger and toe',
-      'Then curl into a tiny ball'
+      'Stand with feet wide apart',
+      'Stretch arms out wide',
+      'Spread fingers wide',
+      'Stretch as big as you can',
+      'Hold and breathe'
     ],
     benefits: 'Full body stretch and body awareness',
-    tip: 'Go from big starfish to tiny ball!',
+    tip: 'Try to take up as much space as possible!',
+  },
+  {
+    id: 'wheelbarrow-walk',
+    name: 'Wheelbarrow Walk',
+    muscleGroup: 'full-body',
+    emoji: '🛒',
+    ages: ['preschool', 'early-school', 'school-age'],
+    duration: 60,
+    reps: '10 steps',
+    disabilities: ['hypotonia', 'coordination'],
+    instructions: [
+      'Child gets in push-up position',
+      'Adult holds child\'s ankles or thighs',
+      'Child walks forward on hands',
+      'Keep body straight',
+      'Walk 10 steps then rest'
+    ],
+    benefits: 'Builds upper body and core strength',
+    tip: 'Start by holding higher on the legs for easier support',
+  },
+  {
+    id: 'yoga-cat-cow',
+    name: 'Cat-Cow Stretch',
+    muscleGroup: 'full-body',
+    emoji: '🐱',
+    ages: ['preschool', 'early-school', 'school-age', 'teen'],
+    duration: 60,
+    reps: '10 cycles',
+    disabilities: ['autism', 'adhd', 'hypotonia'],
+    instructions: [
+      'Get on hands and knees',
+      'Cow: drop tummy down, look up',
+      'Cat: round back up, tuck chin',
+      'Move slowly between poses',
+      'Breathe in for cow, out for cat'
+    ],
+    benefits: 'Improves spine flexibility and body awareness',
+    tip: 'Make "moo" and "meow" sounds!',
+  },
+  {
+    id: 'balloon-breathing',
+    name: 'Balloon Breathing',
+    muscleGroup: 'full-body',
+    emoji: '🎈',
+    ages: ['toddler', 'preschool', 'early-school', 'school-age', 'teen'],
+    duration: 120,
+    reps: '5 breaths',
+    disabilities: ['autism', 'adhd'],
+    instructions: [
+      'Stand or sit comfortably',
+      'Put hands on tummy',
+      'Breathe in deep - fill your balloon',
+      'Feel tummy expand like a balloon',
+      'Slowly let air out - deflate balloon'
+    ],
+    benefits: 'Calms the body and teaches deep breathing',
+    tip: 'Great for when feeling overwhelmed!',
   },
 ];
 
+// =====================================================
+// ADD EXERCISE TO SCHEDULE MODAL
+// =====================================================
+const AddExerciseToScheduleModal = ({ isOpen, onClose, exercise, muscleGroup, onAdd }) => {
+  const getLocalToday = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const [selectedDate, setSelectedDate] = useState(getLocalToday());
+  const [selectedTime, setSelectedTime] = useState('10:00');
+  const [enableReminder, setEnableReminder] = useState(true);
+  const [repeatDays, setRepeatDays] = useState(1); // How many days to add
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedDate(getLocalToday());
+      setSelectedTime('10:00');
+      setEnableReminder(true);
+      setRepeatDays(1);
+    }
+  }, [isOpen]);
+
+  if (!isOpen || !exercise) return null;
+
+  const handleAdd = () => {
+    onAdd({
+      exercise,
+      muscleGroup,
+      date: selectedDate,
+      time: selectedTime,
+      reminder: enableReminder,
+      repeatDays,
+    });
+  };
+
+  const themeColor = muscleGroup?.color || '#E86B9A';
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="text-white p-4 flex items-center gap-3" style={{ backgroundColor: themeColor }}>
+          <CalendarPlus size={24} />
+          <h3 className="font-display text-xl flex-1">Schedule Exercise</h3>
+          <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
+            <X size={24} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-4 space-y-4">
+          {/* Exercise Preview */}
+          <div className="p-3 bg-gray-50 rounded-xl flex items-center gap-3">
+            <span className="text-3xl">{exercise.emoji}</span>
+            <div className="flex-1">
+              <p className="font-display text-gray-800">{exercise.name}</p>
+              <p className="font-crayon text-sm text-gray-500">
+                {muscleGroup?.emoji} {muscleGroup?.name} • {exercise.reps}
+              </p>
+            </div>
+          </div>
+
+          {/* Date Selection */}
+          <div>
+            <label className="block font-crayon text-gray-600 mb-2">
+              <Calendar size={16} className="inline mr-1" />
+              When?
+            </label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              min={getLocalToday()}
+              className="w-full p-3 border-2 border-gray-200 rounded-xl font-crayon"
+            />
+            <p className="font-crayon text-xs text-gray-400 mt-1">
+              {formatDateDisplay(selectedDate)}
+            </p>
+          </div>
+
+          {/* Time Selection */}
+          <div>
+            <label className="block font-crayon text-gray-600 mb-2">
+              <Clock size={16} className="inline mr-1" />
+              What time?
+            </label>
+            <input
+              type="time"
+              value={selectedTime}
+              onChange={(e) => setSelectedTime(e.target.value)}
+              className="w-full p-3 border-2 border-gray-200 rounded-xl font-crayon text-lg"
+            />
+            <p className="font-crayon text-xs text-gray-400 mt-1">
+              {formatTimeDisplay(selectedTime)}
+            </p>
+          </div>
+
+          {/* Repeat Days */}
+          <div>
+            <label className="block font-crayon text-gray-600 mb-2">
+              Add to schedule for how many days?
+            </label>
+            <div className="flex gap-2">
+              {[1, 3, 5, 7].map(days => (
+                <button
+                  key={days}
+                  type="button"
+                  onClick={() => setRepeatDays(days)}
+                  className={`flex-1 py-2 rounded-xl font-crayon text-sm transition-all
+                    ${repeatDays === days 
+                      ? 'text-white' 
+                      : 'bg-gray-100 text-gray-600'}`}
+                  style={{ backgroundColor: repeatDays === days ? themeColor : undefined }}
+                >
+                  {days === 1 ? 'Just today' : `${days} days`}
+                </button>
+              ))}
+            </div>
+            {repeatDays > 1 && (
+              <p className="font-crayon text-xs text-gray-400 mt-2">
+                Will be added to {repeatDays} consecutive days starting {formatDateDisplay(selectedDate)}
+              </p>
+            )}
+          </div>
+
+          {/* Reminder Toggle */}
+          <button
+            type="button"
+            onClick={() => setEnableReminder(!enableReminder)}
+            className={`w-full p-3 rounded-xl border-2 flex items-center gap-3 transition-all
+              ${enableReminder 
+                ? 'border-current' 
+                : 'bg-gray-50 border-gray-200'}`}
+            style={{ 
+              backgroundColor: enableReminder ? `${themeColor}20` : undefined,
+              borderColor: enableReminder ? themeColor : undefined 
+            }}
+          >
+            <div className={`p-2 rounded-full ${enableReminder ? '' : 'bg-gray-300'}`}
+              style={{ backgroundColor: enableReminder ? themeColor : undefined }}>
+              {enableReminder ? (
+                <Bell size={16} className="text-white" />
+              ) : (
+                <BellOff size={16} className="text-white" />
+              )}
+            </div>
+            <span className="font-crayon text-gray-700 flex-1 text-left">
+              {enableReminder ? 'Reminders enabled' : 'No reminders'}
+            </span>
+          </button>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3 p-4 border-t">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl font-crayon hover:bg-gray-300"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleAdd}
+            className="flex-1 py-3 text-white rounded-xl font-crayon flex items-center justify-center gap-2"
+            style={{ backgroundColor: themeColor }}
+          >
+            <Check size={20} />
+            Add to Schedule
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ============================================
-// COMPONENT
+// MAIN COMPONENT
 // ============================================
 const OTExercises = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [view, setView] = useState('categories'); // categories, muscle, disability, exercise
   const [selectedMuscle, setSelectedMuscle] = useState(null);
   const [selectedDisability, setSelectedDisability] = useState(null);
@@ -585,6 +762,9 @@ const OTExercises = () => {
       return [];
     }
   });
+  
+  // Schedule modal state
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
 
   // Filter exercises
   const getFilteredExercises = () => {
@@ -625,8 +805,8 @@ const OTExercises = () => {
     setTimerSeconds(selectedExercise?.duration || 0);
   };
 
-  // Timer countdown
-  useState(() => {
+  // Timer countdown effect
+  useEffect(() => {
     let interval;
     if (isTimerActive && timerSeconds > 0) {
       interval = setInterval(() => {
@@ -644,6 +824,65 @@ const OTExercises = () => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Handle add to schedule - with try/catch error handling
+  const handleAddToSchedule = ({ exercise, muscleGroup, date, time, reminder, repeatDays }) => {
+    try {
+      let successCount = 0;
+      let errorMsg = null;
+
+      // Add for each day requested
+      for (let i = 0; i < repeatDays; i++) {
+        const targetDate = new Date(date);
+        targetDate.setDate(targetDate.getDate() + i);
+        const dateStr = targetDate.toISOString().split('T')[0];
+
+        const result = addActivityToSchedule({
+          date: dateStr,
+          name: `${exercise.emoji} ${exercise.name}`,
+          time: time,
+          emoji: exercise.emoji,
+          color: SOURCE_COLORS?.[SCHEDULE_SOURCES?.OT_EXERCISE] || muscleGroup?.color || '#E86B9A',
+          source: SCHEDULE_SOURCES?.OT_EXERCISE || 'ot_exercise',
+          notify: reminder,
+          metadata: {
+            exerciseId: exercise.id,
+            muscleGroup: muscleGroup?.id,
+            duration: exercise.duration,
+            reps: exercise.reps,
+          },
+        });
+
+        if (result && result.success) {
+          successCount++;
+        } else {
+          errorMsg = result?.error || 'Could not add to schedule.';
+        }
+      }
+
+      setShowScheduleModal(false);
+
+      if (successCount > 0) {
+        if (repeatDays === 1) {
+          toast.schedule(
+            'Exercise Scheduled!',
+            `"${exercise.name}" added to ${formatDateDisplay(date)} at ${formatTimeDisplay(time)}`
+          );
+        } else {
+          toast.schedule(
+            'Exercises Scheduled!',
+            `"${exercise.name}" added for ${successCount} days starting ${formatDateDisplay(date)}`
+          );
+        }
+      } else {
+        toast.error('Oops!', errorMsg || 'Could not add to schedule. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error adding exercise to schedule:', error);
+      toast.error('Oops!', 'Something went wrong. Please try again.');
+      setShowScheduleModal(false);
+    }
   };
 
   // ============================================
@@ -727,6 +966,20 @@ const OTExercises = () => {
             </div>
           </div>
 
+          {/* Add to Schedule Button */}
+          <button
+            onClick={() => setShowScheduleModal(true)}
+            className="w-full mb-4 py-3 px-4 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 transition-all hover:bg-opacity-10"
+            style={{ 
+              borderColor: muscleGroup?.color, 
+              color: muscleGroup?.color,
+              backgroundColor: `${muscleGroup?.color}10`
+            }}
+          >
+            <CalendarPlus size={20} />
+            <span className="font-crayon">Add to Visual Schedule</span>
+          </button>
+
           {/* Instructions */}
           <div className="bg-white rounded-2xl border-3 border-gray-200 p-4 mb-4">
             <h3 className="font-display text-gray-800 mb-3 flex items-center gap-2">
@@ -782,6 +1035,15 @@ const OTExercises = () => {
             })}
           </div>
         </main>
+
+        {/* Schedule Modal */}
+        <AddExerciseToScheduleModal
+          isOpen={showScheduleModal}
+          onClose={() => setShowScheduleModal(false)}
+          exercise={selectedExercise}
+          muscleGroup={muscleGroup}
+          onAdd={handleAddToSchedule}
+        />
       </div>
     );
   }
@@ -1008,6 +1270,19 @@ const OTExercises = () => {
             Stretches and exercises designed by occupational therapists. 
             Choose by muscle group or find exercises for specific needs.
           </p>
+        </div>
+
+        {/* Schedule Integration Info */}
+        <div className="bg-[#E86B9A]/10 rounded-2xl border-3 border-[#E86B9A]/30 p-4 mb-6">
+          <div className="flex items-center gap-3">
+            <CalendarPlus size={24} className="text-[#E86B9A]" />
+            <div>
+              <h3 className="font-display text-[#E86B9A]">Visual Schedule Integration</h3>
+              <p className="font-crayon text-sm text-gray-600">
+                Add exercises to your Visual Schedule with reminders!
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Browse by Muscle Group */}

@@ -596,33 +596,40 @@ const SocialStories = () => {
     setShowScheduleModal(true);
   };
 
-  // Handle add to schedule
+  // Handle add to schedule - FIXED: Added try/catch error handling
   const handleAddToSchedule = ({ story, date, time, reminder }) => {
-    const result = addActivityToSchedule({
-      date: date,
-      name: `Read: ${story.title}`,
-      time: time,
-      emoji: '📖',
-      color: SOURCE_COLORS[SCHEDULE_SOURCES.SOCIAL_STORY],
-      source: SCHEDULE_SOURCES.SOCIAL_STORY,
-      notify: reminder,
-      metadata: {
-        storyId: story.id,
-        storyTitle: story.title,
-        category: story.category,
-      },
-    });
+    try {
+      const result = addActivityToSchedule({
+        date: date,
+        name: `Read: ${story.title}`,
+        time: time,
+        emoji: '📖',
+        color: SOURCE_COLORS?.[SCHEDULE_SOURCES?.SOCIAL_STORY] || '#8E6BBF',
+        source: SCHEDULE_SOURCES?.SOCIAL_STORY || 'social_story',
+        notify: reminder,
+        metadata: {
+          storyId: story.id,
+          storyTitle: story.title,
+          category: story.category,
+        },
+      });
 
-    setShowScheduleModal(false);
-    setStoryToSchedule(null);
+      setShowScheduleModal(false);
+      setStoryToSchedule(null);
 
-    if (result && result.success) {
-      toast.schedule(
-        'Story Time Scheduled!',
-        `"${story.title}" is on your Visual Schedule for ${formatDateDisplay(date)} at ${formatTimeDisplay(time)}`
-      );
-    } else {
-      toast.error('Oops!', 'Could not add to schedule. Please try again.');
+      if (result && result.success) {
+        toast.schedule(
+          'Story Time Scheduled!',
+          `"${story.title}" is on your Visual Schedule for ${formatDateDisplay(date)} at ${formatTimeDisplay(time)}`
+        );
+      } else {
+        toast.error('Oops!', result?.error || 'Could not add to schedule. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error adding story to schedule:', error);
+      toast.error('Oops!', 'Something went wrong. Please try again.');
+      setShowScheduleModal(false);
+      setStoryToSchedule(null);
     }
   };
 

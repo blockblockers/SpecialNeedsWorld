@@ -499,35 +499,42 @@ const CalmDown = () => {
     setShowScheduleModal(true);
   };
 
-  // Handle add to schedule
+  // Handle add to schedule - FIXED: Added try/catch error handling
   const handleAddToSchedule = ({ activity, type, date, time, reminder }) => {
-    const isBreathing = type === 'breathing';
-    
-    const result = addActivityToSchedule({
-      date: date,
-      name: isBreathing ? `Breathing: ${activity.name}` : `Calm: ${activity.name}`,
-      time: time,
-      emoji: activity.emoji,
-      color: isBreathing ? activity.color : '#20B2AA',
-      source: SCHEDULE_SOURCES.SENSORY_BREAK, // Using sensory break source
-      notify: reminder,
-      metadata: {
-        activityId: activity.id,
-        type: type,
-        duration: activity.duration || (activity.cycles ? activity.cycles * 30 : 60),
-      },
-    });
+    try {
+      const isBreathing = type === 'breathing';
+      
+      const result = addActivityToSchedule({
+        date: date,
+        name: isBreathing ? `Breathing: ${activity.name}` : `Calm: ${activity.name}`,
+        time: time,
+        emoji: activity.emoji,
+        color: isBreathing ? activity.color : '#20B2AA',
+        source: SCHEDULE_SOURCES?.SENSORY_BREAK || 'sensory_break', // Using sensory break source
+        notify: reminder,
+        metadata: {
+          activityId: activity.id,
+          type: type,
+          duration: activity.duration || (activity.cycles ? activity.cycles * 30 : 60),
+        },
+      });
 
-    setShowScheduleModal(false);
-    setActivityToSchedule(null);
+      setShowScheduleModal(false);
+      setActivityToSchedule(null);
 
-    if (result && result.success) {
-      toast.schedule(
-        'Calm Time Scheduled!',
-        `"${activity.name}" is on your Visual Schedule for ${formatDateDisplay(date)} at ${formatTimeDisplay(time)}`
-      );
-    } else {
-      toast.error('Oops!', 'Could not add to schedule. Please try again.');
+      if (result && result.success) {
+        toast.schedule(
+          'Calm Time Scheduled!',
+          `"${activity.name}" is on your Visual Schedule for ${formatDateDisplay(date)} at ${formatTimeDisplay(time)}`
+        );
+      } else {
+        toast.error('Oops!', result?.error || 'Could not add to schedule. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error adding calm activity to schedule:', error);
+      toast.error('Oops!', 'Something went wrong. Please try again.');
+      setShowScheduleModal(false);
+      setActivityToSchedule(null);
     }
   };
 

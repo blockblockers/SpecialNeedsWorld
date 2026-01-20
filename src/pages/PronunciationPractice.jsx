@@ -592,17 +592,18 @@ const PronunciationPractice = () => {
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4">
-              {categories.map((category) => (
+              {categories.map((category, index) => (
                 <button
                   key={category.id}
                   onClick={() => startPractice(category)}
                   disabled={!isSupported}
-                  className={`p-4 rounded-2xl border-4 text-white transition-all relative
+                  className={`p-4 rounded-2xl border-4 text-center transition-all relative
                              hover:scale-105 hover:-rotate-1 disabled:opacity-50 disabled:cursor-not-allowed
                              shadow-crayon`}
                   style={{ 
-                    backgroundColor: category.color || '#4A9FD4',
+                    backgroundColor: (category.color || '#4A9FD4') + '20',
                     borderColor: category.color || '#4A9FD4',
+                    borderRadius: index % 2 === 0 ? '20px 8px 20px 8px' : '8px 20px 8px 20px',
                   }}
                 >
                   {/* Community badge */}
@@ -612,9 +613,17 @@ const PronunciationPractice = () => {
                       Community
                     </div>
                   )}
-                  <div className="text-4xl mb-2">{category.emoji}</div>
-                  <h3 className="font-display text-lg">{category.name}</h3>
-                  <p className="font-crayon text-sm opacity-90">
+                  {/* Icon container with white background */}
+                  <div 
+                    className="w-14 h-14 rounded-2xl bg-white/80 flex items-center justify-center mb-2 mx-auto"
+                    style={{ border: `2px solid ${category.color || '#4A9FD4'}` }}
+                  >
+                    <span className="text-3xl">{category.emoji}</span>
+                  </div>
+                  {/* Name - dark text */}
+                  <h3 className="font-display text-gray-800 text-sm leading-tight">{category.name}</h3>
+                  {/* Word count */}
+                  <p className="font-crayon text-xs text-gray-500 mt-1">
                     {category.words?.length || '10+'} words
                   </p>
                 </button>

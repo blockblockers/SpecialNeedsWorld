@@ -369,34 +369,41 @@ const FirstThen = () => {
     setShowScheduleModal(true);
   };
 
-  // Handle add to schedule
+  // Handle add to schedule - FIXED: Added try/catch error handling
   const handleAddToSchedule = ({ firstThen, date, time, reminder }) => {
-    const result = addActivityToSchedule({
-      date: date,
-      name: `First ${firstThen.first.text}, Then ${firstThen.then.text}`,
-      time: time,
-      emoji: '1️⃣',
-      color: SOURCE_COLORS[SCHEDULE_SOURCES.FIRST_THEN],
-      source: SCHEDULE_SOURCES.FIRST_THEN,
-      notify: reminder,
-      metadata: {
-        firstTask: firstThen.first.text,
-        firstEmoji: firstThen.first.emoji,
-        thenTask: firstThen.then.text,
-        thenEmoji: firstThen.then.emoji,
-      },
-    });
+    try {
+      const result = addActivityToSchedule({
+        date: date,
+        name: `First ${firstThen.first.text}, Then ${firstThen.then.text}`,
+        time: time,
+        emoji: '1️⃣',
+        color: SOURCE_COLORS?.[SCHEDULE_SOURCES?.FIRST_THEN] || '#F5A623',
+        source: SCHEDULE_SOURCES?.FIRST_THEN || 'first_then',
+        notify: reminder,
+        metadata: {
+          firstTask: firstThen.first.text,
+          firstEmoji: firstThen.first.emoji,
+          thenTask: firstThen.then.text,
+          thenEmoji: firstThen.then.emoji,
+        },
+      });
 
-    setShowScheduleModal(false);
-    setFirstThenToSchedule(null);
+      setShowScheduleModal(false);
+      setFirstThenToSchedule(null);
 
-    if (result && result.success) {
-      toast.schedule(
-        'First/Then Scheduled!',
-        `Added to your Visual Schedule for ${formatDateDisplay(date)} at ${formatTimeDisplay(time)}`
-      );
-    } else {
-      toast.error('Oops!', 'Could not add to schedule. Please try again.');
+      if (result && result.success) {
+        toast.schedule(
+          'First/Then Scheduled!',
+          `Added to your Visual Schedule for ${formatDateDisplay(date)} at ${formatTimeDisplay(time)}`
+        );
+      } else {
+        toast.error('Oops!', result?.error || 'Could not add to schedule. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error adding First/Then to schedule:', error);
+      toast.error('Oops!', 'Something went wrong. Please try again.');
+      setShowScheduleModal(false);
+      setFirstThenToSchedule(null);
     }
   };
 

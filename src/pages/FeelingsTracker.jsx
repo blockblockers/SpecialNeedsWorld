@@ -1,8 +1,9 @@
 // FeelingsTracker.jsx - Track daily emotions and moods
-// NAVIGATION: Back button goes to /wellness (parent hub)
+// SIMPLIFIED: Only exists in Wellness hub, back always goes to /wellness
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, ChevronLeft, ChevronRight, BarChart3, X } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, BarChart3, X } from 'lucide-react';
 import LocalOnlyNotice from '../components/LocalOnlyNotice';
 
 // Feelings with faces
@@ -99,7 +100,7 @@ const FeelingsTracker = () => {
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#F5A623]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
-          {/* IMPORTANT: Back button goes to /wellness (parent hub) */}
+          {/* Back button always goes to /wellness */}
           <button
             onClick={() => navigate('/wellness')}
             className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F5A623] 
