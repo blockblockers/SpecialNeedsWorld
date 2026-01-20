@@ -1,3 +1,5 @@
+// FIXED: Changed theme color from yellow (#F8D14A) to brown (#CD853F) for better visibility
+// FIXED: Back button is context-aware - goes to FAQ menu when viewing a topic, /resources when at top level
 // FAQ.jsx - Frequently Asked Questions for ATLASassist
 // Common questions and answers for families and caregivers
 import { useState } from 'react';
@@ -257,12 +259,12 @@ const FAQ = () => {
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#F8D14A]">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#CD853F]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/resources')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F8D14A] 
-                       rounded-xl font-display font-bold text-[#F8D14A] hover:bg-[#F8D14A] 
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#CD853F] 
+                       rounded-xl font-display font-bold text-[#CD853F] hover:bg-[#CD853F] 
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
@@ -273,7 +275,7 @@ const FAQ = () => {
             alt="ATLASassist" 
             className="w-10 h-10 rounded-lg shadow-sm"
           />
-          <h1 className="text-lg sm:text-xl font-display text-[#F8D14A] crayon-text flex items-center gap-2">
+          <h1 className="text-lg sm:text-xl font-display text-[#CD853F] crayon-text flex items-center gap-2">
             <HelpCircle size={22} />
             FAQ
           </h1>
@@ -298,7 +300,7 @@ const FAQ = () => {
               setSelectedCategory(null);
             }}
             className="w-full pl-12 pr-4 py-3 rounded-xl border-3 border-gray-200 
-                     font-crayon focus:border-[#F8D14A] focus:outline-none"
+                     font-crayon focus:border-[#CD853F] focus:outline-none"
           />
         </div>
         

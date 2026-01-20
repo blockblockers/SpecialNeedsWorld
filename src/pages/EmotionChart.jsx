@@ -1,3 +1,4 @@
+// FIXED: Changed header color from yellow (#F5A623) to pink (#E86B9A) to match Wellness hub
 // EmotionChart.jsx - Interactive Emotion Identification Tool
 // NAVIGATION: Back button goes to /wellness (parent hub)
 import { useState, useEffect } from 'react';
@@ -293,20 +294,20 @@ const EmotionChart = () => {
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#F5A623]">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#E86B9A]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           {/* IMPORTANT: Back button goes to /wellness (parent hub) */}
           <button
             onClick={() => navigate('/wellness')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F5A623] 
-                       rounded-xl font-display font-bold text-[#F5A623] hover:bg-[#F5A623] 
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#E86B9A] 
+                       rounded-xl font-display font-bold text-[#E86B9A] hover:bg-[#E86B9A] 
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
             Back
           </button>
           <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-display text-[#F5A623] crayon-text">
+            <h1 className="text-lg sm:text-xl font-display text-[#E86B9A] crayon-text">
               😊 Emotion Chart
             </h1>
           </div>
@@ -338,9 +339,9 @@ const EmotionChart = () => {
         </div>
         
         {/* Quick Check-In */}
-        <div className="p-4 bg-gradient-to-r from-[#F5A623]/20 to-[#E86B9A]/20 rounded-2xl border-3 border-[#F5A623]/30 mb-6">
+        <div className="p-4 bg-gradient-to-r from-[#E86B9A]/20 to-[#E86B9A]/20 rounded-2xl border-3 border-[#F5A623]/30 mb-6">
           <h3 className="font-display text-gray-700 mb-2 flex items-center gap-2">
-            <Sparkles size={18} className="text-[#F5A623]" />
+            <Sparkles size={18} className="text-[#E86B9A]" />
             Quick Check-In
           </h3>
           <p className="font-crayon text-sm text-gray-600">
@@ -391,7 +392,7 @@ const EmotionChart = () => {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display text-xl text-[#F5A623]">How to Use</h2>
+              <h2 className="font-display text-xl text-[#E86B9A]">How to Use</h2>
               <button onClick={() => setShowInfo(false)} className="p-2 rounded-full hover:bg-gray-100">
                 <X size={20} className="text-gray-400" />
               </button>
@@ -404,7 +405,7 @@ const EmotionChart = () => {
             </div>
             <button
               onClick={() => setShowInfo(false)}
-              className="w-full mt-4 py-3 bg-[#F5A623] text-white rounded-xl font-display"
+              className="w-full mt-4 py-3 bg-[#E86B9A] text-white rounded-xl font-display"
             >
               Got it!
             </button>

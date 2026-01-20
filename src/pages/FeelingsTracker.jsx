@@ -1,9 +1,10 @@
+// FIXED: Changed theme color from yellow (#F5A623) to coral (#FF6B6B) for better visibility
+// FIXED: Back button always navigates to /wellness
 // FeelingsTracker.jsx - Track daily emotions and moods
-// SIMPLIFIED: Only exists in Wellness hub, back always goes to /wellness
-
+// NAVIGATION: Back button goes to /wellness (parent hub)
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronLeft, ChevronRight, BarChart3, X } from 'lucide-react';
+import { ArrowLeft, Calendar, ChevronLeft, ChevronRight, BarChart3, X } from 'lucide-react';
 import LocalOnlyNotice from '../components/LocalOnlyNotice';
 
 // Feelings with faces
@@ -98,20 +99,20 @@ const FeelingsTracker = () => {
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#F5A623]">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#FF6B6B]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
-          {/* Back button always goes to /wellness */}
+          {/* IMPORTANT: Back button goes to /wellness (parent hub) */}
           <button
             onClick={() => navigate('/wellness')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F5A623] 
-                       rounded-xl font-display font-bold text-[#F5A623] hover:bg-[#F5A623] 
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#FF6B6B] 
+                       rounded-xl font-display font-bold text-[#FF6B6B] hover:bg-[#FF6B6B] 
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
             Back
           </button>
           <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-display text-[#F5A623] crayon-text">
+            <h1 className="text-lg sm:text-xl font-display text-[#FF6B6B] crayon-text">
               😊 How Do I Feel?
             </h1>
           </div>
@@ -159,8 +160,8 @@ const FeelingsTracker = () => {
               onClick={() => setSelectedTime(time.id)}
               className={`px-4 py-2 rounded-xl font-crayon transition-all ${
                 selectedTime === time.id
-                  ? 'bg-[#F5A623] text-white'
-                  : 'bg-white border-2 border-gray-200 hover:border-[#F5A623]'
+                  ? 'bg-[#FF6B6B] text-white'
+                  : 'bg-white border-2 border-gray-200 hover:border-[#FF6B6B]'
               }`}
             >
               {time.emoji} {time.label}
@@ -183,7 +184,7 @@ const FeelingsTracker = () => {
                 onClick={() => toggleFeeling(feeling.id)}
                 className={`p-4 rounded-2xl border-4 transition-all ${feeling.color} ${
                   isSelected 
-                    ? 'scale-110 shadow-lg ring-4 ring-offset-2 ring-[#F5A623]' 
+                    ? 'scale-110 shadow-lg ring-4 ring-offset-2 ring-[#FF6B6B]' 
                     : 'hover:scale-105'
                 }`}
               >
@@ -196,7 +197,7 @@ const FeelingsTracker = () => {
 
         {/* Selected feelings summary */}
         {currentEntry.length > 0 && (
-          <div className="p-4 bg-[#F5A623]/20 rounded-2xl border-3 border-[#F5A623]/30">
+          <div className="p-4 bg-[#FF6B6B]/20 rounded-2xl border-3 border-[#FF6B6B]/30">
             <p className="font-crayon text-gray-700 text-center">
               You're feeling: {currentEntry.map(id => {
                 const feeling = FEELINGS.find(f => f.id === id);
@@ -212,7 +213,7 @@ const FeelingsTracker = () => {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-hidden">
             <div className="p-4 border-b flex items-center justify-between">
-              <h2 className="font-display text-xl text-[#F5A623]">Feelings History</h2>
+              <h2 className="font-display text-xl text-[#FF6B6B]">Feelings History</h2>
               <button onClick={() => setShowHistory(false)} className="p-2 hover:bg-gray-100 rounded-full">
                 <X size={20} />
               </button>

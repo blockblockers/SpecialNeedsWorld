@@ -1,3 +1,4 @@
+// FIXED: Updated Reminders color from yellow (#F5A623) to dark orange (#D35400)
 // Services.jsx - My Care Team Hub (formerly Services and Trackers)
 // FIXED: Renamed to "My Care Team" per user request
 // FIXED: All paths to match App.jsx routes
@@ -47,7 +48,7 @@ const trackers = [
     name: 'Reminders',
     description: 'Set helpful reminders',
     icon: Bell,
-    color: '#F5A623',
+    color: '#D35400',
     path: '/services/reminders',
     emoji: '🔔',
   },

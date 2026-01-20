@@ -1,3 +1,4 @@
+// FIXED: Changed theme color from yellow (#F5A623) to purple (#8E6BBF) to match Tools hub
 // SoundBoard.jsx - Interactive Sound Board for ATLASassist
 // Tries to load sounds from /sounds/, falls back to synthesized
 
@@ -46,7 +47,7 @@ const SOUND_CATEGORIES = [
     id: 'vehicles',
     name: 'Vehicles',
     emoji: '🚗',
-    color: '#F5A623',
+    color: '#8E6BBF',
     sounds: [
       { id: 'car', name: 'Car Horn', emoji: '🚗', file: '/sounds/vehicles/car-horn.mp3', fallback: 'car-horn' },
       { id: 'train', name: 'Train', emoji: '🚂', file: '/sounds/vehicles/train.mp3', fallback: 'train' },
@@ -117,12 +118,12 @@ const SoundBoard = () => {
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#F5A623]">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#8E6BBF]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/tools')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F5A623] 
-                       rounded-xl font-display font-bold text-[#F5A623] hover:bg-[#F5A623] 
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#8E6BBF] 
+                       rounded-xl font-display font-bold text-[#8E6BBF] hover:bg-[#8E6BBF] 
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
@@ -130,7 +131,7 @@ const SoundBoard = () => {
           </button>
           <img src="/logo.jpeg" alt="ATLASassist" className="w-10 h-10 rounded-lg shadow-sm" />
           <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-display text-[#F5A623] crayon-text flex items-center gap-2">
+            <h1 className="text-lg sm:text-xl font-display text-[#8E6BBF] crayon-text flex items-center gap-2">
               <Music size={20} />
               Sound Board
             </h1>
@@ -155,7 +156,7 @@ const SoundBoard = () => {
             step="0.1"
             value={volume}
             onChange={(e) => setVolume(parseFloat(e.target.value))}
-            className="flex-1 accent-[#F5A623]"
+            className="flex-1 accent-[#8E6BBF]"
           />
           <Volume2 size={16} className="text-gray-400" />
         </div>
@@ -191,8 +192,8 @@ const SoundBoard = () => {
         </div>
 
         {/* Tips */}
-        <div className="mt-6 p-4 bg-orange-50 rounded-2xl border-3 border-orange-200">
-          <h3 className="font-display text-[#F5A623] mb-2 flex items-center gap-2">
+        <div className="mt-6 p-4 bg-purple-50 rounded-2xl border-3 border-purple-200">
+          <h3 className="font-display text-[#8E6BBF] mb-2 flex items-center gap-2">
             <Sparkles size={18} />
             Sound Board Fun!
           </h3>

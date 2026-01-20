@@ -1,11 +1,12 @@
-// EmotionalWellnessHub.jsx - Emotional Wellness sub-hub
-// FIXED: Back button goes to /hub (main app hub) - NOT /health
-// Emotional Wellness is a TOP-LEVEL hub, not a sub-hub of Health
+// FIXED: Updated FeelingsTracker color from yellow (#F5A623) to coral (#FF6B6B)
+// EmotionalWellnessHub.jsx - Emotional Wellness sub-hub under Health
+// NAVIGATION: Back button goes to /health (parent hub)
+// FIXED: Single icon (emoji only), darker Growth Mindset color
 
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Brain } from 'lucide-react';
 
-// Wellness apps
+// Wellness apps - FIXED: Removed icon property from render
 const wellnessApps = [
   {
     id: 'calm-down',
@@ -20,7 +21,7 @@ const wellnessApps = [
     id: 'feelings',
     name: 'How Do I Feel?',
     description: 'Track your feelings throughout the day',
-    color: '#F5A623',
+    color: '#FF6B6B',
     emoji: '😊',
     path: '/wellness/feelings',
     ready: true,
@@ -65,6 +66,7 @@ const wellnessApps = [
     id: 'growth-mindset',
     name: 'Growth Mindset',
     description: 'Learn to grow from challenges',
+    // FIXED: Darker gold instead of #F8D14A
     color: '#DAA520',
     emoji: '🌱',
     path: '/wellness/growth-mindset',
@@ -95,9 +97,8 @@ const EmotionalWellnessHub = () => {
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#8E6BBF]">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
-          {/* FIXED: Back button goes to /hub (main app hub) */}
           <button
-            onClick={() => navigate('/hub')}
+            onClick={() => navigate('/health')}
             className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#8E6BBF] 
                        rounded-xl font-display font-bold text-[#8E6BBF] hover:bg-[#8E6BBF] 
                        hover:text-white transition-all shadow-md"
@@ -118,7 +119,7 @@ const EmotionalWellnessHub = () => {
           Tools to understand and manage your feelings
         </p>
 
-        {/* Apps Grid */}
+        {/* Apps Grid - FIXED: Only emoji, no Icon */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {wellnessApps.map((app, index) => (
             <button
@@ -139,6 +140,7 @@ const EmotionalWellnessHub = () => {
                 borderRadius: index % 2 === 0 ? '20px 8px 20px 8px' : '8px 20px 8px 20px',
               }}
             >
+              {/* FIXED: Only emoji - removed IconComponent */}
               <div 
                 className="w-14 h-14 rounded-2xl bg-white/80 flex items-center justify-center mb-2 mx-auto"
                 style={{ border: `2px solid ${app.color}` }}
@@ -146,10 +148,12 @@ const EmotionalWellnessHub = () => {
                 <span className="text-3xl">{app.emoji}</span>
               </div>
               
+              {/* Name */}
               <h3 className="font-display text-gray-800 text-sm leading-tight">
                 {app.name}
               </h3>
               
+              {/* Description */}
               <p className="font-crayon text-xs text-gray-500 mt-1">
                 {app.description}
               </p>

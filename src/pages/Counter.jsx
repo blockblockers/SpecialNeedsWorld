@@ -1,3 +1,4 @@
+// FIXED: Changed theme color from yellow (#F5A623) to pink (#E86B9A) to match Tools hub
 // Counter.jsx - Simple counter for tracking behaviors, tasks, or anything
 // Multiple counters with customizable names and colors
 
@@ -34,7 +35,7 @@ const COLORS = {
   purple: { bg: 'bg-purple-100', border: 'border-purple-400', text: 'text-purple-700', button: 'bg-purple-400' },
   green: { bg: 'bg-green-100', border: 'border-green-400', text: 'text-green-700', button: 'bg-green-400' },
   blue: { bg: 'bg-blue-100', border: 'border-blue-400', text: 'text-blue-700', button: 'bg-blue-400' },
-  orange: { bg: 'bg-orange-100', border: 'border-orange-400', text: 'text-orange-700', button: 'bg-orange-400' },
+  orange: { bg: 'bg-orange-100', border: 'border-pink-400', text: 'text-orange-700', button: 'bg-orange-400' },
   cyan: { bg: 'bg-cyan-100', border: 'border-cyan-400', text: 'text-cyan-700', button: 'bg-cyan-400' },
   red: { bg: 'bg-red-100', border: 'border-red-400', text: 'text-red-700', button: 'bg-red-400' },
   pink: { bg: 'bg-pink-100', border: 'border-pink-400', text: 'text-pink-700', button: 'bg-pink-400' },
@@ -137,19 +138,19 @@ const Counter = () => {
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#F5A623]">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#E86B9A]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/tools')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F5A623] 
-                       rounded-xl font-display font-bold text-[#F5A623] hover:bg-[#F5A623] 
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#E86B9A] 
+                       rounded-xl font-display font-bold text-[#E86B9A] hover:bg-[#E86B9A] 
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
             Back
           </button>
           <div className="flex-1">
-            <h1 className="text-xl font-display text-[#F5A623] crayon-text">
+            <h1 className="text-xl font-display text-[#E86B9A] crayon-text">
               🔢 Counter
             </h1>
           </div>
@@ -166,9 +167,9 @@ const Counter = () => {
       <main className="max-w-2xl mx-auto px-4 py-6">
         {/* Add Form */}
         {showAddForm && (
-          <div className="mb-6 bg-white rounded-2xl border-4 border-[#F5A623] p-4 shadow-crayon">
+          <div className="mb-6 bg-white rounded-2xl border-4 border-[#E86B9A] p-4 shadow-crayon">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="font-display text-lg text-[#F5A623]">New Counter</h2>
+              <h2 className="font-display text-lg text-[#E86B9A]">New Counter</h2>
               <button onClick={() => setShowAddForm(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={24} />
               </button>
@@ -204,7 +205,7 @@ const Counter = () => {
                 onChange={(e) => setNewCounter({ ...newCounter, name: e.target.value })}
                 placeholder="Counter name..."
                 className="w-full p-3 border-3 border-gray-300 rounded-xl font-crayon mb-3
-                         focus:border-[#F5A623] focus:outline-none"
+                         focus:border-[#E86B9A] focus:outline-none"
               />
 
               {/* Emoji Selection */}
@@ -217,7 +218,7 @@ const Counter = () => {
                       onClick={() => setNewCounter({ ...newCounter, emoji })}
                       className={`w-10 h-10 text-xl rounded-lg border-2 transition-all
                         ${newCounter.emoji === emoji 
-                          ? 'border-[#F5A623] bg-yellow-50 scale-110' 
+                          ? 'border-[#E86B9A] bg-pink-50 scale-110' 
                           : 'border-gray-200 hover:border-gray-400'
                         }`}
                     >
@@ -270,7 +271,7 @@ const Counter = () => {
             </p>
             <button
               onClick={() => setShowAddForm(true)}
-              className="px-6 py-3 bg-[#F5A623] text-white rounded-xl border-3 border-orange-600
+              className="px-6 py-3 bg-[#E86B9A] text-white rounded-xl border-3 border-pink-600
                        font-crayon hover:scale-105 transition-transform"
             >
               <Plus size={20} className="inline mr-2" />

@@ -1,3 +1,4 @@
+// FIXED: Changed theme color from yellow (#F5A623) to green (#5CB85C) to match Tools hub
 // FirstThen.jsx - First/Then visual tool for ATLASassist
 // UPDATED: Added Visual Schedule integration
 // Schedule First/Then sequences to help with transitions
@@ -111,7 +112,7 @@ const AddToScheduleModal = ({ isOpen, onClose, firstThen, onAdd }) => {
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="bg-[#F5A623] text-white p-4 flex items-center gap-3">
+        <div className="bg-[#5CB85C] text-white p-4 flex items-center gap-3">
           <CalendarPlus size={24} />
           <h3 className="font-display text-xl flex-1">Schedule First/Then</h3>
           <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
@@ -122,7 +123,7 @@ const AddToScheduleModal = ({ isOpen, onClose, firstThen, onAdd }) => {
         {/* Content */}
         <div className="p-4 space-y-4">
           {/* Use Case Description */}
-          <div className="p-3 bg-orange-50 rounded-xl border-2 border-orange-200">
+          <div className="p-3 bg-green-50 rounded-xl border-2 border-green-200">
             <p className="font-crayon text-sm text-orange-700">
               1️⃣ <strong>Why schedule First/Then?</strong> Adding this to your Visual Schedule 
               helps prepare for transitions and sets clear expectations. Get a reminder 
@@ -143,7 +144,7 @@ const AddToScheduleModal = ({ isOpen, onClose, firstThen, onAdd }) => {
               </div>
               
               {/* Arrow */}
-              <ArrowRight size={24} className="text-[#F5A623]" />
+              <ArrowRight size={24} className="text-[#5CB85C]" />
               
               {/* Then */}
               <div className="text-center">
@@ -197,10 +198,10 @@ const AddToScheduleModal = ({ isOpen, onClose, firstThen, onAdd }) => {
             onClick={() => setEnableReminder(!enableReminder)}
             className={`w-full p-3 rounded-xl border-2 flex items-center gap-3 transition-all
               ${enableReminder 
-                ? 'bg-orange-50 border-[#F5A623]' 
+                ? 'bg-green-50 border-[#5CB85C]' 
                 : 'bg-gray-50 border-gray-200'}`}
           >
-            <div className={`p-2 rounded-full ${enableReminder ? 'bg-[#F5A623]' : 'bg-gray-300'}`}>
+            <div className={`p-2 rounded-full ${enableReminder ? 'bg-[#5CB85C]' : 'bg-gray-300'}`}>
               {enableReminder ? (
                 <Bell size={16} className="text-white" />
               ) : (
@@ -241,7 +242,7 @@ const IconPicker = ({ selected, onSelect, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden">
-        <div className="bg-[#F5A623] text-white p-3 flex items-center justify-between">
+        <div className="bg-[#5CB85C] text-white p-3 flex items-center justify-between">
           <h3 className="font-display">Choose an Icon</h3>
           <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
             <X size={20} />
@@ -253,7 +254,7 @@ const IconPicker = ({ selected, onSelect, onClose }) => {
               key={icon.emoji}
               onClick={() => onSelect(icon.emoji)}
               className={`p-3 rounded-xl text-2xl hover:bg-gray-100 transition-colors
-                ${selected === icon.emoji ? 'bg-orange-100 border-2 border-[#F5A623]' : ''}`}
+                ${selected === icon.emoji ? 'bg-green-100 border-2 border-[#5CB85C]' : ''}`}
               title={icon.label}
             >
               {icon.emoji}
@@ -377,7 +378,7 @@ const FirstThen = () => {
         name: `First ${firstThen.first.text}, Then ${firstThen.then.text}`,
         time: time,
         emoji: '1️⃣',
-        color: SOURCE_COLORS?.[SCHEDULE_SOURCES?.FIRST_THEN] || '#F5A623',
+        color: SOURCE_COLORS?.[SCHEDULE_SOURCES?.FIRST_THEN] || '#5CB85C',
         source: SCHEDULE_SOURCES?.FIRST_THEN || 'first_then',
         notify: reminder,
         metadata: {
@@ -410,12 +411,12 @@ const FirstThen = () => {
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#F5A623]">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#5CB85C]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/tools')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F5A623] 
-                       rounded-xl font-display font-bold text-[#F5A623] hover:bg-[#F5A623] 
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#5CB85C] 
+                       rounded-xl font-display font-bold text-[#5CB85C] hover:bg-[#5CB85C] 
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
@@ -423,7 +424,7 @@ const FirstThen = () => {
           </button>
           <img src="/logo.jpeg" alt="ATLASassist" className="w-10 h-10 rounded-lg shadow-sm" />
           <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-display text-[#F5A623] crayon-text">
+            <h1 className="text-lg sm:text-xl font-display text-[#5CB85C] crayon-text">
               1️⃣ First / Then
             </h1>
           </div>
@@ -435,7 +436,7 @@ const FirstThen = () => {
         {showPresets && (
           <div className="mb-6">
             <h2 className="font-display text-gray-700 mb-3 flex items-center gap-2">
-              <Star size={18} className="text-[#F5A623]" />
+              <Star size={18} className="text-[#5CB85C]" />
               Quick Start Templates
             </h2>
             <div className="grid grid-cols-2 gap-3">
@@ -443,7 +444,7 @@ const FirstThen = () => {
                 <button
                   key={preset.id}
                   onClick={() => usePreset(preset)}
-                  className="p-3 bg-white rounded-xl border-3 border-gray-200 hover:border-[#F5A623] 
+                  className="p-3 bg-white rounded-xl border-3 border-gray-200 hover:border-[#5CB85C] 
                            transition-all text-left relative group"
                 >
                   <div className="flex items-center gap-2 mb-1">
@@ -476,9 +477,9 @@ const FirstThen = () => {
         )}
 
         {/* First/Then Board */}
-        <div className="bg-white rounded-3xl border-4 border-[#F5A623] shadow-crayon overflow-hidden">
+        <div className="bg-white rounded-3xl border-4 border-[#5CB85C] shadow-crayon overflow-hidden">
           {/* Header */}
-          <div className="bg-[#F5A623] text-white p-4 text-center">
+          <div className="bg-[#5CB85C] text-white p-4 text-center">
             <h2 className="font-display text-2xl">First / Then</h2>
           </div>
 
@@ -499,7 +500,7 @@ const FirstThen = () => {
                 <button
                   onClick={() => setShowIconPicker('first')}
                   className="w-20 h-20 mx-auto mb-3 rounded-2xl bg-white border-3 border-gray-200 
-                           flex items-center justify-center text-5xl hover:border-[#F5A623] transition-colors"
+                           flex items-center justify-center text-5xl hover:border-[#5CB85C] transition-colors"
                   disabled={isFirstComplete}
                 >
                   {firstTask.emoji}
@@ -512,7 +513,7 @@ const FirstThen = () => {
                   onChange={(e) => setFirstTask({ ...firstTask, text: e.target.value })}
                   placeholder="What to do first?"
                   className="w-full p-2 text-center font-crayon text-lg border-2 border-gray-200 rounded-xl
-                           focus:border-[#F5A623] focus:outline-none"
+                           focus:border-[#5CB85C] focus:outline-none"
                   disabled={isFirstComplete}
                 />
 
@@ -538,7 +539,7 @@ const FirstThen = () => {
 
               {/* Arrow */}
               <div className="flex items-center">
-                <div className="w-12 h-12 rounded-full bg-[#F5A623] flex items-center justify-center">
+                <div className="w-12 h-12 rounded-full bg-[#5CB85C] flex items-center justify-center">
                   <ArrowRight size={28} className="text-white" />
                 </div>
               </div>
@@ -557,7 +558,7 @@ const FirstThen = () => {
                 <button
                   onClick={() => setShowIconPicker('then')}
                   className="w-20 h-20 mx-auto mb-3 rounded-2xl bg-white border-3 border-gray-200 
-                           flex items-center justify-center text-5xl hover:border-[#F5A623] transition-colors"
+                           flex items-center justify-center text-5xl hover:border-[#5CB85C] transition-colors"
                   disabled={isFirstComplete}
                 >
                   {thenTask.emoji}
@@ -570,13 +571,13 @@ const FirstThen = () => {
                   onChange={(e) => setThenTask({ ...thenTask, text: e.target.value })}
                   placeholder="Then I can..."
                   className="w-full p-2 text-center font-crayon text-lg border-2 border-gray-200 rounded-xl
-                           focus:border-[#F5A623] focus:outline-none"
+                           focus:border-[#5CB85C] focus:outline-none"
                   disabled={isFirstComplete}
                 />
 
                 {isFirstComplete && (
                   <div className="mt-4">
-                    <Sparkles className="w-8 h-8 text-[#F5A623] mx-auto animate-bounce" />
+                    <Sparkles className="w-8 h-8 text-[#5CB85C] mx-auto animate-bounce" />
                     <p className="font-display text-[#5CB85C] mt-2">Time for your reward! 🎉</p>
                   </div>
                 )}
@@ -598,8 +599,8 @@ const FirstThen = () => {
             {!isFirstComplete && (
               <button
                 onClick={saveAsPreset}
-                className="px-4 py-2 bg-white border-2 border-[#F5A623] rounded-xl font-crayon text-[#F5A623]
-                         hover:bg-orange-50 transition-all flex items-center gap-2"
+                className="px-4 py-2 bg-white border-2 border-[#5CB85C] rounded-xl font-crayon text-[#5CB85C]
+                         hover:bg-green-50 transition-all flex items-center gap-2"
               >
                 <Save size={18} />
                 Save Template
@@ -618,8 +619,8 @@ const FirstThen = () => {
         </div>
 
         {/* Tips */}
-        <div className="mt-6 p-4 bg-orange-50 rounded-2xl border-3 border-orange-200">
-          <h3 className="font-display text-[#F5A623] mb-2 flex items-center gap-2">
+        <div className="mt-6 p-4 bg-green-50 rounded-2xl border-3 border-green-200">
+          <h3 className="font-display text-[#5CB85C] mb-2 flex items-center gap-2">
             <Sparkles size={18} />
             First/Then Tips
           </h3>

@@ -1,3 +1,4 @@
+// FIXED: Changed theme color from yellow (#F5A623) to dark orange (#D35400) for better visibility
 // Reminders.jsx - Reminder system with push notifications
 // Privacy-focused: Local storage only
 
@@ -314,19 +315,19 @@ const Reminders = () => {
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#F5A623]">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#D35400]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/services')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F5A623] 
-                       rounded-xl font-display font-bold text-[#F5A623] hover:bg-[#F5A623] 
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#D35400] 
+                       rounded-xl font-display font-bold text-[#D35400] hover:bg-[#D35400] 
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
             Back
           </button>
           <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-display text-[#F5A623] crayon-text">
+            <h1 className="text-lg sm:text-xl font-display text-[#D35400] crayon-text">
               🔔 Reminders
             </h1>
           </div>
@@ -369,9 +370,9 @@ const Reminders = () => {
 
         {/* Add/Edit Form */}
         {showForm && (
-          <div className="mb-6 bg-white rounded-2xl border-4 border-[#F5A623] p-4 shadow-crayon">
+          <div className="mb-6 bg-white rounded-2xl border-4 border-[#D35400] p-4 shadow-crayon">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="font-display text-lg text-[#F5A623]">
+              <h2 className="font-display text-lg text-[#D35400]">
                 {editingId ? 'Edit Reminder' : 'New Reminder'}
               </h2>
               <button onClick={resetForm} className="text-gray-400 hover:text-gray-600">
@@ -390,7 +391,7 @@ const Reminders = () => {
                   placeholder="Take medicine, Therapy session, etc."
                   required
                   className="w-full p-3 border-3 border-gray-300 rounded-xl font-crayon
-                           focus:border-[#F5A623] focus:outline-none"
+                           focus:border-[#D35400] focus:outline-none"
                 />
               </div>
 
@@ -428,7 +429,7 @@ const Reminders = () => {
                     value={formData.time}
                     onChange={(e) => setFormData({...formData, time: e.target.value})}
                     className="w-full p-3 border-3 border-gray-300 rounded-xl font-crayon
-                             focus:border-[#F5A623] focus:outline-none"
+                             focus:border-[#D35400] focus:outline-none"
                   />
                 </div>
                 <div>
@@ -441,7 +442,7 @@ const Reminders = () => {
                     value={formData.date}
                     onChange={(e) => setFormData({...formData, date: e.target.value})}
                     className="w-full p-3 border-3 border-gray-300 rounded-xl font-crayon
-                             focus:border-[#F5A623] focus:outline-none"
+                             focus:border-[#D35400] focus:outline-none"
                   />
                 </div>
               </div>
@@ -493,7 +494,7 @@ const Reminders = () => {
             </p>
             <button
               onClick={() => setShowForm(true)}
-              className="px-6 py-3 bg-[#F5A623] text-white rounded-xl border-3 border-orange-500
+              className="px-6 py-3 bg-[#D35400] text-white rounded-xl border-3 border-amber-700
                        font-crayon hover:scale-105 transition-transform"
             >
               <Plus size={20} className="inline mr-2" />

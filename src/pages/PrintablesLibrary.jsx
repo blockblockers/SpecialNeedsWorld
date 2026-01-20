@@ -1,3 +1,4 @@
+// FIXED: Changed header color from yellow (#F5A623) to carrot orange (#E67E22) for better visibility
 // PrintablesLibrary.jsx - Comprehensive Printables with ALL User Content Integration
 // ENHANCED: "My Creations" pulls from ALL saved data across the app
 // Sources: Choice Boards, Visual Schedules, Social Stories, Quick Notes, Goals, 
@@ -415,7 +416,7 @@ const PrintableCard = ({ printable, isSaved, onToggleSave, onPreview, isUserCrea
           className={`p-2 rounded-lg transition-colors ${
             isSaved 
               ? 'bg-[#F5A623] text-white' 
-              : 'bg-gray-100 text-gray-400 hover:text-[#F5A623]'
+              : 'bg-gray-100 text-gray-400 hover:text-[#E67E22]'
           }`}
         >
           {isSaved ? <BookmarkCheck size={18} /> : <Bookmark size={18} />}
@@ -909,12 +910,12 @@ const PrintablesLibrary = () => {
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#F5A623]">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#E67E22]">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/resources')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F5A623] 
-                       rounded-xl font-display font-bold text-[#F5A623] hover:bg-[#F5A623] 
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#E67E22] 
+                       rounded-xl font-display font-bold text-[#E67E22] hover:bg-[#E67E22] 
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
@@ -922,7 +923,7 @@ const PrintablesLibrary = () => {
           </button>
           <img src="/logo.jpeg" alt="ATLASassist" className="w-10 h-10 rounded-lg shadow-sm" />
           <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-display text-[#F5A623] crayon-text flex items-center gap-2">
+            <h1 className="text-lg sm:text-xl font-display text-[#E67E22] crayon-text flex items-center gap-2">
               <Printer size={24} />
               Printables Library
             </h1>
@@ -943,7 +944,7 @@ const PrintablesLibrary = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search printables..."
-            className="w-full pl-12 pr-4 py-3 rounded-xl border-3 border-gray-200 focus:border-[#F5A623] 
+            className="w-full pl-12 pr-4 py-3 rounded-xl border-3 border-gray-200 focus:border-[#E67E22] 
                      outline-none font-crayon transition-colors"
           />
         </div>
@@ -1056,9 +1057,9 @@ const PrintablesLibrary = () => {
         {/* Tip Box */}
         <div className="mt-8 p-4 bg-[#F5A623]/10 rounded-2xl border-2 border-[#F5A623]/30">
           <div className="flex items-start gap-3">
-            <Lightbulb size={20} className="text-[#F5A623] flex-shrink-0 mt-0.5" />
+            <Lightbulb size={20} className="text-[#E67E22] flex-shrink-0 mt-0.5" />
             <div>
-              <h3 className="font-display text-[#F5A623]">Pro Tip</h3>
+              <h3 className="font-display text-[#E67E22]">Pro Tip</h3>
               <p className="font-crayon text-sm text-gray-600 mt-1">
                 Everything you create in ATLASassist appears in "My Creations" - choice boards, schedules, 
                 notes, goals, sleep logs, feelings journals, and more!
@@ -1081,7 +1082,7 @@ const PrintablesLibrary = () => {
       {showInfo && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
-            <h2 className="font-display text-xl text-[#F5A623] mb-4">About Printables</h2>
+            <h2 className="font-display text-xl text-[#E67E22] mb-4">About Printables</h2>
             <div className="space-y-3 font-crayon text-gray-600">
               <p>📄 Browse pre-made visual supports and templates</p>
               <p>📁 "My Creations" shows ALL your saved content:</p>

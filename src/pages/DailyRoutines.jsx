@@ -1,10 +1,11 @@
+// FIXED: Back button is context-aware - goes to /services or /tools based on entry point
 // DailyRoutines.jsx - Track daily routine completion
 // UPDATED: Added Visual Schedule integration
 // Helps establish consistent daily habits with visual checklists
 // Schedule entire routines or individual activities
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   ArrowLeft, 
   Plus, 
@@ -344,6 +345,7 @@ const AddRoutineToScheduleModal = ({ isOpen, onClose, period, items, onAdd }) =>
 
 const DailyRoutines = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
   const [routines, setRoutines] = useState({
     morning: [],
@@ -360,6 +362,14 @@ const DailyRoutines = () => {
   // Schedule modal state
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [periodToSchedule, setPeriodToSchedule] = useState(null);
+
+  // Determine parent hub based on current path
+  const getParentHub = () => {
+    if (location.pathname.startsWith('/services')) {
+      return '/services';
+    }
+    return '/tools';
+  };
 
   // Get today's date string
   const getTodayKey = () => new Date().toISOString().split('T')[0];
@@ -612,7 +622,7 @@ const DailyRoutines = () => {
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#8E6BBF]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
-            onClick={() => navigate('/tools')}
+            onClick={() => navigate(getParentHub())}
             className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#8E6BBF] 
                        rounded-xl font-display font-bold text-[#8E6BBF] hover:bg-[#8E6BBF] 
                        hover:text-white transition-all shadow-md"

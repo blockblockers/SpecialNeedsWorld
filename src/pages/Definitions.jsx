@@ -1,3 +1,4 @@
+// FIXED: Back button is context-aware - goes to category list if in category, /resources if not
 // Definitions.jsx - Common terms and definitions for ATLASassist
 // Educational resource explaining terminology used in special needs community
 import { useState } from 'react';
@@ -370,13 +371,22 @@ const Definitions = () => {
       )
     : [];
   
+  // Handle back navigation - context aware
+  const handleBack = () => {
+    if (selectedCategory) {
+      setSelectedCategory(null);
+    } else {
+      navigate('/resources');
+    }
+  };
+  
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#20B2AA]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
-            onClick={() => navigate('/resources')}
+            onClick={handleBack}
             className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#20B2AA] 
                        rounded-xl font-display font-bold text-[#20B2AA] hover:bg-[#20B2AA] 
                        hover:text-white transition-all shadow-md"
