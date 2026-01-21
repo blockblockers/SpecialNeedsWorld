@@ -1,6 +1,6 @@
 // SocialStories.jsx - Social Stories for ATLASassist
-// UPDATED: Added Create Story feature with AI-generated text and illustrations
-// Stories are saved to shared library for all users
+// UPDATED: Added AI-powered custom story creation with Replicate images
+// UPDATED: Added Visual Schedule integration
 
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -25,11 +25,11 @@ import {
   BellOff,
   Calendar,
   Plus,
-  Wand2,
   Loader2,
-  Image,
+  Wand2,
+  Image as ImageIcon,
   AlertCircle,
-  Library,
+  Trash2,
 } from 'lucide-react';
 import { 
   addActivityToSchedule, 
@@ -40,15 +40,8 @@ import {
   formatDateDisplay,
   formatTimeDisplay 
 } from '../services/scheduleHelper';
-import {
-  generateStory,
-  searchStories,
-  getPopularStories,
-  SUGGESTED_TOPICS,
-  GENERATION_STATUS,
-} from '../services/socialStories';
 import { useToast } from '../components/ThemedToast';
-import { useAuth } from '../App';
+import { supabase, isSupabaseConfigured } from '../services/supabase';
 
 // Social story categories
 const STORY_CATEGORIES = [
@@ -60,7 +53,7 @@ const STORY_CATEGORIES = [
   { id: 'health', name: 'Health & Body', emoji: '🏥', color: '#20B2AA' },
 ];
 
-// Sample social stories
+// Sample social stories (pre-built)
 const SOCIAL_STORIES = [
   {
     id: 'brushing-teeth',
@@ -82,7 +75,7 @@ const SOCIAL_STORIES = [
     title: 'Waiting My Turn',
     category: 'social',
     emoji: '🙋',
-    description: 'Understanding how to wait patiently',
+    description: 'Learning to wait patiently',
     pages: [
       { text: 'Sometimes I need to wait my turn.', image: '⏳' },
       { text: 'Other people want a turn too.', image: '👥' },
@@ -96,7 +89,7 @@ const SOCIAL_STORIES = [
     title: 'When I Feel Angry',
     category: 'emotions',
     emoji: '😤',
-    description: 'Learning to handle angry feelings',
+    description: 'Managing angry feelings',
     pages: [
       { text: 'Sometimes I feel angry. That\'s okay.', image: '😤' },
       { text: 'My body might feel hot or tight.', image: '🔥' },
@@ -111,7 +104,7 @@ const SOCIAL_STORIES = [
     title: 'Fire Drill at School',
     category: 'safety',
     emoji: '🚨',
-    description: 'What to do during a fire drill',
+    description: 'What happens during a fire drill',
     pages: [
       { text: 'Sometimes we have fire drills at school.', image: '🏫' },
       { text: 'The alarm is loud, but I am safe.', image: '🔔' },
@@ -126,7 +119,7 @@ const SOCIAL_STORIES = [
     title: 'Going to a New Classroom',
     category: 'school',
     emoji: '🚪',
-    description: 'Preparing for classroom changes',
+    description: 'Starting in a new classroom',
     pages: [
       { text: 'Sometimes I go to a new classroom.', image: '🚪' },
       { text: 'It might look different, and that\'s okay.', image: '👀' },
@@ -137,10 +130,10 @@ const SOCIAL_STORIES = [
   },
   {
     id: 'doctor-visit',
-    title: 'Going to the Doctor',
+    title: 'Visiting the Doctor',
     category: 'health',
     emoji: '👨‍⚕️',
-    description: 'What happens at doctor visits',
+    description: 'What to expect at a checkup',
     pages: [
       { text: 'Sometimes I visit the doctor.', image: '🏥' },
       { text: 'The doctor helps keep me healthy.', image: '👨‍⚕️' },
@@ -155,28 +148,28 @@ const SOCIAL_STORIES = [
     title: 'Getting Dressed',
     category: 'daily',
     emoji: '👕',
-    description: 'Steps for getting dressed each day',
+    description: 'Putting on my clothes',
     pages: [
-      { text: 'Each day I get dressed.', image: '👕' },
-      { text: 'First, I put on my underwear.', image: '1️⃣' },
-      { text: 'Then I put on my shirt.', image: '2️⃣' },
-      { text: 'Next, I put on my pants or shorts.', image: '3️⃣' },
+      { text: 'Every day I put on my clothes.', image: '👕' },
+      { text: 'First I put on my underwear.', image: '👖' },
+      { text: 'Then I put on my shirt.', image: '👔' },
+      { text: 'I put on my pants or shorts.', image: '👖' },
       { text: 'Last, I put on my socks and shoes.', image: '👟' },
-      { text: 'Now I\'m ready for my day!', image: '🌟' },
+      { text: 'Now I am ready for my day!', image: '🌟' },
     ],
   },
   {
-    id: 'saying-hello',
-    title: 'Saying Hello',
+    id: 'making-friends',
+    title: 'Making New Friends',
     category: 'social',
     emoji: '👋',
-    description: 'How to greet people',
+    description: 'How to meet new people',
     pages: [
-      { text: 'When I see someone I know, I can say hello.', image: '👋' },
-      { text: 'I can wave my hand.', image: '✋' },
-      { text: 'I can say "Hi" or "Hello."', image: '💬' },
-      { text: 'I can smile at them.', image: '😊' },
-      { text: 'Saying hello makes people feel good!', image: '❤️' },
+      { text: 'I can make new friends!', image: '😊' },
+      { text: 'I can say "Hi" and smile.', image: '👋' },
+      { text: 'I can ask them to play.', image: '🎮' },
+      { text: 'Friends share and take turns.', image: '🤝' },
+      { text: 'Making friends makes me happy!', image: '💕' },
     ],
   },
   {
@@ -186,12 +179,12 @@ const SOCIAL_STORIES = [
     emoji: '😟',
     description: 'Coping with worry and anxiety',
     pages: [
-      { text: 'Sometimes I feel worried. That\'s normal.', image: '😟' },
-      { text: 'My tummy might feel funny.', image: '🦋' },
-      { text: 'I can take slow, deep breaths.', image: '🧘' },
-      { text: 'I can talk to someone I trust.', image: '🗣️' },
-      { text: 'I can think of happy things.', image: '🌈' },
-      { text: 'The worry will get smaller.', image: '💪' },
+      { text: 'Sometimes I feel worried.', image: '😟' },
+      { text: 'My tummy might feel funny.', image: '🤢' },
+      { text: 'I can take slow, deep breaths.', image: '🌬️' },
+      { text: 'I can tell a grown-up how I feel.', image: '💬' },
+      { text: 'Worries usually go away.', image: '☀️' },
+      { text: 'I am brave!', image: '🦁' },
     ],
   },
   {
@@ -199,442 +192,467 @@ const SOCIAL_STORIES = [
     title: 'Washing My Hands',
     category: 'health',
     emoji: '🧼',
-    description: 'Proper handwashing steps',
+    description: 'Keeping hands clean',
     pages: [
       { text: 'I wash my hands to stay healthy.', image: '🧼' },
-      { text: 'I turn on the water.', image: '🚰' },
-      { text: 'I add soap and rub my hands together.', image: '🫧' },
-      { text: 'I scrub for 20 seconds - that\'s singing "Happy Birthday" twice!', image: '🎵' },
-      { text: 'I rinse off all the soap.', image: '💧' },
-      { text: 'I dry my hands with a towel.', image: '🧻' },
-      { text: 'Clean hands keep germs away!', image: '✨' },
+      { text: 'I use soap and warm water.', image: '💧' },
+      { text: 'I scrub for 20 seconds - like singing a song!', image: '🎵' },
+      { text: 'I wash the front, back, and between fingers.', image: '🖐️' },
+      { text: 'Then I dry my hands with a towel.', image: '🧻' },
+      { text: 'Clean hands help me stay well!', image: '✨' },
     ],
   },
 ];
 
-// =====================================================
-// ADD TO SCHEDULE MODAL
-// =====================================================
+// Local storage keys
+const CUSTOM_STORIES_KEY = 'snw_custom_stories';
+const FAVORITES_KEY = 'snw_social_stories_favorites';
+
+// Load custom stories from localStorage
+const loadCustomStories = () => {
+  try {
+    const saved = localStorage.getItem(CUSTOM_STORIES_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+// Save custom stories to localStorage
+const saveCustomStories = (stories) => {
+  localStorage.setItem(CUSTOM_STORIES_KEY, JSON.stringify(stories));
+};
+
+// ============================================
+// SCHEDULE MODAL COMPONENT
+// ============================================
 const AddToScheduleModal = ({ isOpen, onClose, story, onAdd }) => {
-  const [selectedDate, setSelectedDate] = useState(getToday());
-  const [selectedTime, setSelectedTime] = useState('09:00');
-  const [enableReminder, setEnableReminder] = useState(true);
+  const [selectedDate, setSelectedDate] = useState('today');
+  const [customDate, setCustomDate] = useState('');
+  const [time, setTime] = useState('09:00');
+  const [reminder, setReminder] = useState(true);
 
   if (!isOpen || !story) return null;
 
-  const handleAdd = () => {
-    onAdd({
-      story,
-      date: selectedDate,
-      time: selectedTime,
-      reminder: enableReminder,
-    });
+  const handleSubmit = () => {
+    let date;
+    if (selectedDate === 'today') {
+      date = getToday();
+    } else if (selectedDate === 'tomorrow') {
+      date = getTomorrow();
+    } else {
+      date = customDate;
+    }
+
+    if (!date) {
+      alert('Please select a date');
+      return;
+    }
+
+    onAdd({ story, date, time, reminder });
   };
 
+  const category = STORY_CATEGORIES.find(c => c.id === story.category);
+
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden">
-        {/* Header */}
-        <div className="bg-[#8E6BBF] text-white p-4 flex items-center gap-3">
-          <CalendarPlus size={24} />
-          <h3 className="font-display text-xl flex-1">Schedule Story Time</h3>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-[#FFFEF5] w-full max-w-md rounded-3xl overflow-hidden border-4 border-[#8E6BBF]">
+        <div className="bg-[#8E6BBF] text-white p-4 flex items-center justify-between">
+          <h3 className="font-display text-xl flex items-center gap-2">
+            <CalendarPlus size={24} />
+            Schedule Story Time
+          </h3>
           <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
             <X size={24} />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-4 space-y-4">
-          {/* Use Case Description */}
-          <div className="p-3 bg-purple-50 rounded-xl border-2 border-purple-200">
-            <p className="font-crayon text-sm text-purple-700">
-              📖 <strong>Why schedule story time?</strong> Regular reading of social stories 
-              helps reinforce learning and build consistent routines. Schedule a reminder 
-              to read this story at the same time each day for best results!
-            </p>
-          </div>
-
-          {/* Story Preview */}
-          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-            <div 
-              className="w-12 h-12 rounded-xl flex items-center justify-center"
-              style={{ backgroundColor: '#8E6BBF' }}
-            >
-              <span className="text-2xl">{story.emoji}</span>
-            </div>
+        <div className="p-6">
+          <div className="mb-4 p-3 rounded-xl flex items-center gap-3"
+               style={{ backgroundColor: `${category?.color}20` }}>
+            <span className="text-3xl">{story.emoji}</span>
             <div>
-              <p className="font-display text-gray-800">Read: {story.title}</p>
+              <p className="font-display text-gray-800">{story.title}</p>
               <p className="font-crayon text-sm text-gray-500">{story.pages?.length || 0} pages</p>
             </div>
           </div>
 
-          {/* Date Selection */}
-          <div>
-            <label className="block font-crayon text-gray-600 mb-2">
-              <Calendar size={16} className="inline mr-1" />
-              When?
-            </label>
-            <div className="flex gap-2 mb-2">
-              <button
-                type="button"
-                onClick={() => setSelectedDate(getToday())}
-                className={`flex-1 py-2 rounded-xl font-crayon text-sm border-2 transition-all
-                          ${selectedDate === getToday() 
-                            ? 'border-[#8E6BBF] bg-purple-50 text-[#8E6BBF]' 
-                            : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
-              >
-                Today
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedDate(getTomorrow())}
-                className={`flex-1 py-2 rounded-xl font-crayon text-sm border-2 transition-all
-                          ${selectedDate === getTomorrow() 
-                            ? 'border-[#8E6BBF] bg-purple-50 text-[#8E6BBF]' 
-                            : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
-              >
-                Tomorrow
-              </button>
-            </div>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full p-2 border-2 border-gray-200 rounded-xl font-crayon"
-            />
-          </div>
-
-          {/* Time Selection */}
-          <div>
-            <label className="block font-crayon text-gray-600 mb-2">
-              <Clock size={16} className="inline mr-1" />
-              What time?
-            </label>
-            <input
-              type="time"
-              value={selectedTime}
-              onChange={(e) => setSelectedTime(e.target.value)}
-              className="w-full p-3 border-2 border-gray-200 rounded-xl font-crayon text-lg"
-            />
-            <p className="font-crayon text-xs text-gray-400 mt-1">
-              Tip: Pick a consistent time like after breakfast or before bed
-            </p>
-          </div>
-
-          {/* Reminder Toggle */}
-          <button
-            type="button"
-            onClick={() => setEnableReminder(!enableReminder)}
-            className={`w-full p-3 rounded-xl border-2 flex items-center gap-3 transition-all
-              ${enableReminder 
-                ? 'bg-purple-50 border-purple-400' 
-                : 'bg-gray-50 border-gray-200'}`}
-          >
-            <div className={`p-2 rounded-full ${enableReminder ? 'bg-purple-500' : 'bg-gray-300'}`}>
-              {enableReminder ? (
-                <Bell size={16} className="text-white" />
-              ) : (
-                <BellOff size={16} className="text-white" />
+          <div className="space-y-4">
+            <div>
+              <label className="block font-crayon text-gray-600 mb-2">When?</label>
+              <div className="flex gap-2 flex-wrap">
+                {['today', 'tomorrow', 'custom'].map(opt => (
+                  <button
+                    key={opt}
+                    onClick={() => setSelectedDate(opt)}
+                    className={`px-4 py-2 rounded-xl font-crayon capitalize transition-all
+                      ${selectedDate === opt 
+                        ? 'bg-[#8E6BBF] text-white' 
+                        : 'bg-white border-2 border-gray-200'}`}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+              {selectedDate === 'custom' && (
+                <input
+                  type="date"
+                  value={customDate}
+                  onChange={(e) => setCustomDate(e.target.value)}
+                  min={getToday()}
+                  className="mt-2 w-full p-3 border-3 border-gray-200 rounded-xl font-crayon"
+                />
               )}
             </div>
-            <span className="font-crayon text-gray-700 flex-1 text-left">
-              {enableReminder ? 'Reminder on' : 'No reminder'}
-            </span>
-          </button>
-        </div>
 
-        {/* Actions */}
-        <div className="flex gap-3 p-4 pt-0">
-          <button
-            onClick={onClose}
-            className="flex-1 py-3 border-3 border-gray-300 rounded-xl font-crayon text-gray-600
-                       hover:bg-gray-100 transition-all"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleAdd}
-            className="flex-1 py-3 bg-[#5CB85C] border-3 border-green-600 rounded-xl font-crayon text-white
-                       hover:bg-green-600 transition-all flex items-center justify-center gap-2"
-          >
-            <Check size={20} />
-            Add to Schedule
-          </button>
+            <div>
+              <label className="block font-crayon text-gray-600 mb-2">What time?</label>
+              <input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="w-full p-3 border-3 border-gray-200 rounded-xl font-crayon"
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+              <div className="flex items-center gap-2">
+                {reminder ? <Bell size={20} className="text-[#8E6BBF]" /> : <BellOff size={20} className="text-gray-400" />}
+                <span className="font-crayon">Reminder notification</span>
+              </div>
+              <button
+                onClick={() => setReminder(!reminder)}
+                className={`w-12 h-6 rounded-full transition-colors relative
+                  ${reminder ? 'bg-[#8E6BBF]' : 'bg-gray-300'}`}
+              >
+                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform
+                  ${reminder ? 'right-1' : 'left-1'}`} />
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-6 flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 py-3 rounded-xl font-display border-3 border-gray-200 text-gray-600
+                         hover:bg-gray-50 transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              className="flex-1 py-3 rounded-xl font-display bg-[#8E6BBF] text-white
+                         hover:bg-purple-700 transition-all flex items-center justify-center gap-2"
+            >
+              <Check size={20} />
+              Add to Schedule
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-// Create Story Modal Component
+// ============================================
+// CREATE CUSTOM STORY MODAL
+// ============================================
 const CreateStoryModal = ({ isOpen, onClose, onStoryCreated }) => {
-  const { user } = useAuth();
   const [topic, setTopic] = useState('');
-  const [status, setStatus] = useState(GENERATION_STATUS.IDLE);
-  const [statusMessage, setStatusMessage] = useState('');
-  const [error, setError] = useState(null);
+  const [generating, setGenerating] = useState(false);
+  const [progress, setProgress] = useState('');
+  const [error, setError] = useState('');
+  const toast = useToast();
 
-  if (!isOpen) return null;
+  const suggestedTopics = [
+    'washing dishes',
+    'going to the dentist',
+    'riding the school bus',
+    'eating at a restaurant',
+    'getting a haircut',
+    'going to the grocery store',
+    'taking medicine',
+    'sharing toys',
+  ];
 
-  const handleStatusChange = (newStatus, message) => {
-    setStatus(newStatus);
-    setStatusMessage(message);
-  };
+  const handleGenerate = async () => {
+    if (!topic.trim()) {
+      setError('Please enter a topic for your story');
+      return;
+    }
 
-  const handleCreate = async () => {
-    if (!topic.trim()) return;
-    
-    setError(null);
-    
+    if (!isSupabaseConfigured()) {
+      setError('Cloud features not configured. Please check your settings.');
+      return;
+    }
+
+    setGenerating(true);
+    setProgress('Creating your story...');
+    setError('');
+
     try {
-      const result = await generateStory(topic, {
-        onStatusChange: handleStatusChange,
-        generateImages: true,
-        userId: user?.id,
-      });
+      setProgress('Writing story text...');
       
-      if (result.story) {
-        onStoryCreated(result.story, result.fromCache);
-        setTopic('');
-        setStatus(GENERATION_STATUS.IDLE);
-        onClose();
+      const { data, error: fnError } = await supabase.functions.invoke('generate-social-story', {
+        body: {
+          topic: topic.trim(),
+          pageCount: 6,
+          generateImages: true,
+        },
+      });
+
+      if (fnError) throw fnError;
+
+      if (data.error === 'INSUFFICIENT_CREDITS') {
+        // Story was created but images failed
+        toast.warning('Story Created', data.message || 'Images could not be generated.');
       }
+
+      // Create the story object
+      const newStory = {
+        id: `custom_${Date.now()}`,
+        title: data.title || `Story: ${topic}`,
+        topic: topic,
+        category: data.category || 'general',
+        emoji: STORY_CATEGORIES.find(c => c.id === data.category)?.emoji || '📖',
+        description: `Custom story about ${topic}`,
+        isCustom: true,
+        createdAt: new Date().toISOString(),
+        pages: data.pages.map((page, idx) => ({
+          text: page.text,
+          image: page.imageUrl || page.emoji || '📖',
+          imageUrl: page.imageUrl || null,
+          imageGenerated: page.imageGenerated || false,
+        })),
+        imagesGenerated: data.imagesGenerated || 0,
+      };
+
+      // Save to localStorage
+      const customStories = loadCustomStories();
+      customStories.unshift(newStory);
+      saveCustomStories(customStories);
+
+      setProgress('');
+      setGenerating(false);
+      setTopic('');
+      
+      toast.success('Story Created!', `Your story about "${topic}" is ready to read.`);
+      onStoryCreated(newStory);
+      onClose();
+
     } catch (err) {
-      setError(err.message || 'Failed to create story');
-      setStatus(GENERATION_STATUS.ERROR);
+      console.error('Error generating story:', err);
+      setError(err.message || 'Failed to generate story. Please try again.');
+      setGenerating(false);
+      setProgress('');
     }
   };
 
-  const isGenerating = [
-    GENERATION_STATUS.GENERATING_TEXT,
-    GENERATION_STATUS.GENERATING_IMAGES,
-    GENERATION_STATUS.SAVING,
-  ].includes(status);
+  if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-[#8E6BBF] to-[#4A9FD4] text-white p-4 flex items-center gap-3">
-          <Wand2 size={24} />
-          <h3 className="font-display text-xl flex-1">Create New Story</h3>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-[#FFFEF5] w-full max-w-md rounded-3xl overflow-hidden border-4 border-[#5CB85C]">
+        <div className="bg-[#5CB85C] text-white p-4 flex items-center justify-between">
+          <h3 className="font-display text-xl flex items-center gap-2">
+            <Wand2 size={24} />
+            Create Custom Story
+          </h3>
           <button 
             onClick={onClose} 
-            disabled={isGenerating}
+            disabled={generating}
             className="p-1 hover:bg-white/20 rounded-full disabled:opacity-50"
           >
             <X size={24} />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-4 space-y-4">
-          {/* Info */}
-          <div className="p-3 bg-blue-50 rounded-xl border-2 border-blue-200">
-            <p className="font-crayon text-sm text-blue-700">
-              ✨ <strong>AI-Powered!</strong> Describe a situation and we'll create a personalized 
-              social story with children's book illustrations. Stories are added to the shared 
-              library for everyone to use!
-            </p>
-          </div>
-
-          {/* Topic Input */}
-          <div>
-            <label className="block font-crayon text-gray-600 mb-2">
-              What situation should the story be about?
-            </label>
-            <input
-              type="text"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder="e.g., Going to the dentist"
-              disabled={isGenerating}
-              className="w-full p-3 border-2 border-gray-200 rounded-xl font-crayon
-                       focus:border-[#8E6BBF] focus:outline-none disabled:bg-gray-100"
-            />
-          </div>
-
-          {/* Suggested Topics */}
-          <div>
-            <p className="font-crayon text-sm text-gray-500 mb-2">Suggestions:</p>
-            <div className="flex flex-wrap gap-2">
-              {SUGGESTED_TOPICS.slice(0, 6).map((suggestion) => (
-                <button
-                  key={suggestion.topic}
-                  onClick={() => setTopic(suggestion.topic)}
-                  disabled={isGenerating}
-                  className="px-3 py-1 bg-gray-100 rounded-full font-crayon text-xs text-gray-600
-                           hover:bg-purple-100 hover:text-[#8E6BBF] transition-colors disabled:opacity-50"
-                >
-                  {suggestion.emoji} {suggestion.topic}
-                </button>
-              ))}
+        <div className="p-6">
+          {generating ? (
+            <div className="text-center py-8">
+              <Loader2 size={48} className="animate-spin text-[#5CB85C] mx-auto mb-4" />
+              <p className="font-display text-lg text-gray-800 mb-2">Creating Your Story</p>
+              <p className="font-crayon text-gray-500">{progress}</p>
+              <p className="font-crayon text-xs text-gray-400 mt-4">
+                This may take 30-60 seconds...
+              </p>
             </div>
-          </div>
-
-          {/* Status Display */}
-          {isGenerating && (
-            <div className="p-4 bg-purple-50 rounded-xl border-2 border-purple-200">
-              <div className="flex items-center gap-3">
-                <Loader2 size={24} className="text-[#8E6BBF] animate-spin" />
-                <div>
-                  <p className="font-display text-[#8E6BBF]">
-                    {status === GENERATION_STATUS.GENERATING_TEXT && 'Writing story...'}
-                    {status === GENERATION_STATUS.GENERATING_IMAGES && 'Creating illustrations...'}
-                    {status === GENERATION_STATUS.SAVING && 'Saving to library...'}
-                  </p>
-                  <p className="font-crayon text-sm text-purple-600">{statusMessage}</p>
-                </div>
+          ) : (
+            <>
+              <div className="mb-4">
+                <label className="block font-crayon text-gray-600 mb-2">
+                  What should the story be about?
+                </label>
+                <input
+                  type="text"
+                  value={topic}
+                  onChange={(e) => { setTopic(e.target.value); setError(''); }}
+                  placeholder="e.g., washing dishes, going to the dentist..."
+                  className="w-full p-4 border-3 border-gray-200 rounded-xl font-crayon text-lg
+                           focus:border-[#5CB85C] focus:outline-none transition-colors"
+                />
               </div>
-              {status === GENERATION_STATUS.GENERATING_IMAGES && (
-                <div className="mt-3 flex items-center gap-2 text-purple-600">
-                  <Image size={16} />
-                  <span className="font-crayon text-xs">This may take 30-60 seconds</span>
+
+              {error && (
+                <div className="mb-4 p-3 bg-red-50 border-2 border-red-200 rounded-xl flex items-center gap-2">
+                  <AlertCircle size={18} className="text-red-500" />
+                  <p className="font-crayon text-sm text-red-600">{error}</p>
                 </div>
               )}
-            </div>
-          )}
 
-          {/* Error Display */}
-          {error && (
-            <div className="p-3 bg-red-50 rounded-xl border-2 border-red-200 flex items-start gap-2">
-              <AlertCircle size={18} className="text-red-500 flex-shrink-0 mt-0.5" />
-              <p className="font-crayon text-sm text-red-700">{error}</p>
-            </div>
-          )}
-        </div>
+              <div className="mb-6">
+                <p className="font-crayon text-sm text-gray-500 mb-2">Try these ideas:</p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestedTopics.map(t => (
+                    <button
+                      key={t}
+                      onClick={() => setTopic(t)}
+                      className="px-3 py-1 bg-green-50 border-2 border-green-200 rounded-full 
+                               font-crayon text-sm text-green-700 hover:bg-green-100 transition-colors"
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-        {/* Actions */}
-        <div className="flex gap-3 p-4 pt-0">
-          <button
-            onClick={onClose}
-            disabled={isGenerating}
-            className="flex-1 py-3 border-3 border-gray-300 rounded-xl font-crayon text-gray-600
-                       hover:bg-gray-100 transition-all disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleCreate}
-            disabled={!topic.trim() || isGenerating}
-            className="flex-1 py-3 bg-gradient-to-r from-[#8E6BBF] to-[#4A9FD4] border-3 border-purple-400 
-                       rounded-xl font-crayon text-white hover:opacity-90 transition-all 
-                       flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 size={20} className="animate-spin" />
-                Creating...
-              </>
-            ) : (
-              <>
-                <Sparkles size={20} />
-                Create Story
-              </>
-            )}
-          </button>
+              <div className="p-3 bg-blue-50 rounded-xl border-2 border-blue-200 mb-6">
+                <p className="font-crayon text-xs text-blue-700 flex items-start gap-2">
+                  <ImageIcon size={14} className="flex-shrink-0 mt-0.5" />
+                  Stories include AI-generated illustrations when available!
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={onClose}
+                  className="flex-1 py-3 rounded-xl font-display border-3 border-gray-200 text-gray-600
+                           hover:bg-gray-50 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleGenerate}
+                  disabled={!topic.trim()}
+                  className="flex-1 py-3 rounded-xl font-display bg-[#5CB85C] text-white
+                           hover:bg-green-600 transition-all flex items-center justify-center gap-2
+                           disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Sparkles size={20} />
+                  Create Story
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
   );
 };
 
-// Story Reader Component
+// ============================================
+// STORY READER COMPONENT
+// ============================================
 const StoryReader = ({ story, onClose, onSchedule }) => {
   const [currentPage, setCurrentPage] = useState(0);
   const [isReading, setIsReading] = useState(false);
-  const [speechEnabled, setSpeechEnabled] = useState(true);
-  const speechRef = useRef(null);
+  const synthRef = useRef(null);
 
   const totalPages = story.pages.length;
-
-  // Text-to-speech
-  const speakText = (text) => {
-    if (!speechEnabled || !('speechSynthesis' in window)) return;
-    
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.9;
-    utterance.pitch = 1.1;
-    speechRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
-  };
-
-  // Auto-read current page
-  useEffect(() => {
-    if (isReading) {
-      speakText(story.pages[currentPage].text);
-    }
-  }, [currentPage, isReading]);
+  const currentPageData = story.pages[currentPage];
 
   // Cleanup speech on unmount
   useEffect(() => {
     return () => {
-      window.speechSynthesis.cancel();
+      if (synthRef.current) {
+        window.speechSynthesis.cancel();
+      }
     };
   }, []);
 
-  const nextPage = () => {
-    if (currentPage < totalPages - 1) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
-
-  const prevPage = () => {
-    if (currentPage > 0) {
-      setCurrentPage(currentPage - 1);
+  const speak = (text) => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.85;
+      utterance.pitch = 1.1;
+      utterance.onend = () => setIsReading(false);
+      synthRef.current = utterance;
+      setIsReading(true);
+      window.speechSynthesis.speak(utterance);
     }
   };
 
   const toggleReading = () => {
     if (isReading) {
       window.speechSynthesis.cancel();
+      setIsReading(false);
+    } else {
+      speak(currentPageData.text);
     }
-    setIsReading(!isReading);
   };
 
+  const nextPage = () => {
+    if (currentPage < totalPages - 1) {
+      window.speechSynthesis.cancel();
+      setIsReading(false);
+      setCurrentPage(prev => prev + 1);
+    }
+  };
+
+  const prevPage = () => {
+    if (currentPage > 0) {
+      window.speechSynthesis.cancel();
+      setIsReading(false);
+      setCurrentPage(prev => prev - 1);
+    }
+  };
+
+  const category = STORY_CATEGORIES.find(c => c.id === story.category);
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-50 to-blue-50">
+    <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b-4 border-[#8E6BBF]">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4"
+              style={{ borderColor: category?.color || '#8E6BBF' }}>
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <button
             onClick={onClose}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#8E6BBF] 
-                       rounded-xl font-display font-bold text-[#8E6BBF] hover:bg-[#8E6BBF] 
-                       hover:text-white transition-all shadow-md"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl font-display text-gray-600
+                       hover:bg-gray-100 transition-all"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={20} />
             Back
           </button>
-          <div className="flex-1 text-center">
-            <h1 className="text-lg font-display text-[#8E6BBF] truncate">
-              {story.emoji} {story.title}
-            </h1>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">{story.emoji}</span>
+            <span className="font-display text-gray-800">{story.title}</span>
+            {story.isCustom && (
+              <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-crayon rounded-full">
+                Custom
+              </span>
+            )}
           </div>
-          <button
-            onClick={() => setSpeechEnabled(!speechEnabled)}
-            className={`p-2 rounded-full ${speechEnabled ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-400'}`}
-          >
-            {speechEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
-          </button>
+          <div className="w-20" />
         </div>
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6">
         {/* Progress */}
-        <div className="mb-4">
-          <div className="flex justify-between items-center mb-2">
-            <span className="font-crayon text-gray-500">
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-crayon text-sm text-gray-500">
               Page {currentPage + 1} of {totalPages}
             </span>
             <div className="flex gap-1">
               {story.pages.map((_, idx) => (
                 <div
                   key={idx}
-                  className={`w-3 h-3 rounded-full transition-all ${
-                    idx === currentPage ? 'bg-[#8E6BBF] scale-125' : 
-                    idx < currentPage ? 'bg-green-400' : 'bg-gray-300'
+                  className={`w-3 h-3 rounded-full transition-colors ${
+                    idx === currentPage ? 'scale-125' : ''
+                  } ${
+                    idx < currentPage ? 'bg-green-400' : 
+                    idx === currentPage ? 'bg-purple-500' : 'bg-gray-300'
                   }`}
                 />
               ))}
@@ -643,18 +661,19 @@ const StoryReader = ({ story, onClose, onSchedule }) => {
         </div>
 
         {/* Story Card */}
-        <div className="bg-white rounded-3xl border-4 border-[#8E6BBF] shadow-crayon overflow-hidden">
+        <div className="bg-white rounded-3xl border-4 shadow-crayon overflow-hidden"
+             style={{ borderColor: category?.color || '#8E6BBF' }}>
           {/* Image/Emoji */}
           <div className="bg-gradient-to-b from-purple-100 to-white p-8 text-center">
-            {story.pages[currentPage].imageUrl ? (
+            {currentPageData.imageUrl ? (
               <img 
-                src={story.pages[currentPage].imageUrl}
-                alt={`Page ${currentPage + 1}`}
-                className="w-full max-w-sm mx-auto rounded-2xl shadow-lg mb-4"
+                src={currentPageData.imageUrl} 
+                alt={currentPageData.text}
+                className="max-w-[280px] max-h-[280px] mx-auto rounded-2xl shadow-lg object-contain"
               />
             ) : (
               <span className="text-9xl block mb-4 animate-bounce-slow">
-                {story.pages[currentPage].image}
+                {currentPageData.image}
               </span>
             )}
           </div>
@@ -662,7 +681,7 @@ const StoryReader = ({ story, onClose, onSchedule }) => {
           {/* Text */}
           <div className="p-6">
             <p className="text-2xl font-crayon text-gray-800 text-center leading-relaxed">
-              {story.pages[currentPage].text}
+              {currentPageData.text}
             </p>
           </div>
 
@@ -674,7 +693,7 @@ const StoryReader = ({ story, onClose, onSchedule }) => {
               className={`flex items-center gap-2 px-4 py-2 rounded-xl font-crayon
                 ${currentPage === 0 
                   ? 'text-gray-300 cursor-not-allowed' 
-                  : 'text-[#8E6BBF] hover:bg-purple-100'}`}
+                  : 'text-purple-600 hover:bg-purple-100'}`}
             >
               <ChevronLeft size={24} />
               Back
@@ -682,7 +701,7 @@ const StoryReader = ({ story, onClose, onSchedule }) => {
 
             <button
               onClick={toggleReading}
-              className={`p-3 rounded-full ${isReading ? 'bg-green-500' : 'bg-[#8E6BBF]'} text-white`}
+              className={`p-3 rounded-full ${isReading ? 'bg-green-500' : 'bg-purple-600'} text-white`}
             >
               {isReading ? <Pause size={24} /> : <Play size={24} />}
             </button>
@@ -693,7 +712,7 @@ const StoryReader = ({ story, onClose, onSchedule }) => {
               className={`flex items-center gap-2 px-4 py-2 rounded-xl font-crayon
                 ${currentPage === totalPages - 1 
                   ? 'text-gray-300 cursor-not-allowed' 
-                  : 'text-[#8E6BBF] hover:bg-purple-100'}`}
+                  : 'text-purple-600 hover:bg-purple-100'}`}
             >
               Next
               <ChevronRight size={24} />
@@ -718,7 +737,7 @@ const StoryReader = ({ story, onClose, onSchedule }) => {
               </button>
               <button
                 onClick={() => onSchedule(story)}
-                className="px-4 py-2 bg-[#8E6BBF] border-2 border-purple-600 rounded-xl font-crayon text-white
+                className="px-4 py-2 bg-purple-600 border-2 border-purple-700 rounded-xl font-crayon text-white
                            hover:bg-purple-700 transition-all flex items-center gap-2"
               >
                 <CalendarPlus size={16} />
@@ -732,7 +751,7 @@ const StoryReader = ({ story, onClose, onSchedule }) => {
         <div className="mt-4 text-center">
           <button
             onClick={() => onSchedule(story)}
-            className="px-6 py-3 bg-white border-3 border-[#8E6BBF] rounded-xl font-crayon text-[#8E6BBF]
+            className="px-6 py-3 bg-white border-3 border-purple-400 rounded-xl font-crayon text-purple-600
                        hover:bg-purple-50 transition-all inline-flex items-center gap-2"
           >
             <CalendarPlus size={18} />
@@ -744,7 +763,9 @@ const StoryReader = ({ story, onClose, onSchedule }) => {
   );
 };
 
-// Main Component
+// ============================================
+// MAIN COMPONENT
+// ============================================
 const SocialStories = () => {
   const navigate = useNavigate();
   const toast = useToast();
@@ -752,64 +773,26 @@ const SocialStories = () => {
   const [selectedStory, setSelectedStory] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [favorites, setFavorites] = useState([]);
+  const [customStories, setCustomStories] = useState([]);
   
-  // Schedule modal state
+  // Modal states
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [storyToSchedule, setStoryToSchedule] = useState(null);
-  
-  // Create story modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [generatedStories, setGeneratedStories] = useState([]);
-  const [activeTab, setActiveTab] = useState('library'); // 'library' or 'created'
 
-  // Load favorites and generated stories
+  // Load data on mount
   useEffect(() => {
-    const saved = localStorage.getItem('snw_social_stories_favorites');
-    if (saved) {
+    // Load favorites
+    const savedFavorites = localStorage.getItem(FAVORITES_KEY);
+    if (savedFavorites) {
       try {
-        setFavorites(JSON.parse(saved));
+        setFavorites(JSON.parse(savedFavorites));
       } catch (e) {}
     }
-    
-    // Load locally generated stories
-    const generated = localStorage.getItem('snw_generated_stories');
-    if (generated) {
-      try {
-        setGeneratedStories(JSON.parse(generated));
-      } catch (e) {}
-    }
-  }, []);
 
-  // Handle new story created
-  const handleStoryCreated = (story, fromCache) => {
-    if (!fromCache) {
-      // Add to local generated stories list
-      const updated = [story, ...generatedStories];
-      setGeneratedStories(updated);
-      localStorage.setItem('snw_generated_stories', JSON.stringify(updated));
-    }
-    
-    toast.success(
-      fromCache ? 'Found Existing Story!' : 'Story Created!',
-      fromCache 
-        ? `"${story.topic}" was already in the library` 
-        : `"${story.topic}" is ready to read${story.has_images ? ' with illustrations!' : '!'}`
-    );
-    
-    // Open the story reader
-    setSelectedStory({
-      id: story.id,
-      title: story.topic,
-      emoji: '📖',
-      category: 'custom',
-      description: `AI-generated story about ${story.topic}`,
-      pages: story.pages.map(p => ({
-        text: p.text,
-        image: p.emoji || '📖',
-        imageUrl: p.imageUrl,
-      })),
-    });
-  };
+    // Load custom stories
+    setCustomStories(loadCustomStories());
+  }, []);
 
   // Toggle favorite
   const toggleFavorite = (storyId) => {
@@ -817,15 +800,29 @@ const SocialStories = () => {
       ? favorites.filter(id => id !== storyId)
       : [...favorites, storyId];
     setFavorites(newFavorites);
-    localStorage.setItem('snw_social_stories_favorites', JSON.stringify(newFavorites));
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify(newFavorites));
   };
 
+  // Delete custom story
+  const deleteCustomStory = (storyId) => {
+    if (confirm('Delete this custom story?')) {
+      const updated = customStories.filter(s => s.id !== storyId);
+      setCustomStories(updated);
+      saveCustomStories(updated);
+      toast.success('Deleted', 'Custom story removed.');
+    }
+  };
+
+  // Combine all stories
+  const allStories = [...customStories, ...SOCIAL_STORIES];
+
   // Filter stories
-  const filteredStories = SOCIAL_STORIES.filter(story => {
+  const filteredStories = allStories.filter(story => {
     const matchesCategory = !selectedCategory || story.category === selectedCategory;
     const matchesSearch = !searchQuery || 
       story.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      story.description.toLowerCase().includes(searchQuery.toLowerCase());
+      story.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      story.topic?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -835,7 +832,7 @@ const SocialStories = () => {
     setShowScheduleModal(true);
   };
 
-  // Handle add to schedule - FIXED: Added try/catch error handling
+  // Handle add to schedule
   const handleAddToSchedule = ({ story, date, time, reminder }) => {
     try {
       const result = addActivityToSchedule({
@@ -870,6 +867,12 @@ const SocialStories = () => {
       setShowScheduleModal(false);
       setStoryToSchedule(null);
     }
+  };
+
+  // Handle new custom story created
+  const handleStoryCreated = (newStory) => {
+    setCustomStories(prev => [newStory, ...prev]);
+    setSelectedStory(newStory); // Open the new story immediately
   };
 
   // If reading a story
@@ -914,43 +917,22 @@ const SocialStories = () => {
               📚 Social Stories
             </h1>
           </div>
-          {/* Create Story Button */}
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#8E6BBF] to-[#4A9FD4]
-                       rounded-xl font-display font-bold text-white hover:opacity-90 
-                       transition-all shadow-md"
-          >
-            <Plus size={16} />
-            <span className="hidden sm:inline">Create</span>
-          </button>
         </div>
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6">
-        {/* Tabs: Library / My Stories */}
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={() => setActiveTab('library')}
-            className={`flex-1 py-2 rounded-xl font-crayon text-sm border-2 transition-all flex items-center justify-center gap-2
-                      ${activeTab === 'library' 
-                        ? 'bg-[#8E6BBF] text-white border-[#8E6BBF]' 
-                        : 'border-gray-200 text-gray-600 hover:border-[#8E6BBF]'}`}
-          >
-            <Library size={16} />
-            Story Library
-          </button>
-          <button
-            onClick={() => setActiveTab('created')}
-            className={`flex-1 py-2 rounded-xl font-crayon text-sm border-2 transition-all flex items-center justify-center gap-2
-                      ${activeTab === 'created' 
-                        ? 'bg-[#8E6BBF] text-white border-[#8E6BBF]' 
-                        : 'border-gray-200 text-gray-600 hover:border-[#8E6BBF]'}`}
-          >
-            <Sparkles size={16} />
-            My Created ({generatedStories.length})
-          </button>
-        </div>
+        {/* Create Custom Story Button */}
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="w-full mb-4 p-4 bg-gradient-to-r from-green-400 to-emerald-500 rounded-2xl
+                     text-white font-display text-lg flex items-center justify-center gap-3
+                     hover:from-green-500 hover:to-emerald-600 transition-all shadow-lg
+                     border-4 border-green-300"
+        >
+          <Wand2 size={24} />
+          Create Custom Story with AI
+          <Sparkles size={20} />
+        </button>
 
         {/* Search */}
         <div className="relative mb-4">
@@ -965,190 +947,177 @@ const SocialStories = () => {
           />
         </div>
 
-        {/* Categories (only show for library tab) */}
-        {activeTab === 'library' && (
-          <div className="flex gap-2 overflow-x-auto pb-4 mb-4 scrollbar-hide">
+        {/* Categories */}
+        <div className="flex gap-2 overflow-x-auto pb-4 mb-4 scrollbar-hide">
+          <button
+            onClick={() => setSelectedCategory(null)}
+            className={`flex-shrink-0 px-4 py-2 rounded-xl font-crayon text-sm transition-all
+              ${!selectedCategory 
+                ? 'bg-[#8E6BBF] text-white' 
+                : 'bg-white border-2 border-gray-200 text-gray-600 hover:border-[#8E6BBF]'
+              }`}
+          >
+            All Stories
+          </button>
+          {STORY_CATEGORIES.map(cat => (
             <button
-              onClick={() => setSelectedCategory(null)}
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
               className={`flex-shrink-0 px-4 py-2 rounded-xl font-crayon text-sm transition-all
-                ${!selectedCategory 
-                  ? 'bg-[#8E6BBF] text-white' 
-                  : 'bg-white border-2 border-gray-200 text-gray-600 hover:border-[#8E6BBF]'
+                ${selectedCategory === cat.id 
+                  ? 'text-white' 
+                  : 'bg-white border-2 border-gray-200 text-gray-600 hover:border-gray-300'
                 }`}
+              style={selectedCategory === cat.id ? { backgroundColor: cat.color } : {}}
             >
-              All Stories
+              {cat.emoji} {cat.name}
             </button>
-            {STORY_CATEGORIES.map(cat => (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`flex-shrink-0 px-4 py-2 rounded-xl font-crayon text-sm transition-all
-                  ${selectedCategory === cat.id 
-                    ? 'text-white' 
-                    : 'bg-white border-2 border-gray-200 text-gray-600 hover:border-gray-300'
-                  }`}
-                style={selectedCategory === cat.id ? { backgroundColor: cat.color } : {}}
-              >
-                {cat.emoji} {cat.name}
-              </button>
-            ))}
-          </div>
-        )}
+          ))}
+        </div>
 
-        {/* Library Stories Grid */}
-        {activeTab === 'library' && (
-          <>
+        {/* Custom Stories Section */}
+        {customStories.length > 0 && !selectedCategory && !searchQuery && (
+          <div className="mb-6">
+            <h2 className="font-display text-gray-700 mb-3 flex items-center gap-2">
+              <Sparkles size={18} className="text-green-500" />
+              Your Custom Stories
+            </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {filteredStories.map(story => {
+              {customStories.slice(0, 4).map(story => {
                 const category = STORY_CATEGORIES.find(c => c.id === story.category);
                 const isFavorite = favorites.includes(story.id);
                 
                 return (
                   <div
                     key={story.id}
-                    className="bg-white rounded-2xl border-3 overflow-hidden shadow-sm hover:shadow-md transition-all"
-                    style={{ borderColor: category?.color || '#8E6BBF' }}
+                    className="bg-white rounded-2xl border-3 overflow-hidden shadow-sm hover:shadow-md transition-all relative"
+                    style={{ borderColor: category?.color || '#5CB85C' }}
                   >
+                    <span className="absolute top-2 right-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-crayon rounded-full">
+                      Custom
+                    </span>
                     <div 
                       className="p-4 text-center"
-                      style={{ backgroundColor: `${category?.color}20` || '#8E6BBF20' }}
+                      style={{ backgroundColor: `${category?.color}20` || '#5CB85C20' }}
                     >
-                      <span className="text-5xl">{story.emoji}</span>
+                      {story.pages[0]?.imageUrl ? (
+                        <img 
+                          src={story.pages[0].imageUrl} 
+                          alt={story.title}
+                          className="w-20 h-20 mx-auto rounded-xl object-cover"
+                        />
+                      ) : (
+                        <span className="text-5xl">{story.emoji}</span>
+                      )}
                     </div>
                     <div className="p-4">
                       <div className="flex items-start justify-between mb-2">
-                        <h3 className="font-display text-gray-800">{story.title}</h3>
+                        <h3 className="font-display text-gray-800 text-sm">{story.title}</h3>
                         <button
-                          onClick={() => toggleFavorite(story.id)}
-                          className={`p-1 ${isFavorite ? 'text-yellow-500' : 'text-gray-300'}`}
+                          onClick={() => deleteCustomStory(story.id)}
+                          className="p-1 text-gray-300 hover:text-red-500"
                         >
-                          <Star size={20} fill={isFavorite ? 'currentColor' : 'none'} />
+                          <Trash2 size={16} />
                         </button>
                       </div>
-                      <p className="font-crayon text-sm text-gray-500 mb-3">{story.description}</p>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setSelectedStory(story)}
-                          className="flex-1 py-2 rounded-xl font-crayon text-white text-sm
-                                     hover:opacity-90 transition-all flex items-center justify-center gap-1"
-                          style={{ backgroundColor: category?.color || '#8E6BBF' }}
-                        >
-                          <BookOpen size={16} />
-                          Read
-                        </button>
-                        <button
-                          onClick={() => handleScheduleClick(story)}
-                          className="py-2 px-3 rounded-xl font-crayon text-gray-600 text-sm
-                                     border-2 border-gray-200 hover:border-gray-300 transition-all"
-                        >
-                          <CalendarPlus size={16} />
-                        </button>
-                      </div>
+                      <p className="font-crayon text-xs text-gray-500 mb-3">{story.description}</p>
+                      <button
+                        onClick={() => setSelectedStory(story)}
+                        className="w-full py-2 rounded-xl font-crayon text-white text-sm
+                                   hover:opacity-90 transition-all flex items-center justify-center gap-1"
+                        style={{ backgroundColor: category?.color || '#5CB85C' }}
+                      >
+                        <BookOpen size={16} />
+                        Read
+                      </button>
                     </div>
                   </div>
                 );
               })}
             </div>
-            
-            {filteredStories.length === 0 && (
-              <div className="text-center py-12">
-                <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="font-crayon text-gray-500">No stories found</p>
-              </div>
-            )}
-          </>
+          </div>
         )}
 
-        {/* Created Stories Grid */}
-        {activeTab === 'created' && (
-          <>
-            {generatedStories.length === 0 ? (
-              <div className="text-center py-12">
-                <Wand2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="font-crayon text-gray-500 mb-4">No stories created yet</p>
-                <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="px-6 py-3 bg-gradient-to-r from-[#8E6BBF] to-[#4A9FD4] rounded-xl 
-                           font-crayon text-white hover:opacity-90 transition-all inline-flex items-center gap-2"
+        {/* Stories Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {filteredStories.filter(s => !s.isCustom || selectedCategory || searchQuery).map(story => {
+            const category = STORY_CATEGORIES.find(c => c.id === story.category);
+            const isFavorite = favorites.includes(story.id);
+            
+            return (
+              <div
+                key={story.id}
+                className="bg-white rounded-2xl border-3 overflow-hidden shadow-sm hover:shadow-md transition-all relative"
+                style={{ borderColor: category?.color || '#8E6BBF' }}
+              >
+                {story.isCustom && (
+                  <span className="absolute top-2 right-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-crayon rounded-full z-10">
+                    Custom
+                  </span>
+                )}
+                <div 
+                  className="p-4 text-center"
+                  style={{ backgroundColor: `${category?.color}20` || '#8E6BBF20' }}
                 >
-                  <Plus size={18} />
-                  Create Your First Story
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {generatedStories
-                  .filter(story => 
-                    !searchQuery || 
-                    story.topic?.toLowerCase().includes(searchQuery.toLowerCase())
-                  )
-                  .map(story => (
-                    <div
-                      key={story.id}
-                      className="bg-white rounded-2xl border-3 border-[#4A9FD4] overflow-hidden shadow-sm hover:shadow-md transition-all"
+                  {story.pages[0]?.imageUrl ? (
+                    <img 
+                      src={story.pages[0].imageUrl} 
+                      alt={story.title}
+                      className="w-20 h-20 mx-auto rounded-xl object-cover"
+                    />
+                  ) : (
+                    <span className="text-5xl">{story.emoji}</span>
+                  )}
+                </div>
+                <div className="p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="font-display text-gray-800">{story.title}</h3>
+                    <button
+                      onClick={() => toggleFavorite(story.id)}
+                      className={`p-1 ${isFavorite ? 'text-yellow-500' : 'text-gray-300'}`}
                     >
-                      <div className="p-4 text-center bg-gradient-to-r from-[#8E6BBF]/20 to-[#4A9FD4]/20">
-                        {story.pages?.[0]?.imageUrl ? (
-                          <img 
-                            src={story.pages[0].imageUrl} 
-                            alt={story.topic}
-                            className="w-20 h-20 mx-auto rounded-xl object-cover shadow-md"
-                          />
-                        ) : (
-                          <span className="text-5xl">📖</span>
-                        )}
-                      </div>
-                      <div className="p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <h3 className="font-display text-gray-800">{story.topic}</h3>
-                          {story.has_images && (
-                            <span className="px-2 py-0.5 bg-green-100 rounded-full text-xs font-crayon text-green-700">
-                              ✨ Illustrated
-                            </span>
-                          )}
-                        </div>
-                        <p className="font-crayon text-sm text-gray-500 mb-3">
-                          {story.pages?.length || 0} pages • AI Generated
-                        </p>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setSelectedStory({
-                              id: story.id,
-                              title: story.topic,
-                              emoji: '📖',
-                              category: 'custom',
-                              description: `AI-generated story`,
-                              pages: story.pages.map(p => ({
-                                text: p.text,
-                                image: p.emoji || '📖',
-                                imageUrl: p.imageUrl,
-                              })),
-                            })}
-                            className="flex-1 py-2 rounded-xl font-crayon text-white text-sm bg-[#4A9FD4]
-                                       hover:opacity-90 transition-all flex items-center justify-center gap-1"
-                          >
-                            <BookOpen size={16} />
-                            Read
-                          </button>
-                          <button
-                            onClick={() => handleScheduleClick({
-                              id: story.id,
-                              title: story.topic,
-                              emoji: '📖',
-                              pages: story.pages,
-                            })}
-                            className="py-2 px-3 rounded-xl font-crayon text-gray-600 text-sm
-                                       border-2 border-gray-200 hover:border-gray-300 transition-all"
-                          >
-                            <CalendarPlus size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                      <Star size={20} fill={isFavorite ? 'currentColor' : 'none'} />
+                    </button>
+                  </div>
+                  <p className="font-crayon text-sm text-gray-500 mb-3">{story.description}</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setSelectedStory(story)}
+                      className="flex-1 py-2 rounded-xl font-crayon text-white text-sm
+                                 hover:opacity-90 transition-all flex items-center justify-center gap-1"
+                      style={{ backgroundColor: category?.color || '#8E6BBF' }}
+                    >
+                      <BookOpen size={16} />
+                      Read
+                    </button>
+                    <button
+                      onClick={() => handleScheduleClick(story)}
+                      className="py-2 px-3 rounded-xl font-crayon text-gray-600 text-sm
+                                 border-2 border-gray-200 hover:border-gray-300 transition-all"
+                    >
+                      <CalendarPlus size={16} />
+                    </button>
+                  </div>
+                </div>
               </div>
-            )}
-          </>
+            );
+          })}
+        </div>
+
+        {/* Empty State */}
+        {filteredStories.length === 0 && (
+          <div className="text-center py-12">
+            <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="font-crayon text-gray-500">No stories found</p>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="mt-4 px-4 py-2 bg-green-500 text-white rounded-xl font-crayon
+                       hover:bg-green-600 transition-all flex items-center gap-2 mx-auto"
+            >
+              <Plus size={18} />
+              Create a Custom Story
+            </button>
+          </div>
         )}
 
         {/* Info */}
@@ -1166,7 +1135,7 @@ const SocialStories = () => {
         </div>
       </main>
 
-      {/* Schedule Modal */}
+      {/* Modals */}
       <AddToScheduleModal
         isOpen={showScheduleModal}
         onClose={() => {
@@ -1176,8 +1145,7 @@ const SocialStories = () => {
         story={storyToSchedule}
         onAdd={handleAddToSchedule}
       />
-      
-      {/* Create Story Modal */}
+
       <CreateStoryModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}

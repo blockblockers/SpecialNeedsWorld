@@ -1,11 +1,10 @@
-// FIXED: Updated Choice Board button color from yellow (#F5A623) to dark goldenrod (#B8860B)
 // Activities.jsx - Activities hub for ATLASassist
-// FIXED: Single icon (emoji only), darker Reward Chart color
+// UPDATED: Added Emotion Match game
 
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 
-// Activity apps - FIXED: Removed icon property from render
+// Activity apps - Added Emotion Match
 const activityApps = [
   {
     id: 'sensory-breaks',
@@ -20,7 +19,7 @@ const activityApps = [
     id: 'choice-board',
     name: 'Choice Board',
     description: 'Make choices with pictures',
-    color: '#B8860B',
+    color: '#F5A623',
     emoji: '⭐',
     path: '/activities/choice-board',
     ready: true,
@@ -62,16 +61,24 @@ const activityApps = [
     ready: true,
   },
   {
+    id: 'emotion-match',
+    name: 'Emotion Match',
+    description: 'Match faces to feelings',
+    color: '#E86B9A',
+    emoji: '😊',
+    path: '/activities/emotion-match',
+    ready: true,
+  },
+  {
     id: 'photo-journal',
     name: 'Photo Journal',
     description: 'Capture special moments',
-    color: '#E86B9A',
+    color: '#20B2AA',
     emoji: '📸',
     path: '/activities/photo-journal',
     ready: true,
   },
   {
-    // FIXED: Darker gold color (#DAA520) instead of light yellow (#F8D14A)
     id: 'rewards',
     name: 'Reward Chart',
     description: 'Earn stars for achievements',
@@ -121,7 +128,7 @@ const Activities = () => {
           Fun activities to create, learn & explore! 🌟
         </p>
 
-        {/* Activities Grid - Updated to match EmotionalWellnessHub style */}
+        {/* Activities Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {activityApps.map((app, index) => (
             <button

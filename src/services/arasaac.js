@@ -139,6 +139,66 @@ export const getPictogramsByCategory = async (category, locale = 'en') => {
 
 export const ARASAAC_PICTOGRAM_IDS = {
   // ============================================
+  // PRONOUNS - For sentence building
+  // ============================================
+  i: 6467,                // Person pointing to self
+  you: 6468,              // Person pointing to another
+  we: 6471,               // Group of people
+  he: 6461,               // Male person/boy
+  she: 6462,              // Female person/girl
+  it: 7719,               // Pointing gesture
+  
+  // ============================================
+  // CORE VERBS - For phrase building
+  // ============================================
+  want: 6490,             // Person wanting/desiring
+  need: 7116,             // Need/necessity
+  like: 6453,             // Person liking/thumbs up
+  'dont-like': 6491,      // Person disliking/thumbs down
+  feel: 11328,            // Feeling/emotion indicator
+  am: 36767,              // Being/existing
+  see: 6455,              // Person seeing/looking
+  hear: 6455,             // Person listening
+  have: 5999,             // Having/possessing
+  can: 6514,              // Ability/can do
+  cant: 7118,             // Cannot/unable
+  
+  // ============================================
+  // SOCIAL WORDS - Greetings & Manners
+  // ============================================
+  hello: 6458,            // Waving hello
+  goodbye: 6460,          // Waving goodbye
+  please: 6522,           // Polite please gesture
+  'thank-you': 6523,      // Thank you gesture
+  sorry: 11329,           // Apologizing/sorry
+  
+  // ============================================
+  // QUESTIONS - For asking
+  // ============================================
+  what: 8609,             // Question mark what
+  where: 8610,            // Question where/location
+  when: 8611,             // Question when/time
+  who: 8612,              // Question who/person
+  why: 8613,              // Question why/reason
+  how: 8614,              // Question how/manner
+  
+  // ============================================
+  // MORE ADJECTIVES/STATES
+  // ============================================
+  thirsty: 11951,         // Thirsty person
+  hot: 7261,              // Hot/warm
+  cold: 5905,             // Cold/freezing
+  done: 2660,             // Finished/done
+  ready: 6519,            // Ready/prepared
+  
+  // ============================================
+  // MORE QUICK WORDS
+  // ============================================
+  break: 3089,            // Taking a break
+  again: 7082,            // Repeat/again
+  'my-turn': 6520,        // My turn indicator
+  
+  // ============================================
   // BASIC NEEDS - Core AAC vocabulary
   // ============================================
   yes: 5584,              // VERIFIED - green checkmark/thumbs up for "yes"

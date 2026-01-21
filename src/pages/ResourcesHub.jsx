@@ -1,80 +1,117 @@
 // ResourcesHub.jsx - Resources & Research hub for ATLASassist
-// FIXED: Added FAQ, Definitions, Therapy Types sections
-// FIXED: Updated Printables color from yellow (#F5A623) to carrot orange (#E67E22)
-// FIXED: Added Featured Resources section with external links
+// UPDATED: Combined featured resources, condensed spacing
 
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, Star, Info } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  Library,
+  Scale,
+  BookOpen,
+  Printer,
+  ShoppingBag,
+  ExternalLink,
+  Star,
+  Info,
+  Stethoscope,
+  BookMarked,
+  HelpCircle
+} from 'lucide-react';
 
-// Resource sections - includes all pages
+// Resource sections
 const resourceSections = [
   {
     id: 'laws',
     name: 'US & State Resources',
     description: 'Laws, rights & advocacy info',
-    color: '#4A9FD4',
+    icon: Scale,
+    color: 'bg-[#4A9FD4]',
+    borderColor: 'border-blue-500',
+    path: '/knowledge',
     emoji: '⚖️',
-    path: '/resources/knowledge',
     ready: true,
   },
   {
     id: 'research',
     name: 'Evidence-Based Research',
     description: 'Studies & best practices',
-    color: '#5CB85C',
-    emoji: '🔬',
+    icon: BookOpen,
+    color: 'bg-[#5CB85C]',
+    borderColor: 'border-green-500',
     path: '/resources/research',
+    emoji: '🔬',
     ready: true,
   },
   {
-    id: 'therapy',
+    id: 'therapy-types',
     name: 'Therapy Types',
     description: 'Learn about different therapies',
-    color: '#20B2AA',
-    emoji: '🩺',
+    icon: Stethoscope,
+    color: 'bg-[#E86B9A]',
+    borderColor: 'border-pink-500',
     path: '/resources/therapy-types',
+    emoji: '🩺',
     ready: true,
   },
   {
     id: 'definitions',
     name: 'Definitions',
-    description: 'Terms & acronyms explained',
-    color: '#20B2AA',
-    emoji: '📖',
+    description: 'Common terms explained',
+    icon: BookMarked,
+    color: 'bg-[#20B2AA]',
+    borderColor: 'border-teal-500',
     path: '/resources/definitions',
+    emoji: '📖',
     ready: true,
   },
   {
     id: 'faq',
     name: 'FAQ',
-    description: 'Common questions answered',
-    color: '#CD853F',
-    emoji: '❓',
+    description: 'Frequently asked questions',
+    icon: HelpCircle,
+    color: 'bg-[#F8D14A]',
+    borderColor: 'border-yellow-500',
     path: '/resources/faq',
+    emoji: '❓',
     ready: true,
   },
   {
     id: 'printables',
     name: 'Printables Library',
     description: 'Charts, cards & worksheets',
-    color: '#E67E22',
-    emoji: '🖨️',
+    icon: Printer,
+    color: 'bg-[#F5A623]',
+    borderColor: 'border-orange-500',
     path: '/resources/printables',
+    emoji: '🖨️',
     ready: true,
   },
   {
     id: 'products',
     name: 'Recommended Products',
     description: 'Helpful tools & resources',
-    color: '#8E6BBF',
-    emoji: '🛒',
+    icon: ShoppingBag,
+    color: 'bg-[#8E6BBF]',
+    borderColor: 'border-purple-500',
     path: '/resources/products',
+    emoji: '🛍️',
     ready: true,
   },
 ];
 
-// Featured external resources
+// Featured external resources - Combined from all sources
 const FEATURED_RESOURCES = [
+  {
+    name: 'DREDF',
+    description: 'Disability Rights Education & Defense Fund',
+    url: 'https://dredf.org',
+    emoji: '⚖️',
+  },
+  {
+    name: 'IDEA - U.S. Department of Education',
+    description: 'Individuals with Disabilities Education Act',
+    url: 'https://www.ed.gov/laws-and-policy/individuals-disabilities/idea/',
+    emoji: '🏛️',
+  },
   {
     name: 'Understood.org',
     description: 'Free resources for learning and thinking differences',
@@ -85,25 +122,13 @@ const FEATURED_RESOURCES = [
     name: 'ASAN',
     description: 'Autistic Self Advocacy Network',
     url: 'https://autisticadvocacy.org',
-    emoji: '🏛️',
+    emoji: '🏳️',
   },
   {
     name: 'Wrightslaw',
     description: 'Special education law and advocacy',
     url: 'https://www.wrightslaw.com',
-    emoji: '⚖️',
-  },
-  {
-    name: 'CHADD',
-    description: 'Children and Adults with ADHD resources',
-    url: 'https://chadd.org',
-    emoji: '⚡',
-  },
-  {
-    name: 'The Arc',
-    description: 'Advocacy for people with intellectual & developmental disabilities',
-    url: 'https://thearc.org',
-    emoji: '💙',
+    emoji: '📚',
   },
 ];
 
@@ -130,87 +155,90 @@ const ResourcesHub = () => {
             <ArrowLeft size={16} />
             Back
           </button>
-          <img src="/logo.jpeg" alt="ATLASassist" className="w-10 h-10 rounded-lg shadow-sm" />
-          <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-display text-[#8E6BBF] crayon-text">
-              📚 Resources & Research
-            </h1>
-          </div>
+          <img 
+            src="/logo.jpeg" 
+            alt="ATLASassist" 
+            className="w-10 h-10 rounded-lg shadow-sm"
+          />
+          <h1 className="text-lg sm:text-xl font-display text-[#8E6BBF] crayon-text flex items-center gap-2">
+            <Library size={22} />
+            Resources & Research
+          </h1>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-2xl mx-auto px-4 py-6">
-        <p className="text-center text-gray-600 font-crayon mb-6">
-          Knowledge, tools, and resources to support your journey
+      <main className="max-w-2xl mx-auto px-4 py-4">
+        {/* Intro - condensed */}
+        <p className="text-center text-gray-600 font-crayon mb-4">
+          Helpful information, guides, and tools
         </p>
 
-        {/* Resources Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
-          {resourceSections.map((section, index) => (
-            <button
-              key={section.id}
-              onClick={() => handleSectionClick(section)}
-              disabled={!section.ready}
-              className={`
-                relative p-4 rounded-2xl border-4 text-center
-                transition-all duration-200 shadow-crayon
-                ${section.ready 
-                  ? 'hover:scale-105 hover:-rotate-1 active:scale-95 cursor-pointer' 
-                  : 'opacity-60 cursor-not-allowed'
-                }
-              `}
-              style={{
-                backgroundColor: section.color + '20',
-                borderColor: section.color,
-                borderRadius: index % 2 === 0 ? '20px 8px 20px 8px' : '8px 20px 8px 20px',
-              }}
-            >
-              {/* Icon container with white background */}
-              <div 
-                className="w-14 h-14 rounded-2xl bg-white/80 flex items-center justify-center mb-2 mx-auto"
-                style={{ border: `2px solid ${section.color}` }}
+        {/* Resource Sections Grid - condensed gap */}
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          {resourceSections.map((section, index) => {
+            const IconComponent = section.icon;
+            return (
+              <button
+                key={section.id}
+                onClick={() => handleSectionClick(section)}
+                disabled={!section.ready}
+                className={`
+                  relative p-3 rounded-2xl border-4 text-left
+                  ${section.color} ${section.borderColor}
+                  transition-all duration-200 shadow-crayon
+                  ${section.ready 
+                    ? 'hover:scale-105 hover:-rotate-1 active:scale-95 cursor-pointer' 
+                    : 'opacity-60 cursor-not-allowed'
+                  }
+                `}
+                style={{
+                  borderRadius: index % 2 === 0 ? '1rem 1.5rem 1rem 1rem' : '1.5rem 1rem 1rem 1rem',
+                }}
               >
-                <span className="text-3xl">{section.emoji}</span>
-              </div>
-              
-              {/* Name - dark text */}
-              <h3 className="font-display text-gray-800 text-sm leading-tight">
-                {section.name}
-              </h3>
-              
-              {/* Description */}
-              <p className="font-crayon text-xs text-gray-500 mt-1">
-                {section.description}
-              </p>
-            </button>
-          ))}
+                {!section.ready && (
+                  <span className="absolute top-2 right-2 text-xs bg-white/90 px-2 py-0.5 rounded-full font-crayon">
+                    Coming Soon
+                  </span>
+                )}
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xl">{section.emoji}</span>
+                  <IconComponent size={16} className="text-white" />
+                </div>
+                <h3 className="font-display text-white text-sm leading-tight">
+                  {section.name}
+                </h3>
+                <p className="font-crayon text-white/80 text-xs mt-0.5">
+                  {section.description}
+                </p>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Featured External Resources */}
-        <div className="mb-8">
-          <h2 className="font-display text-lg text-[#8E6BBF] mb-4 flex items-center gap-2">
-            <Star size={20} className="text-[#F8D14A]" />
+        {/* Featured Resources - condensed spacing */}
+        <div className="mb-4">
+          <h2 className="font-display text-[#8E6BBF] text-sm mb-2 flex items-center gap-2">
+            <Star size={16} className="text-[#F8D14A]" />
             Featured Resources
           </h2>
-          <div className="space-y-3">
+          <div className="space-y-1.5">
             {FEATURED_RESOURCES.map((resource) => (
               <a
                 key={resource.name}
                 href={resource.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block p-4 bg-white rounded-xl border-3 border-gray-200 
-                         hover:border-[#8E6BBF] hover:shadow-crayon transition-all"
+                className="block p-2.5 bg-white rounded-xl border-2 border-gray-200 
+                         hover:border-[#8E6BBF] hover:shadow-sm transition-all"
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{resource.emoji}</span>
-                  <div className="flex-1">
-                    <h3 className="font-display text-[#8E6BBF] flex items-center gap-2">
-                      {resource.name}
-                      <ExternalLink size={14} className="text-gray-400" />
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{resource.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-display text-sm text-[#8E6BBF] flex items-center gap-1">
+                      <span className="truncate">{resource.name}</span>
+                      <ExternalLink size={10} className="text-gray-400 flex-shrink-0" />
                     </h3>
-                    <p className="font-crayon text-sm text-gray-600">{resource.description}</p>
+                    <p className="font-crayon text-xs text-gray-500 truncate">{resource.description}</p>
                   </div>
                 </div>
               </a>
@@ -218,13 +246,14 @@ const ResourcesHub = () => {
           </div>
         </div>
 
-        {/* Info Note */}
-        <div className="mt-8 p-4 bg-gray-50 rounded-xl border-2 border-gray-200">
+        {/* Disclaimer - condensed */}
+        <div className="p-2.5 bg-gray-50 rounded-xl border-2 border-gray-200">
           <div className="flex gap-2">
-            <Info size={16} className="text-gray-400 flex-shrink-0 mt-0.5" />
+            <Info size={12} className="text-gray-400 flex-shrink-0 mt-0.5" />
             <p className="font-crayon text-xs text-gray-500">
-              These resources are provided for informational purposes. Always consult with 
-              qualified professionals for advice specific to your situation.
+              Product recommendations are based on research and community feedback. 
+              ATLASassist does not receive compensation for product mentions. 
+              Always consult with your healthcare providers.
             </p>
           </div>
         </div>

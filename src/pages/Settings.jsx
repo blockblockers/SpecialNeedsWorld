@@ -1,7 +1,5 @@
 // Settings.jsx - Global app settings
-// FIXED: Added more apps to notification settings
-// FIXED: Added Data Backup & Restore section
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -19,17 +17,7 @@ import {
   Info,
   User,
   Edit2,
-  Save,
-  Download,
-  Upload,
-  Database,
-  Droplets,
-  Moon,
-  ListTodo,
-  Star,
-  Sparkles,
-  CalendarClock,
-  AlertCircle
+  Save
 } from 'lucide-react';
 import {
   isNotificationSupported,
@@ -41,7 +29,6 @@ import {
   updateAppNotificationSetting,
   sendTestNotification,
 } from '../services/notifications';
-import { downloadBackup, importBackup, getDataSummary } from '../services/dataBackup';
 import { useAuth } from '../App';
 
 // Reminder time options
@@ -75,83 +62,11 @@ const APP_CONFIGS = [
     hasRepeat: true,
   },
   { 
-    id: 'firstThen', 
-    name: 'First-Then', 
-    icon: ListTodo, 
-    color: '#5CB85C',
-    description: 'Reminders for First-Then activities',
-    hasReminders: true,
-    hasRepeat: false,
-  },
-  { 
-    id: 'choiceBoard', 
-    name: 'Choice Board', 
-    icon: Star, 
-    color: '#B8860B',
-    description: 'Reminders for scheduled choices',
-    hasReminders: true,
-    hasRepeat: false,
-  },
-  { 
-    id: 'dailyRoutines', 
-    name: 'Daily Routines', 
-    icon: Clock, 
-    color: '#4A9FD4',
-    description: 'Routine step reminders',
-    hasReminders: true,
-    hasRepeat: false,
-  },
-  { 
-    id: 'sensoryBreaks', 
-    name: 'Sensory Breaks', 
-    icon: Sparkles, 
-    color: '#8E6BBF',
-    description: 'Scheduled sensory break reminders',
-    hasReminders: true,
-    hasRepeat: false,
-  },
-  { 
-    id: 'appointments', 
-    name: 'Appointments', 
-    icon: CalendarClock, 
-    color: '#20B2AA',
-    description: 'Appointment reminders',
-    hasReminders: true,
-    hasRepeat: false,
-  },
-  { 
-    id: 'reminders', 
-    name: 'Reminders', 
-    icon: Bell, 
-    color: '#D35400',
-    description: 'Custom reminder notifications',
-    hasReminders: true,
-    hasRepeat: true,
-  },
-  { 
     id: 'nutrition', 
     name: 'Nutrition & Recipes', 
     icon: Utensils, 
     color: '#5CB85C',
     description: 'Meal time reminders',
-    hasReminders: true,
-    hasRepeat: false,
-  },
-  { 
-    id: 'waterTracker', 
-    name: 'Water Tracker', 
-    icon: Droplets, 
-    color: '#4A9FD4',
-    description: 'Hydration reminders',
-    hasReminders: true,
-    hasRepeat: false,
-  },
-  { 
-    id: 'sleepTracker', 
-    name: 'Sleep Tracker', 
-    icon: Moon, 
-    color: '#8E6BBF',
-    description: 'Bedtime reminders',
     hasReminders: true,
     hasRepeat: false,
   },
@@ -187,60 +102,6 @@ const Settings = () => {
   const [displayName, setDisplayName] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState('');
-  
-  // Backup state
-  const [backupStatus, setBackupStatus] = useState(null); // 'success', 'error', 'loading'
-  const [backupMessage, setBackupMessage] = useState('');
-  const [dataSummary, setDataSummary] = useState(null);
-  const fileInputRef = useRef(null);
-
-  // Load data summary on mount
-  useEffect(() => {
-    setDataSummary(getDataSummary());
-  }, []);
-
-  // Handle backup download
-  const handleBackup = () => {
-    setBackupStatus('loading');
-    try {
-      const result = downloadBackup();
-      if (result.success) {
-        setBackupStatus('success');
-        setBackupMessage(`Backup downloaded! (${result.keysExported} items)`);
-      } else {
-        setBackupStatus('error');
-        setBackupMessage(result.error || 'No data to backup');
-      }
-    } catch (error) {
-      setBackupStatus('error');
-      setBackupMessage(error.message);
-    }
-    setTimeout(() => setBackupStatus(null), 3000);
-  };
-
-  // Handle restore from file
-  const handleRestore = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    
-    setBackupStatus('loading');
-    setBackupMessage('Restoring...');
-    
-    try {
-      const result = await importBackup(file);
-      setBackupStatus('success');
-      setBackupMessage(`Restored ${result.keysImported} items from backup`);
-      setDataSummary(getDataSummary());
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    } catch (error) {
-      setBackupStatus('error');
-      setBackupMessage(error.message);
-    }
-    setTimeout(() => setBackupStatus(null), 4000);
-  };
 
   // Load profile settings
   useEffect(() => {
@@ -665,106 +526,24 @@ const Settings = () => {
           </div>
         </section>
         
-        {/* Data Backup Section */}
-        <section className="bg-white rounded-2xl border-4 border-[#5CB85C] shadow-crayon p-6">
-          <h2 className="font-display text-xl text-[#5CB85C] mb-4 flex items-center gap-2">
-            <Database size={24} />
-            Data Backup & Restore
-          </h2>
-          
-          {/* Info message */}
-          <div className="mb-4 p-3 bg-blue-50 rounded-xl border-2 border-blue-200">
-            <div className="flex gap-2">
-              <Info size={16} className="text-blue-500 flex-shrink-0 mt-0.5" />
-              <p className="font-crayon text-sm text-blue-700">
-                Your data is stored on this device. Download a backup to protect against 
-                accidental data loss (like clearing browser cache).
-              </p>
-            </div>
-          </div>
-          
-          {/* Data summary */}
-          {dataSummary && dataSummary.totalKeys > 0 && (
-            <div className="mb-4 p-3 bg-gray-50 rounded-xl">
-              <p className="font-crayon text-sm text-gray-600">
-                📊 Currently storing <strong>{dataSummary.totalKeys}</strong> items ({dataSummary.totalSizeFormatted})
-              </p>
-            </div>
-          )}
-          
-          {/* Status message */}
-          {backupStatus && (
-            <div className={`mb-4 p-3 rounded-xl border-2 ${
-              backupStatus === 'success' ? 'bg-green-50 border-green-200' :
-              backupStatus === 'error' ? 'bg-red-50 border-red-200' :
-              'bg-gray-50 border-gray-200'
-            }`}>
-              <p className={`font-crayon text-sm ${
-                backupStatus === 'success' ? 'text-green-700' :
-                backupStatus === 'error' ? 'text-red-700' :
-                'text-gray-700'
-              }`}>
-                {backupStatus === 'success' && '✓ '}
-                {backupStatus === 'error' && '✗ '}
-                {backupStatus === 'loading' && '⏳ '}
-                {backupMessage}
-              </p>
-            </div>
-          )}
-          
-          {/* Backup & Restore buttons */}
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              onClick={handleBackup}
-              disabled={backupStatus === 'loading'}
-              className="flex items-center justify-center gap-2 p-4 rounded-xl border-3 border-[#5CB85C]
-                       bg-[#5CB85C]/10 hover:bg-[#5CB85C]/20 transition-colors
-                       disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Download size={20} className="text-[#5CB85C]" />
-              <span className="font-display text-[#5CB85C]">Backup Data</span>
-            </button>
-            
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={backupStatus === 'loading'}
-              className="flex items-center justify-center gap-2 p-4 rounded-xl border-3 border-[#4A9FD4]
-                       bg-[#4A9FD4]/10 hover:bg-[#4A9FD4]/20 transition-colors
-                       disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Upload size={20} className="text-[#4A9FD4]" />
-              <span className="font-display text-[#4A9FD4]">Restore Data</span>
-            </button>
-            
-            {/* Hidden file input */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json"
-              onChange={handleRestore}
-              className="hidden"
-            />
-          </div>
-          
-          {/* Warning for restore */}
-          <div className="mt-4 p-3 bg-yellow-50 rounded-xl border-2 border-yellow-200">
-            <div className="flex gap-2">
-              <AlertCircle size={16} className="text-yellow-600 flex-shrink-0 mt-0.5" />
-              <p className="font-crayon text-xs text-yellow-700">
-                Restoring from backup will merge with existing data. If you have conflicting 
-                data, the backup version will be used.
-              </p>
-            </div>
-          </div>
-        </section>
-        
         {/* About Section */}
         <section className="bg-white rounded-2xl border-4 border-[#87CEEB] shadow-crayon p-6">
           <h2 className="font-display text-xl text-[#4A9FD4] mb-4">About</h2>
-          <div className="space-y-3 font-crayon text-sm text-gray-600">
-            <p>🌍 <strong>ATLASassist</strong></p>
-            <p>For Finn, and for people like him.</p>
-            <p className="text-xs text-gray-400">Version 1.0.0</p>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <img 
+                src="/logo.jpeg" 
+                alt="" 
+                className="w-8 h-8 rounded-md"
+              />
+              <p className="font-display text-lg text-[#8E6BBF]">
+                ATLASassist
+              </p>
+            </div>
+            <p className="text-crayon-purple font-display text-sm italic">
+              For Finn, and for people like him. 💜
+            </p>
+            <p className="font-crayon text-xs text-gray-400">Version 1.0.0</p>
           </div>
         </section>
       </main>
