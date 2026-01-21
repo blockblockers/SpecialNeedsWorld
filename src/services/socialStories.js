@@ -1,5 +1,7 @@
 // socialStories.js - Social Stories generation and management
-// Uses Claude API to generate stories, Supabase to store them
+// UPDATED: Now supports AI-generated illustrations via DALL-E
+// Uses Claude API to generate story text, DALL-E for children's book style images
+// Stories are saved to Supabase and shared across all users
 
 import { supabase, isSupabaseConfigured } from './supabase';
 
@@ -8,10 +10,16 @@ import { supabase, isSupabaseConfigured } from './supabase';
 // ============================================
 
 const STORY_PAGES = 6; // Number of pages per story
-const CHARACTER_STYLES = {
-  child: 'friendly cartoon child with big eyes',
-  teen: 'friendly cartoon teenager',
-  adult: 'friendly cartoon adult',
+const GENERATE_IMAGES = true; // Enable image generation by default
+
+// Status states for story generation
+export const GENERATION_STATUS = {
+  IDLE: 'idle',
+  GENERATING_TEXT: 'generating_text',
+  GENERATING_IMAGES: 'generating_images',
+  SAVING: 'saving',
+  COMPLETE: 'complete',
+  ERROR: 'error',
 };
 
 // ============================================
@@ -107,19 +115,28 @@ export const findExistingStory = async (topic) => {
 // ============================================
 
 /**
- * Generate a social story using Claude API
- * This calls the Supabase Edge Function which calls Claude
+ * Generate a social story using Claude API + DALL-E for images
+ * This calls the Supabase Edge Function which handles both APIs
  * Stories use generic "you" language to enable caching and reuse
+ * @param {string} topic - The topic for the story
+ * @param {Object} options - Generation options
+ * @param {Function} options.onStatusChange - Callback for status updates
+ * @param {boolean} options.generateImages - Whether to generate images (default: true)
+ * @param {string} options.userId - User ID for attribution
  */
 export const generateStory = async (topic, options = {}) => {
   const {
-    ageGroup = 'child',
+    onStatusChange = () => {},
+    generateImages = GENERATE_IMAGES,
     userId = null,
   } = options;
+  
+  onStatusChange(GENERATION_STATUS.GENERATING_TEXT, 'Checking for existing stories...');
   
   // First check if a similar story exists
   const existing = await findExistingStory(topic);
   if (existing) {
+    onStatusChange(GENERATION_STATUS.COMPLETE, 'Found existing story!');
     return {
       story: existing,
       fromCache: true,
@@ -129,18 +146,44 @@ export const generateStory = async (topic, options = {}) => {
   // Generate new story
   if (isSupabaseConfigured()) {
     try {
-      // Call Edge Function to generate story
+      onStatusChange(GENERATION_STATUS.GENERATING_TEXT, 'Writing your story...');
+      
+      // Call Edge Function to generate story with images
       const { data, error } = await supabase.functions.invoke('generate-social-story', {
         body: {
           topic,
-          ageGroup,
           pageCount: STORY_PAGES,
+          generateImages,
         },
       });
       
       if (error) throw error;
       
-      // Save to database
+      // Check for insufficient credits warning
+      if (data.insufficientCredits) {
+        console.warn('Insufficient credits for image generation');
+      }
+      
+      if (generateImages && data.imagesGenerated > 0) {
+        onStatusChange(GENERATION_STATUS.GENERATING_IMAGES, `Generated ${data.imagesGenerated} illustrations!`);
+      }
+      
+      onStatusChange(GENERATION_STATUS.SAVING, 'Saving to library...');
+      
+      // Determine emoji based on category
+      const categoryEmojis = {
+        daily: '🌅',
+        social: '👋',
+        emotions: '💜',
+        safety: '🛡️',
+        school: '🎒',
+        health: '🏥',
+        general: '📖',
+      };
+      const category = data.category || 'general';
+      const emoji = categoryEmojis[category] || '📖';
+      
+      // Save to database so other users can find it
       const { data: savedStory, error: saveError } = await supabase
         .from('social_stories')
         .insert({
@@ -149,29 +192,65 @@ export const generateStory = async (topic, options = {}) => {
           pages: data.pages,
           created_by: userId,
           is_public: true,
+          has_images: data.imagesGenerated > 0,
+          category: category,
+          emoji: emoji,
         })
         .select()
         .single();
       
-      if (saveError) throw saveError;
+      if (saveError) {
+        console.error('Error saving story:', saveError);
+        // Return the generated story even if save fails
+        onStatusChange(GENERATION_STATUS.COMPLETE, 'Story created!');
+        return {
+          story: {
+            id: `temp_${Date.now()}`,
+            topic,
+            topic_normalized: topic.toLowerCase().trim(),
+            pages: data.pages,
+            is_public: false,
+            has_images: data.imagesGenerated > 0,
+            category: category,
+            emoji: emoji,
+            created_at: new Date().toISOString(),
+          },
+          fromCache: false,
+          savedToCloud: false,
+          insufficientCredits: data.insufficientCredits,
+          creditMessage: data.message,
+        };
+      }
+      
+      onStatusChange(GENERATION_STATUS.COMPLETE, data.insufficientCredits 
+        ? 'Story created (some images missing - credits exhausted)' 
+        : 'Story added to library!');
       
       return {
         story: savedStory,
         fromCache: false,
+        savedToCloud: true,
+        insufficientCredits: data.insufficientCredits,
+        creditMessage: data.message,
       };
     } catch (error) {
       console.error('Error generating story:', error);
+      onStatusChange(GENERATION_STATUS.ERROR, error.message || 'Failed to generate story');
       // Fall back to local generation
     }
   }
   
-  // Local fallback - generate a simple template story
+  // Local fallback - generate a simple template story (no images)
+  onStatusChange(GENERATION_STATUS.GENERATING_TEXT, 'Creating local story...');
   const story = generateLocalStory(topic);
   saveLocalStory(story);
+  
+  onStatusChange(GENERATION_STATUS.COMPLETE, 'Story created locally!');
   
   return {
     story,
     fromCache: false,
+    savedToCloud: false,
   };
 };
 
@@ -446,4 +525,5 @@ export default {
   removeStoryFromFavorites,
   getUserSavedStories,
   SUGGESTED_TOPICS,
+  GENERATION_STATUS,
 };

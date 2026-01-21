@@ -86,9 +86,26 @@ const SETTINGS_KEY = 'snw_notification_settings';
 const defaultSettings = {
   globalEnabled: true,
   apps: {
+    // Core schedule
     visualSchedule: { enabled: true, reminderMinutes: [0, 5], repeatInterval: 5 },
+    
+    // Tools that add to schedule
+    firstThen: { enabled: true, reminderMinutes: [0, 5] },
+    choiceBoard: { enabled: true, reminderMinutes: [0, 5] },
+    dailyRoutines: { enabled: true, reminderMinutes: [0, 5] },
+    
+    // Health & Wellness
     nutrition: { enabled: true, reminderMinutes: [0, 5] },
     health: { enabled: true, reminderMinutes: [0, 5] },
+    waterTracker: { enabled: true, reminderMinutes: [0] },
+    sleepTracker: { enabled: true, reminderMinutes: [0, 15] },
+    sensoryBreaks: { enabled: true, reminderMinutes: [0, 5] },
+    
+    // Care Team
+    appointments: { enabled: true, reminderMinutes: [0, 15, 60] },
+    reminders: { enabled: true, reminderMinutes: [0, 5] },
+    
+    // No notifications needed
     pointToTalk: { enabled: false },
   },
 };

@@ -1,6 +1,77 @@
 // scheduleHelper.js - Unified schedule integration service for ATLASassist
 // FIXED: Self-contained with graceful fallbacks for missing dependencies
 // FIXED: Won't break if calendar.js, notifications.js, etc. are missing
+// FIXED: Now syncs to cloud and schedules push notifications when available
+
+// ============================================
+// CLOUD SYNC INTEGRATION (Optional)
+// These functions gracefully fail if services aren't available
+// ============================================
+
+let calendarSyncModule = null;
+let currentUserId = null;
+
+/**
+ * Initialize cloud sync with user ID
+ * Call this when user logs in to enable cloud sync and notifications
+ */
+export const initCloudSync = async (userId) => {
+  currentUserId = userId;
+  if (!userId) {
+    calendarSyncModule = null;
+    return;
+  }
+  
+  try {
+    // Dynamic import to avoid hard dependency
+    calendarSyncModule = await import('./calendarSync.js');
+    console.log('Cloud sync initialized for scheduleHelper');
+  } catch (error) {
+    console.warn('Cloud sync not available:', error.message);
+    calendarSyncModule = null;
+  }
+};
+
+/**
+ * Sync schedule to cloud and schedule notifications
+ * Called automatically after adding activities if cloud sync is initialized
+ */
+const syncAndNotify = async (dateStr, notify = true) => {
+  if (!calendarSyncModule || !currentUserId) {
+    return { synced: false, notified: false };
+  }
+  
+  try {
+    // Get the schedule for this date from localStorage
+    const schedules = JSON.parse(localStorage.getItem('snw_visual_schedules') || '{}');
+    const daySchedule = schedules[dateStr];
+    
+    if (!daySchedule) {
+      return { synced: false, notified: false };
+    }
+    
+    // Sync to cloud
+    let synced = false;
+    if (calendarSyncModule.saveSchedule) {
+      await calendarSyncModule.saveSchedule(currentUserId, dateStr, daySchedule);
+      synced = true;
+      console.log('Schedule synced to cloud:', dateStr);
+    }
+    
+    // Schedule notifications if requested
+    let notified = false;
+    if (notify && calendarSyncModule.scheduleNotificationsForDay) {
+      const count = await calendarSyncModule.scheduleNotificationsForDay(currentUserId, dateStr);
+      notified = count > 0;
+      console.log('Notifications scheduled:', count);
+    }
+    
+    return { synced, notified };
+  } catch (error) {
+    console.warn('Cloud sync/notify failed:', error.message);
+    return { synced: false, notified: false };
+  }
+};
 
 // ============================================
 // SELF-CONTAINED DATE HELPERS
@@ -281,19 +352,19 @@ export const addActivityToSchedule = ({
       return { success: false, error: 'Failed to save schedule' };
     }
     
-    // Try notifications (optional - don't fail if not available)
+    // Sync to cloud and schedule push notifications
+    // This runs asynchronously and won't block the response
     if (notify && time) {
-      try {
-        // Optional: Schedule notifications if the module is available
-        // This is wrapped in try-catch so it doesn't break if notifications aren't set up
-        if (typeof window !== 'undefined' && 'Notification' in window) {
-          // Notification support exists but we don't require it
-          console.log('Activity added with notification flag:', newActivity.name);
+      syncAndNotify(dateStr, notify).then(result => {
+        if (result.synced) {
+          console.log('Activity synced to cloud:', newActivity.name);
         }
-      } catch (notifyError) {
-        console.warn('Notifications not available:', notifyError);
-        // Don't fail - notifications are optional
-      }
+        if (result.notified) {
+          console.log('Push notification scheduled for:', newActivity.name);
+        }
+      }).catch(err => {
+        console.warn('Cloud sync/notification failed (non-blocking):', err.message);
+      });
     }
     
     console.log('Activity added successfully:', newActivity);
@@ -301,6 +372,7 @@ export const addActivityToSchedule = ({
     return {
       success: true,
       activity: newActivity,
+      cloudSyncPending: notify && time && !!calendarSyncModule,
     };
   } catch (error) {
     console.error('Failed to add activity to schedule:', error);

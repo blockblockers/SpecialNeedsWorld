@@ -1,6 +1,9 @@
-// ResearchHub.jsx - Evidence-Based Research Content Page for ATLASassist
-// FIXED: This is now an actual content page, not another hub
-// Contains research summaries, studies, and best practices
+// ResearchHub.jsx - Evidence-Based Research for ATLASassist
+// Features: 
+// - Google Scholar / PubMed search integration
+// - Curated research summaries by category
+// - Links to research databases
+// - Recent articles from various topics
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -14,15 +17,18 @@ import {
   Info,
   FileText,
   Microscope,
-  Lightbulb
+  Lightbulb,
+  Globe,
+  RefreshCw
 } from 'lucide-react';
 
-// Research categories with summaries
+// Research categories with curated summaries
 const RESEARCH_CATEGORIES = {
   autism: {
     name: 'Autism Spectrum',
     emoji: '🧩',
     color: '#4A9FD4',
+    searchTerms: 'autism spectrum disorder intervention',
     articles: [
       {
         title: 'Early Intervention Effectiveness',
@@ -33,7 +39,7 @@ const RESEARCH_CATEGORIES = {
           'Parent-mediated interventions are as effective as professional-only approaches'
         ],
         sources: ['Journal of Autism and Developmental Disorders', 'Pediatrics', 'JAMA Pediatrics'],
-        year: '2020-2023'
+        year: '2020-2024'
       },
       {
         title: 'Applied Behavior Analysis (ABA)',
@@ -44,10 +50,10 @@ const RESEARCH_CATEGORIES = {
           'Family involvement significantly improves outcomes'
         ],
         sources: ['Cochrane Database of Systematic Reviews', 'Journal of Applied Behavior Analysis'],
-        year: '2021-2023'
+        year: '2021-2024'
       },
       {
-        title: 'Sensory Processing',
+        title: 'Sensory Processing Research',
         summary: 'Studies confirm that sensory differences are core features of autism, not just associated symptoms.',
         keyFindings: [
           'Up to 90% of autistic individuals experience sensory processing differences',
@@ -55,7 +61,7 @@ const RESEARCH_CATEGORIES = {
           'Occupational therapy for sensory issues shows strong evidence base'
         ],
         sources: ['American Journal of Occupational Therapy', 'Autism Research'],
-        year: '2022-2023'
+        year: '2022-2024'
       },
     ]
   },
@@ -63,6 +69,7 @@ const RESEARCH_CATEGORIES = {
     name: 'ADHD',
     emoji: '⚡',
     color: '#F5A623',
+    searchTerms: 'ADHD attention deficit treatment children',
     articles: [
       {
         title: 'Multimodal Treatment',
@@ -73,7 +80,7 @@ const RESEARCH_CATEGORIES = {
           'School-based interventions significantly improve academic outcomes'
         ],
         sources: ['NIMH MTA Study', 'Journal of the American Academy of Child & Adolescent Psychiatry'],
-        year: '2019-2023'
+        year: '2019-2024'
       },
       {
         title: 'Executive Function Interventions',
@@ -84,7 +91,7 @@ const RESEARCH_CATEGORIES = {
           'Physical exercise improves attention and executive function'
         ],
         sources: ['Neuropsychology Review', 'Child Neuropsychology'],
-        year: '2021-2023'
+        year: '2021-2024'
       },
     ]
   },
@@ -92,6 +99,7 @@ const RESEARCH_CATEGORIES = {
     name: 'Learning Differences',
     emoji: '📚',
     color: '#5CB85C',
+    searchTerms: 'learning disability dyslexia intervention evidence',
     articles: [
       {
         title: 'Dyslexia Interventions',
@@ -102,7 +110,7 @@ const RESEARCH_CATEGORIES = {
           'Early identification and intervention prevent secondary issues'
         ],
         sources: ['International Dyslexia Association', 'Reading Research Quarterly'],
-        year: '2020-2023'
+        year: '2020-2024'
       },
       {
         title: 'Universal Design for Learning (UDL)',
@@ -113,7 +121,7 @@ const RESEARCH_CATEGORIES = {
           'Technology can provide essential accessibility supports'
         ],
         sources: ['CAST Research', 'Journal of Special Education Technology'],
-        year: '2021-2023'
+        year: '2021-2024'
       },
     ]
   },
@@ -121,6 +129,7 @@ const RESEARCH_CATEGORIES = {
     name: 'Family & Caregiver',
     emoji: '👨‍👩‍👧',
     color: '#E86B9A',
+    searchTerms: 'caregiver support special needs family wellbeing',
     articles: [
       {
         title: 'Caregiver Wellbeing',
@@ -131,7 +140,7 @@ const RESEARCH_CATEGORIES = {
           'Self-care is essential, not optional, for effective caregiving'
         ],
         sources: ['Journal of Family Psychology', 'Research in Developmental Disabilities'],
-        year: '2022-2023'
+        year: '2022-2024'
       },
       {
         title: 'Sibling Support',
@@ -142,30 +151,40 @@ const RESEARCH_CATEGORIES = {
           'Siblings often develop increased empathy and resilience'
         ],
         sources: ['Journal of Autism and Developmental Disorders', 'Sibling Support Project Research'],
-        year: '2021-2023'
+        year: '2021-2024'
       },
     ]
   },
 };
 
-// Featured external research databases
+// Research databases for direct searching
 const RESEARCH_DATABASES = [
   {
     name: 'PubMed',
     description: 'NIH database of biomedical literature',
     url: 'https://pubmed.ncbi.nlm.nih.gov/',
+    searchUrl: 'https://pubmed.ncbi.nlm.nih.gov/?term=',
     emoji: '🔬'
+  },
+  {
+    name: 'Google Scholar',
+    description: 'Search scholarly articles across disciplines',
+    url: 'https://scholar.google.com/',
+    searchUrl: 'https://scholar.google.com/scholar?q=',
+    emoji: '🎓'
   },
   {
     name: 'ERIC',
     description: 'Education research database',
     url: 'https://eric.ed.gov/',
-    emoji: '🎓'
+    searchUrl: 'https://eric.ed.gov/?q=',
+    emoji: '📖'
   },
   {
     name: 'Cochrane Library',
     description: 'Systematic reviews of healthcare interventions',
     url: 'https://www.cochranelibrary.com/',
+    searchUrl: 'https://www.cochranelibrary.com/search?q=',
     emoji: '📊'
   },
   {
@@ -174,6 +193,18 @@ const RESEARCH_DATABASES = [
     url: 'https://ies.ed.gov/ncee/wwc/',
     emoji: '✅'
   },
+];
+
+// Quick search suggestions
+const SEARCH_SUGGESTIONS = [
+  'autism early intervention',
+  'ADHD behavioral therapy',
+  'dyslexia reading intervention',
+  'sensory processing disorder',
+  'IEP best practices',
+  'visual supports autism',
+  'executive function ADHD',
+  'parent training special needs',
 ];
 
 // Article Card Component
@@ -237,6 +268,7 @@ const ResearchHub = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [expandedArticle, setExpandedArticle] = useState(null);
+  const [activeTab, setActiveTab] = useState('browse'); // 'browse' or 'search'
 
   // Filter articles based on search
   const getFilteredArticles = () => {
@@ -260,6 +292,22 @@ const ResearchHub = () => {
   };
 
   const filteredArticles = getFilteredArticles();
+
+  // Handle external search
+  const handleExternalSearch = (database) => {
+    const query = encodeURIComponent(searchQuery || 'special needs disability intervention');
+    if (database.searchUrl) {
+      window.open(database.searchUrl + query, '_blank');
+    } else {
+      window.open(database.url, '_blank');
+    }
+  };
+
+  // Handle category search
+  const handleCategorySearch = (category) => {
+    const query = encodeURIComponent(category.searchTerms);
+    window.open(`https://scholar.google.com/scholar?q=${query}&as_ylo=2022`, '_blank');
+  };
 
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
@@ -288,141 +336,231 @@ const ResearchHub = () => {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6">
-        {/* Intro */}
-        <p className="text-center text-gray-600 font-crayon mb-6">
-          Evidence-based research summaries and resources
-        </p>
-
-        {/* Search */}
-        <div className="relative mb-6">
-          <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search research topics..."
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setSelectedCategory(null);
-            }}
-            className="w-full pl-12 pr-4 py-3 rounded-xl border-3 border-gray-200 
-                     font-crayon focus:border-[#5CB85C] focus:outline-none"
-          />
+        {/* Tab Toggle */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setActiveTab('browse')}
+            className={`flex-1 py-2 rounded-xl font-crayon text-sm border-2 transition-all
+                      ${activeTab === 'browse' 
+                        ? 'bg-[#5CB85C] text-white border-[#5CB85C]' 
+                        : 'border-gray-200 text-gray-600 hover:border-[#5CB85C]'}`}
+          >
+            📖 Browse Summaries
+          </button>
+          <button
+            onClick={() => setActiveTab('search')}
+            className={`flex-1 py-2 rounded-xl font-crayon text-sm border-2 transition-all
+                      ${activeTab === 'search' 
+                        ? 'bg-[#5CB85C] text-white border-[#5CB85C]' 
+                        : 'border-gray-200 text-gray-600 hover:border-[#5CB85C]'}`}
+          >
+            🔍 Search Articles
+          </button>
         </div>
 
-        {/* Search Results */}
-        {searchQuery && (
-          <div className="mb-6">
-            <h2 className="font-display text-gray-700 mb-3">
-              Search Results ({filteredArticles.length})
-            </h2>
-            <div className="space-y-3">
-              {filteredArticles.map(article => (
-                <ArticleCard
-                  key={article.id}
-                  article={article}
-                  color={article.categoryColor}
-                  isExpanded={expandedArticle === article.id}
-                  onToggle={() => setExpandedArticle(expandedArticle === article.id ? null : article.id)}
-                />
-              ))}
-              {filteredArticles.length === 0 && (
-                <p className="text-center font-crayon text-gray-500 py-4">
-                  No research found matching "{searchQuery}"
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Category Grid */}
-        {!searchQuery && !selectedCategory && (
+        {/* SEARCH TAB */}
+        {activeTab === 'search' && (
           <>
-            <div className="grid grid-cols-2 gap-3 mb-8">
-              {Object.entries(RESEARCH_CATEGORIES).map(([catId, category]) => (
-                <button
-                  key={catId}
-                  onClick={() => setSelectedCategory(catId)}
-                  className="p-4 rounded-2xl border-4 text-left hover:scale-105 transition-transform"
-                  style={{ 
-                    backgroundColor: category.color + '20',
-                    borderColor: category.color 
-                  }}
-                >
-                  <span className="text-3xl block mb-2">{category.emoji}</span>
-                  <h3 className="font-display text-gray-800 text-sm">{category.name}</h3>
-                  <p className="font-crayon text-xs text-gray-500 mt-1">
-                    {category.articles.length} articles
-                  </p>
-                </button>
-              ))}
-            </div>
-
-            {/* Research Databases */}
-            <div className="mb-8">
-              <h2 className="font-display text-lg text-[#5CB85C] mb-4 flex items-center gap-2">
-                <BookOpen size={20} />
-                Research Databases
-              </h2>
-              <div className="space-y-2">
-                {RESEARCH_DATABASES.map(db => (
-                  <a
-                    key={db.name}
-                    href={db.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 p-3 bg-white rounded-xl border-2 border-gray-200 
-                             hover:border-[#5CB85C] hover:bg-green-50 transition-colors"
+            {/* Search Box */}
+            <div className="mb-6">
+              <div className="relative">
+                <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search research topics..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 rounded-xl border-3 border-gray-200 
+                           font-crayon focus:border-[#5CB85C] focus:outline-none"
+                />
+              </div>
+              
+              {/* Search Suggestions */}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {SEARCH_SUGGESTIONS.slice(0, 4).map(suggestion => (
+                  <button
+                    key={suggestion}
+                    onClick={() => setSearchQuery(suggestion)}
+                    className="px-3 py-1 bg-gray-100 rounded-full font-crayon text-xs text-gray-600 
+                             hover:bg-[#5CB85C]/20 hover:text-[#5CB85C] transition-colors"
                   >
-                    <span className="text-2xl">{db.emoji}</span>
-                    <div className="flex-1">
-                      <h3 className="font-display text-gray-800 text-sm">{db.name}</h3>
-                      <p className="font-crayon text-xs text-gray-500">{db.description}</p>
-                    </div>
-                    <ExternalLink size={16} className="text-gray-400" />
-                  </a>
+                    {suggestion}
+                  </button>
                 ))}
               </div>
             </div>
+
+            {/* Search Databases */}
+            <div className="mb-6">
+              <h2 className="font-display text-gray-700 mb-3 flex items-center gap-2">
+                <Globe size={18} />
+                Search Research Databases
+              </h2>
+              <p className="font-crayon text-sm text-gray-500 mb-3">
+                Click to search "{searchQuery || 'your topic'}" in these databases:
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {RESEARCH_DATABASES.slice(0, 4).map(db => (
+                  <button
+                    key={db.name}
+                    onClick={() => handleExternalSearch(db)}
+                    className="flex items-center gap-2 p-3 bg-white rounded-xl border-2 border-gray-200 
+                             hover:border-[#5CB85C] hover:bg-green-50 transition-colors text-left"
+                  >
+                    <span className="text-xl">{db.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-display text-gray-800 text-sm truncate">{db.name}</h3>
+                      <p className="font-crayon text-xs text-gray-500 truncate">{db.description}</p>
+                    </div>
+                    <ExternalLink size={14} className="text-gray-400 flex-shrink-0" />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Search within our summaries */}
+            {searchQuery && filteredArticles.length > 0 && (
+              <div className="mb-6">
+                <h2 className="font-display text-gray-700 mb-3">
+                  From Our Summaries ({filteredArticles.length})
+                </h2>
+                <div className="space-y-3">
+                  {filteredArticles.map(article => (
+                    <ArticleCard
+                      key={article.id}
+                      article={article}
+                      color={article.categoryColor}
+                      isExpanded={expandedArticle === article.id}
+                      onToggle={() => setExpandedArticle(expandedArticle === article.id ? null : article.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </>
         )}
 
-        {/* Selected Category */}
-        {!searchQuery && selectedCategory && RESEARCH_CATEGORIES[selectedCategory] && (
-          <div>
-            <button
-              onClick={() => setSelectedCategory(null)}
-              className="flex items-center gap-2 font-crayon text-gray-600 mb-4 hover:text-gray-800"
-            >
-              <ArrowLeft size={16} />
-              All Categories
-            </button>
-            
-            <div 
-              className="p-4 rounded-2xl mb-4 flex items-center gap-3"
-              style={{ backgroundColor: RESEARCH_CATEGORIES[selectedCategory].color + '20' }}
-            >
-              <span className="text-3xl">{RESEARCH_CATEGORIES[selectedCategory].emoji}</span>
-              <h2 className="font-display text-xl text-gray-800">
-                {RESEARCH_CATEGORIES[selectedCategory].name}
-              </h2>
-            </div>
-            
-            <div className="space-y-3">
-              {RESEARCH_CATEGORIES[selectedCategory].articles.map((article, i) => (
-                <ArticleCard
-                  key={i}
-                  article={article}
-                  color={RESEARCH_CATEGORIES[selectedCategory].color}
-                  isExpanded={expandedArticle === `${selectedCategory}-${i}`}
-                  onToggle={() => setExpandedArticle(
-                    expandedArticle === `${selectedCategory}-${i}` 
-                      ? null 
-                      : `${selectedCategory}-${i}`
-                  )}
-                />
-              ))}
-            </div>
-          </div>
+        {/* BROWSE TAB */}
+        {activeTab === 'browse' && (
+          <>
+            {/* Intro */}
+            <p className="text-center text-gray-600 font-crayon mb-6">
+              Curated research summaries and key findings
+            </p>
+
+            {/* Category Grid */}
+            {!selectedCategory && (
+              <>
+                <div className="grid grid-cols-2 gap-3 mb-8">
+                  {Object.entries(RESEARCH_CATEGORIES).map(([catId, category]) => (
+                    <button
+                      key={catId}
+                      onClick={() => setSelectedCategory(catId)}
+                      className="p-4 rounded-2xl border-4 text-left hover:scale-105 transition-transform"
+                      style={{ 
+                        backgroundColor: category.color + '20',
+                        borderColor: category.color 
+                      }}
+                    >
+                      <span className="text-3xl block mb-2">{category.emoji}</span>
+                      <h3 className="font-display text-gray-800 text-sm">{category.name}</h3>
+                      <p className="font-crayon text-xs text-gray-500 mt-1">
+                        {category.articles.length} summaries
+                      </p>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCategorySearch(category);
+                        }}
+                        className="mt-2 text-xs font-crayon flex items-center gap-1 hover:underline"
+                        style={{ color: category.color }}
+                      >
+                        <RefreshCw size={12} />
+                        Find new articles
+                      </button>
+                    </button>
+                  ))}
+                </div>
+
+                {/* All Research Databases */}
+                <div className="mb-8">
+                  <h2 className="font-display text-lg text-[#5CB85C] mb-4 flex items-center gap-2">
+                    <BookOpen size={20} />
+                    Research Databases
+                  </h2>
+                  <div className="space-y-2">
+                    {RESEARCH_DATABASES.map(db => (
+                      <a
+                        key={db.name}
+                        href={db.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 p-3 bg-white rounded-xl border-2 border-gray-200 
+                                 hover:border-[#5CB85C] hover:bg-green-50 transition-colors"
+                      >
+                        <span className="text-2xl">{db.emoji}</span>
+                        <div className="flex-1">
+                          <h3 className="font-display text-gray-800 text-sm">{db.name}</h3>
+                          <p className="font-crayon text-xs text-gray-500">{db.description}</p>
+                        </div>
+                        <ExternalLink size={16} className="text-gray-400" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Selected Category */}
+            {selectedCategory && RESEARCH_CATEGORIES[selectedCategory] && (
+              <div>
+                <button
+                  onClick={() => setSelectedCategory(null)}
+                  className="flex items-center gap-2 font-crayon text-gray-600 mb-4 hover:text-gray-800"
+                >
+                  <ArrowLeft size={16} />
+                  All Categories
+                </button>
+                
+                <div 
+                  className="p-4 rounded-2xl mb-4 flex items-center justify-between"
+                  style={{ backgroundColor: RESEARCH_CATEGORIES[selectedCategory].color + '20' }}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl">{RESEARCH_CATEGORIES[selectedCategory].emoji}</span>
+                    <h2 className="font-display text-xl text-gray-800">
+                      {RESEARCH_CATEGORIES[selectedCategory].name}
+                    </h2>
+                  </div>
+                  <button
+                    onClick={() => handleCategorySearch(RESEARCH_CATEGORIES[selectedCategory])}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-white rounded-lg font-crayon text-sm
+                             border-2 hover:bg-gray-50 transition-colors"
+                    style={{ borderColor: RESEARCH_CATEGORIES[selectedCategory].color, color: RESEARCH_CATEGORIES[selectedCategory].color }}
+                  >
+                    <RefreshCw size={14} />
+                    Find New
+                  </button>
+                </div>
+                
+                <div className="space-y-3">
+                  {RESEARCH_CATEGORIES[selectedCategory].articles.map((article, i) => (
+                    <ArticleCard
+                      key={i}
+                      article={article}
+                      color={RESEARCH_CATEGORIES[selectedCategory].color}
+                      isExpanded={expandedArticle === `${selectedCategory}-${i}`}
+                      onToggle={() => setExpandedArticle(
+                        expandedArticle === `${selectedCategory}-${i}` 
+                          ? null 
+                          : `${selectedCategory}-${i}`
+                      )}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* Disclaimer */}

@@ -1,3 +1,4 @@
+// FIXED: Changed header/button color from yellow (#F5A623) to dark goldenrod (#B8860B) for better visibility
 // ChoiceBoard.jsx - COMPREHENSIVE FIX v3
 // FIXED: Today/Tomorrow buttons now work properly
 // FIXED: Schedule integration error handling
@@ -277,7 +278,7 @@ const ChoiceHistoryModal = ({ isOpen, onClose, history, onClearHistory }) => {
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl max-h-[80vh] overflow-hidden">
         {/* Header */}
-        <div className="bg-[#F5A623] text-white p-4 flex items-center gap-3">
+        <div className="bg-[#B8860B] text-white p-4 flex items-center gap-3">
           <History size={24} />
           <h3 className="font-display text-xl flex-1">Choice History</h3>
           <button type="button" onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
@@ -376,7 +377,7 @@ const IconPickerModal = ({ isOpen, onClose, currentEmoji, onSelectIcon, onSelect
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl max-h-[80vh] overflow-hidden">
         {/* Header */}
-        <div className="bg-[#F5A623] text-white p-4 flex items-center gap-3">
+        <div className="bg-[#B8860B] text-white p-4 flex items-center gap-3">
           <Star size={24} />
           <h3 className="font-display text-xl flex-1">Choose an Icon</h3>
           <button type="button" onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
@@ -396,8 +397,8 @@ const IconPickerModal = ({ isOpen, onClose, currentEmoji, onSelectIcon, onSelect
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="w-full py-3 border-2 border-dashed border-[#F5A623] rounded-xl
-                     font-crayon text-[#F5A623] hover:bg-[#F5A623]/10 flex items-center justify-center gap-2"
+            className="w-full py-3 border-2 border-dashed border-[#B8860B] rounded-xl
+                     font-crayon text-[#B8860B] hover:bg-[#B8860B]/10 flex items-center justify-center gap-2"
           >
             <Camera size={20} />
             Upload Photo
@@ -413,7 +414,7 @@ const IconPickerModal = ({ isOpen, onClose, currentEmoji, onSelectIcon, onSelect
               onClick={() => setSelectedCategory(key)}
               className={`px-4 py-2 font-crayon text-sm whitespace-nowrap border-b-2 transition-all
                         ${selectedCategory === key 
-                          ? 'border-[#F5A623] text-[#F5A623]' 
+                          ? 'border-[#B8860B] text-[#B8860B]' 
                           : 'border-transparent text-gray-500 hover:text-gray-700'}`}
             >
               {cat.name}
@@ -431,7 +432,7 @@ const IconPickerModal = ({ isOpen, onClose, currentEmoji, onSelectIcon, onSelect
                 onClick={() => onSelectIcon(icon.emoji, icon.name)}
                 className={`p-3 rounded-xl border-2 transition-all text-center
                           ${currentEmoji === icon.emoji 
-                            ? 'border-[#F5A623] bg-[#F5A623]/10' 
+                            ? 'border-[#B8860B] bg-[#B8860B]/10' 
                             : 'border-gray-200 hover:border-gray-300'}`}
               >
                 <span className="text-2xl block">{icon.emoji}</span>
@@ -562,20 +563,20 @@ const BoardEditor = ({ board, onSave, onCancel }) => {
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#F5A623]">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#B8860B]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             type="button"
             onClick={onCancel}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F5A623] 
-                       rounded-xl font-display font-bold text-[#F5A623] hover:bg-[#F5A623] 
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#B8860B] 
+                       rounded-xl font-display font-bold text-[#B8860B] hover:bg-[#B8860B] 
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
             Cancel
           </button>
           <div className="flex-1">
-            <h1 className="text-lg font-display text-[#F5A623] crayon-text">
+            <h1 className="text-lg font-display text-[#B8860B] crayon-text">
               {board ? 'Edit Board' : 'Create Board'}
             </h1>
           </div>
@@ -593,7 +594,7 @@ const BoardEditor = ({ board, onSave, onCancel }) => {
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g., Snack Choices, Weekend Activities"
             className="w-full px-4 py-3 border-3 border-gray-200 rounded-xl font-crayon
-                     focus:border-[#F5A623] focus:outline-none"
+                     focus:border-[#B8860B] focus:outline-none"
           />
         </div>
 
@@ -638,7 +639,7 @@ const BoardEditor = ({ board, onSave, onCancel }) => {
                       onChange={(e) => handleOptionChange(index, 'name', e.target.value)}
                       placeholder="Choice name..."
                       className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg font-crayon
-                               focus:border-[#F5A623] focus:outline-none"
+                               focus:border-[#B8860B] focus:outline-none"
                     />
 
                     {/* Availability Toggle */}
@@ -691,7 +692,7 @@ const BoardEditor = ({ board, onSave, onCancel }) => {
               type="button"
               onClick={addOption}
               className="w-full mt-3 py-3 border-3 border-dashed border-gray-300 rounded-xl
-                       font-crayon text-gray-500 hover:border-[#F5A623] hover:text-[#F5A623]
+                       font-crayon text-gray-500 hover:border-[#B8860B] hover:text-[#B8860B]
                        flex items-center justify-center gap-2 transition-all"
             >
               <Plus size={20} />
@@ -984,27 +985,27 @@ const ChoiceBoard = () => {
         )}
 
         {/* Header */}
-        <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#F5A623]">
+        <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#B8860B]">
           <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
             <button
               type="button"
               onClick={() => setSelectedBoard(null)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F5A623] 
-                         rounded-xl font-display font-bold text-[#F5A623] hover:bg-[#F5A623] 
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#B8860B] 
+                         rounded-xl font-display font-bold text-[#B8860B] hover:bg-[#B8860B] 
                          hover:text-white transition-all shadow-md"
             >
               <ArrowLeft size={16} />
               Back
             </button>
             <div className="flex-1">
-              <h1 className="text-lg font-display text-[#F5A623] crayon-text">
+              <h1 className="text-lg font-display text-[#B8860B] crayon-text">
                 {selectedBoard.name}
               </h1>
             </div>
             <button
               type="button"
               onClick={() => setEditingBoard(selectedBoard)}
-              className="p-2 text-gray-500 hover:text-[#F5A623] hover:bg-[#F5A623]/10 rounded-lg"
+              className="p-2 text-gray-500 hover:text-[#B8860B] hover:bg-[#B8860B]/10 rounded-lg"
               title="Edit board"
             >
               <Edit3 size={20} />
@@ -1063,7 +1064,7 @@ const ChoiceBoard = () => {
           </div>
 
           {/* Tip */}
-          <div className="mt-8 p-4 bg-[#F5A623]/10 rounded-2xl border-3 border-[#F5A623]/30">
+          <div className="mt-8 p-4 bg-[#B8860B]/10 rounded-2xl border-3 border-[#B8860B]/30">
             <p className="font-crayon text-gray-600 text-center text-sm">
               💡 After choosing, you can add it to your Visual Schedule!
             </p>
@@ -1088,13 +1089,13 @@ const ChoiceBoard = () => {
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#F5A623]">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#B8860B]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             type="button"
             onClick={() => navigate('/activities')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F5A623] 
-                       rounded-xl font-display font-bold text-[#F5A623] hover:bg-[#F5A623] 
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#B8860B] 
+                       rounded-xl font-display font-bold text-[#B8860B] hover:bg-[#B8860B] 
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
@@ -1102,14 +1103,14 @@ const ChoiceBoard = () => {
           </button>
           <img src="/logo.jpeg" alt="ATLASassist" className="w-10 h-10 rounded-lg shadow-sm" />
           <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-display text-[#F5A623] crayon-text">
+            <h1 className="text-lg sm:text-xl font-display text-[#B8860B] crayon-text">
               ⭐ Choice Board
             </h1>
           </div>
           <button
             type="button"
             onClick={() => setShowHistory(true)}
-            className="p-2 text-gray-500 hover:text-[#F5A623] hover:bg-[#F5A623]/10 rounded-lg"
+            className="p-2 text-gray-500 hover:text-[#B8860B] hover:bg-[#B8860B]/10 rounded-lg"
             title="View choice history"
           >
             <History size={20} />
@@ -1130,7 +1131,7 @@ const ChoiceBoard = () => {
               <div
                 key={board.id}
                 className="bg-white rounded-2xl border-3 border-gray-200 p-4 shadow-sm
-                         hover:border-[#F5A623] hover:shadow-crayon transition-all"
+                         hover:border-[#B8860B] hover:shadow-crayon transition-all"
               >
                 <div className="flex items-center gap-4">
                   {/* Board Preview */}
@@ -1162,7 +1163,7 @@ const ChoiceBoard = () => {
                   <button
                     type="button"
                     onClick={() => setSelectedBoard(board)}
-                    className="px-4 py-2 bg-[#F5A623] text-white rounded-xl font-crayon text-sm
+                    className="px-4 py-2 bg-[#B8860B] text-white rounded-xl font-crayon text-sm
                              hover:bg-orange-500 transition-colors"
                   >
                     Use
@@ -1170,7 +1171,7 @@ const ChoiceBoard = () => {
                   <button
                     type="button"
                     onClick={() => setEditingBoard(board)}
-                    className="p-2 text-gray-400 hover:text-[#F5A623]"
+                    className="p-2 text-gray-400 hover:text-[#B8860B]"
                   >
                     <Edit3 size={18} />
                   </button>
@@ -1199,7 +1200,7 @@ const ChoiceBoard = () => {
         <button
           type="button"
           onClick={() => setEditingBoard('new')}
-          className="w-full py-4 bg-[#F5A623] border-4 border-orange-500 rounded-xl
+          className="w-full py-4 bg-[#B8860B] border-4 border-amber-700 rounded-xl
                    font-display text-xl text-white shadow-crayon
                    hover:scale-105 transition-transform flex items-center justify-center gap-2"
         >

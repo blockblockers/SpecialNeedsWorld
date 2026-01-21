@@ -1,4 +1,5 @@
 // FIXED: Back button is context-aware - goes to category list if in category, /wellness if not
+// FIXED: Category buttons updated to match app theme (transparent bg + colored border)
 // CopingSkillsChart.jsx - Visual coping strategies chart
 // NAVIGATION: Back button goes to /wellness (parent hub)
 import { useState, useEffect } from 'react';
@@ -260,17 +261,37 @@ const CopingSkillsChart = () => {
 
         {/* Category Selection */}
         {!selectedCategory ? (
-          <div className="grid grid-cols-2 gap-4">
-            {Object.entries(COPING_STRATEGIES).map(([key, cat]) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {Object.entries(COPING_STRATEGIES).map(([key, cat], index) => (
               <button
                 key={key}
                 onClick={() => setSelectedCategory(key)}
-                className="p-6 rounded-2xl text-white text-center transition-all hover:scale-105 shadow-lg"
-                style={{ backgroundColor: cat.color }}
+                className="relative p-4 rounded-2xl border-4 text-center
+                         transition-all duration-200 shadow-crayon
+                         hover:scale-105 hover:-rotate-1 active:scale-95 cursor-pointer"
+                style={{
+                  backgroundColor: cat.color + '20',
+                  borderColor: cat.color,
+                  borderRadius: index % 2 === 0 ? '20px 8px 20px 8px' : '8px 20px 8px 20px',
+                }}
               >
-                <span className="text-4xl block mb-2">{cat.emoji}</span>
-                <h3 className="font-display text-lg">{cat.name}</h3>
-                <p className="text-xs opacity-90 font-crayon mt-1">{cat.description}</p>
+                {/* Icon container with white background */}
+                <div 
+                  className="w-14 h-14 rounded-2xl bg-white/80 flex items-center justify-center mb-2 mx-auto"
+                  style={{ border: `2px solid ${cat.color}` }}
+                >
+                  <span className="text-3xl">{cat.emoji}</span>
+                </div>
+                
+                {/* Name - dark text */}
+                <h3 className="font-display text-gray-800 text-sm leading-tight">
+                  {cat.name}
+                </h3>
+                
+                {/* Description */}
+                <p className="font-crayon text-xs text-gray-500 mt-1">
+                  {cat.description}
+                </p>
               </button>
             ))}
           </div>

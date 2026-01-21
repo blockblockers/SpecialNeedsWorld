@@ -1,11 +1,12 @@
-// FIXED: Updated Printables color from yellow (#F5A623) to carrot orange (#E67E22)
 // ResourcesHub.jsx - Resources & Research hub for ATLASassist
-// FIXED: Single icon (emoji only)
+// FIXED: Added FAQ, Definitions, Therapy Types sections
+// FIXED: Updated Printables color from yellow (#F5A623) to carrot orange (#E67E22)
+// FIXED: Added Featured Resources section with external links
 
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Star, Info } from 'lucide-react';
 
-// Resource sections - FIXED: Removed icon property from render
+// Resource sections - includes all pages
 const resourceSections = [
   {
     id: 'laws',
@@ -26,6 +27,33 @@ const resourceSections = [
     ready: true,
   },
   {
+    id: 'therapy',
+    name: 'Therapy Types',
+    description: 'Learn about different therapies',
+    color: '#20B2AA',
+    emoji: '🩺',
+    path: '/resources/therapy-types',
+    ready: true,
+  },
+  {
+    id: 'definitions',
+    name: 'Definitions',
+    description: 'Terms & acronyms explained',
+    color: '#20B2AA',
+    emoji: '📖',
+    path: '/resources/definitions',
+    ready: true,
+  },
+  {
+    id: 'faq',
+    name: 'FAQ',
+    description: 'Common questions answered',
+    color: '#CD853F',
+    emoji: '❓',
+    path: '/resources/faq',
+    ready: true,
+  },
+  {
     id: 'printables',
     name: 'Printables Library',
     description: 'Charts, cards & worksheets',
@@ -42,6 +70,40 @@ const resourceSections = [
     emoji: '🛒',
     path: '/resources/products',
     ready: true,
+  },
+];
+
+// Featured external resources
+const FEATURED_RESOURCES = [
+  {
+    name: 'Understood.org',
+    description: 'Free resources for learning and thinking differences',
+    url: 'https://www.understood.org',
+    emoji: '📖',
+  },
+  {
+    name: 'ASAN',
+    description: 'Autistic Self Advocacy Network',
+    url: 'https://autisticadvocacy.org',
+    emoji: '🏛️',
+  },
+  {
+    name: 'Wrightslaw',
+    description: 'Special education law and advocacy',
+    url: 'https://www.wrightslaw.com',
+    emoji: '⚖️',
+  },
+  {
+    name: 'CHADD',
+    description: 'Children and Adults with ADHD resources',
+    url: 'https://chadd.org',
+    emoji: '⚡',
+  },
+  {
+    name: 'The Arc',
+    description: 'Advocacy for people with intellectual & developmental disabilities',
+    url: 'https://thearc.org',
+    emoji: '💙',
   },
 ];
 
@@ -80,11 +142,11 @@ const ResourcesHub = () => {
       {/* Main Content */}
       <main className="max-w-2xl mx-auto px-4 py-6">
         <p className="text-center text-gray-600 font-crayon mb-6">
-          Laws, research & printable resources for advocacy!
+          Knowledge, tools, and resources to support your journey
         </p>
 
-        {/* Resources Grid - Updated to match EmotionalWellnessHub style */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        {/* Resources Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
           {resourceSections.map((section, index) => (
             <button
               key={section.id}
@@ -125,11 +187,46 @@ const ResourcesHub = () => {
           ))}
         </div>
 
+        {/* Featured External Resources */}
+        <div className="mb-8">
+          <h2 className="font-display text-lg text-[#8E6BBF] mb-4 flex items-center gap-2">
+            <Star size={20} className="text-[#F8D14A]" />
+            Featured Resources
+          </h2>
+          <div className="space-y-3">
+            {FEATURED_RESOURCES.map((resource) => (
+              <a
+                key={resource.name}
+                href={resource.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block p-4 bg-white rounded-xl border-3 border-gray-200 
+                         hover:border-[#8E6BBF] hover:shadow-crayon transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{resource.emoji}</span>
+                  <div className="flex-1">
+                    <h3 className="font-display text-[#8E6BBF] flex items-center gap-2">
+                      {resource.name}
+                      <ExternalLink size={14} className="text-gray-400" />
+                    </h3>
+                    <p className="font-crayon text-sm text-gray-600">{resource.description}</p>
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+
         {/* Info Note */}
-        <div className="mt-8 p-4 bg-white rounded-2xl border-3 border-[#8E6BBF]/30 shadow-sm">
-          <p className="text-center text-gray-600 font-crayon text-sm">
-            📖 Knowledge is power! Use these resources to advocate effectively.
-          </p>
+        <div className="mt-8 p-4 bg-gray-50 rounded-xl border-2 border-gray-200">
+          <div className="flex gap-2">
+            <Info size={16} className="text-gray-400 flex-shrink-0 mt-0.5" />
+            <p className="font-crayon text-xs text-gray-500">
+              These resources are provided for informational purposes. Always consult with 
+              qualified professionals for advice specific to your situation.
+            </p>
+          </div>
         </div>
       </main>
     </div>
