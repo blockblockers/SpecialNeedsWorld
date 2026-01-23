@@ -39,7 +39,7 @@ import {
 } from '../services/arasaac';
 import { supabase, isSupabaseConfigured } from '../services/supabase';
 import { useToast } from '../components/ThemedToast';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../App';
 
 // ============================================
 // LAYOUT DESCRIPTIONS

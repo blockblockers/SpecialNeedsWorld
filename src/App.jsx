@@ -1,7 +1,6 @@
 // App.jsx - ATLASassist v2.1 - COMPREHENSIVE ROUTE FIX
 // FIXED: All missing routes that were causing apps to redirect to hub
 // FIXED: Full auth implementation for EntryAuthScreen compatibility
-// FIXED: Initialize cloud sync for scheduleHelper to enable push notifications from all apps
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect, createContext, useContext, lazy, Suspense } from 'react';
@@ -13,7 +12,6 @@ import EntryAuthScreen from './pages/EntryAuthScreen';
 import { ToastProvider } from './components/ThemedToast';
 import { supabase, isSupabaseConfigured } from './services/supabase';
 import { initNotifications } from './services/notifications';
-import { initCloudSync } from './services/scheduleHelper';
 
 // ============================================
 // LAZY IMPORTS - Loaded on demand
@@ -172,8 +170,6 @@ const AuthProvider = ({ children }) => {
           
           if (session?.user) {
             setUser(formatSupabaseUser(session.user));
-            // Initialize cloud sync for existing session
-            initCloudSync(session.user.id).catch(console.error);
           }
           
           const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -182,9 +178,6 @@ const AuthProvider = ({ children }) => {
               if (session?.user) {
                 setUser(formatSupabaseUser(session.user));
                 
-                // Initialize cloud sync for scheduleHelper (used by First-Then, Choice Board, etc.)
-                initCloudSync(session.user.id).catch(console.error);
-                
                 if (event === 'SIGNED_IN') {
                   setTimeout(() => {
                     initNotifications().catch(console.error);
@@ -192,8 +185,6 @@ const AuthProvider = ({ children }) => {
                 }
               } else {
                 setUser(null);
-                // Clear cloud sync when signed out
-                initCloudSync(null).catch(console.error);
               }
             }
           );
@@ -579,6 +570,7 @@ function App() {
             <Route path="/games/memory" element={<ProtectedRoute><MatchingGame /></ProtectedRoute>} />
             <Route path="/games/emotion-match" element={<ProtectedRoute><EmotionMatch /></ProtectedRoute>} />
             <Route path="/games/emotions" element={<ProtectedRoute><EmotionMatch /></ProtectedRoute>} />
+            <Route path="/activities/emotion-match" element={<ProtectedRoute><EmotionMatch /></ProtectedRoute>} />
             <Route path="/games/bubble-pop" element={<ProtectedRoute><BubblePop /></ProtectedRoute>} />
             <Route path="/games/bubbles" element={<ProtectedRoute><BubblePop /></ProtectedRoute>} />
             <Route path="/games/color-sort" element={<ProtectedRoute><ColorSort /></ProtectedRoute>} />
