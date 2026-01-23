@@ -598,6 +598,164 @@ export const addReminderToSchedule = (options) => {
   });
 };
 
+export const addMealToSchedule = (options) => {
+  return addActivityToSchedule({
+    ...options,
+    source: SCHEDULE_SOURCES.HEALTHY_CHOICES,
+    emoji: options.emoji || '🍽️',
+  });
+};
+
+export const addBedtimeToSchedule = (options) => {
+  return addActivityToSchedule({
+    ...options,
+    source: SCHEDULE_SOURCES.SLEEP_TRACKER,
+    emoji: options.emoji || '🛏️',
+  });
+};
+
+export const addWaketimeToSchedule = (options) => {
+  return addActivityToSchedule({
+    ...options,
+    source: SCHEDULE_SOURCES.SLEEP_TRACKER,
+    emoji: options.emoji || '☀️',
+  });
+};
+
+export const addExerciseToSchedule = (options) => {
+  return addActivityToSchedule({
+    ...options,
+    source: SCHEDULE_SOURCES.WELLNESS,
+    emoji: options.emoji || '🏃',
+  });
+};
+
+export const addChoiceToSchedule = (options) => {
+  return addActivityToSchedule({
+    ...options,
+    source: SCHEDULE_SOURCES.CHOICE_BOARD,
+    emoji: options.emoji || '🎯',
+  });
+};
+
+export const addHealthyChoiceReminderToSchedule = (options) => {
+  return addActivityToSchedule({
+    ...options,
+    source: SCHEDULE_SOURCES.HEALTHY_CHOICES,
+    emoji: options.emoji || '🥗',
+  });
+};
+
+export const addOTExerciseToSchedule = (options) => {
+  return addActivityToSchedule({
+    ...options,
+    source: SCHEDULE_SOURCES.THERAPY,
+    emoji: options.emoji || '🤲',
+  });
+};
+
+export const addOTSessionToSchedule = (options) => {
+  return addActivityToSchedule({
+    ...options,
+    source: SCHEDULE_SOURCES.THERAPY,
+    emoji: options.emoji || '🏥',
+  });
+};
+
+export const addSensoryBreakToSchedule = (options) => {
+  return addActivityToSchedule({
+    ...options,
+    source: SCHEDULE_SOURCES.WELLNESS,
+    emoji: options.emoji || '🧘',
+  });
+};
+
+export const scheduleRegularBreaks = ({ date, startTime = '09:00', endTime = '17:00', intervalMinutes = 60, breakName = 'Sensory Break', emoji = '🧘', notify = true }) => {
+  const activities = [];
+  const [startHour, startMin] = startTime.split(':').map(Number);
+  const [endHour, endMin] = endTime.split(':').map(Number);
+  
+  let currentHour = startHour;
+  let currentMin = startMin;
+  
+  while (currentHour < endHour || (currentHour === endHour && currentMin <= endMin)) {
+    const time = `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`;
+    activities.push({ name: breakName, time, emoji });
+    
+    currentMin += intervalMinutes;
+    while (currentMin >= 60) {
+      currentMin -= 60;
+      currentHour += 1;
+    }
+  }
+  
+  return addMultipleActivitiesToSchedule({
+    date,
+    activities,
+    source: SCHEDULE_SOURCES.WELLNESS,
+    notify,
+  });
+};
+
+export const addWaterReminderToSchedule = (options) => {
+  return addActivityToSchedule({
+    ...options,
+    source: SCHEDULE_SOURCES.HEALTHY_CHOICES,
+    emoji: options.emoji || '💧',
+  });
+};
+
+export const scheduleWaterReminders = ({ date, startTime = '08:00', endTime = '20:00', intervalMinutes = 90, notify = true }) => {
+  const activities = [];
+  const [startHour, startMin] = startTime.split(':').map(Number);
+  const [endHour, endMin] = endTime.split(':').map(Number);
+  
+  let currentHour = startHour;
+  let currentMin = startMin;
+  
+  while (currentHour < endHour || (currentHour === endHour && currentMin <= endMin)) {
+    const time = `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`;
+    activities.push({ name: 'Drink Water', time, emoji: '💧' });
+    
+    currentMin += intervalMinutes;
+    while (currentMin >= 60) {
+      currentMin -= 60;
+      currentHour += 1;
+    }
+  }
+  
+  return addMultipleActivitiesToSchedule({
+    date,
+    activities,
+    source: SCHEDULE_SOURCES.HEALTHY_CHOICES,
+    notify,
+  });
+};
+
+export const addMedicineReminderToSchedule = (options) => {
+  return addActivityToSchedule({
+    ...options,
+    source: SCHEDULE_SOURCES.REMINDER,
+    emoji: options.emoji || '💊',
+  });
+};
+
+export const addAppointmentToSchedule = (options) => {
+  return addActivityToSchedule({
+    ...options,
+    source: SCHEDULE_SOURCES.THERAPY,
+    emoji: options.emoji || '📅',
+  });
+};
+
+export const addRoutineToSchedule = (options) => {
+  return addActivityToSchedule({
+    ...options,
+    source: SCHEDULE_SOURCES.MANUAL,
+    emoji: options.emoji || '📋',
+  });
+};
+
 // ============================================
 // MODAL HELPERS
 // ============================================
@@ -647,6 +805,21 @@ export default {
   addSocialStoryToSchedule,
   addFirstThenToSchedule,
   addReminderToSchedule,
+  addMealToSchedule,
+  addBedtimeToSchedule,
+  addWaketimeToSchedule,
+  addExerciseToSchedule,
+  addChoiceToSchedule,
+  addHealthyChoiceReminderToSchedule,
+  addOTExerciseToSchedule,
+  addOTSessionToSchedule,
+  addSensoryBreakToSchedule,
+  scheduleRegularBreaks,
+  addWaterReminderToSchedule,
+  scheduleWaterReminders,
+  addMedicineReminderToSchedule,
+  addAppointmentToSchedule,
+  addRoutineToSchedule,
   
   // Modal helpers
   createScheduleModalHandlers,
