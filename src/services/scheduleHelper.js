@@ -1,15 +1,48 @@
 // scheduleHelper.js - Unified schedule integration service for ATLASassist
-// FIXED: Self-contained with graceful fallbacks for missing dependencies
-// FIXED: Won't break if calendar.js, notifications.js, etc. are missing
-// FIXED: Now syncs to cloud and schedules push notifications when available
+// FIXED: Now properly syncs to cloud and schedules push notifications
+// FIXED: Auto-initializes cloud sync when user is available
+// FIXED: Gets userId from Supabase session if not explicitly initialized
 
 // ============================================
-// CLOUD SYNC INTEGRATION (Optional)
-// These functions gracefully fail if services aren't available
+// CLOUD SYNC INTEGRATION
 // ============================================
 
 let calendarSyncModule = null;
 let currentUserId = null;
+let initPromise = null;
+
+/**
+ * Get current user ID from Supabase session
+ * This allows us to work even if initCloudSync wasn't explicitly called
+ */
+const getCurrentUserIdFromSession = async () => {
+  try {
+    const supabaseModule = await import('./supabase.js');
+    if (supabaseModule.supabase && supabaseModule.isSupabaseConfigured()) {
+      const { data: { session } } = await supabaseModule.supabase.auth.getSession();
+      return session?.user?.id || null;
+    }
+  } catch (error) {
+    console.warn('Could not get user from session:', error.message);
+  }
+  return null;
+};
+
+/**
+ * Initialize cloud sync module (lazy loaded)
+ */
+const ensureCalendarSyncModule = async () => {
+  if (calendarSyncModule) return calendarSyncModule;
+  
+  try {
+    calendarSyncModule = await import('./calendarSync.js');
+    console.log('Calendar sync module loaded for scheduleHelper');
+    return calendarSyncModule;
+  } catch (error) {
+    console.warn('Calendar sync module not available:', error.message);
+    return null;
+  }
+};
 
 /**
  * Initialize cloud sync with user ID
@@ -22,22 +55,38 @@ export const initCloudSync = async (userId) => {
     return;
   }
   
-  try {
-    // Dynamic import to avoid hard dependency
-    calendarSyncModule = await import('./calendarSync.js');
-    console.log('Cloud sync initialized for scheduleHelper');
-  } catch (error) {
-    console.warn('Cloud sync not available:', error.message);
-    calendarSyncModule = null;
-  }
+  await ensureCalendarSyncModule();
+  console.log('Cloud sync initialized for scheduleHelper with user:', userId);
 };
 
 /**
- * Sync schedule to cloud and schedule notifications
- * Called automatically after adding activities if cloud sync is initialized
+ * Ensure we have a valid user ID (either from init or from session)
+ */
+const ensureUserId = async () => {
+  if (currentUserId) return currentUserId;
+  
+  // Try to get from session
+  const sessionUserId = await getCurrentUserIdFromSession();
+  if (sessionUserId) {
+    currentUserId = sessionUserId;
+    console.log('Got user ID from session:', sessionUserId);
+    return sessionUserId;
+  }
+  
+  return null;
+};
+
+/**
+ * Sync schedule to cloud and schedule server-side push notifications
+ * Called automatically after adding activities
  */
 const syncAndNotify = async (dateStr, notify = true) => {
-  if (!calendarSyncModule || !currentUserId) {
+  // Ensure we have userId and module
+  const userId = await ensureUserId();
+  const syncModule = await ensureCalendarSyncModule();
+  
+  if (!syncModule || !userId) {
+    console.log('Cloud sync not available - userId:', !!userId, 'module:', !!syncModule);
     return { synced: false, notified: false };
   }
   
@@ -47,23 +96,32 @@ const syncAndNotify = async (dateStr, notify = true) => {
     const daySchedule = schedules[dateStr];
     
     if (!daySchedule) {
+      console.log('No schedule found for date:', dateStr);
       return { synced: false, notified: false };
     }
     
     // Sync to cloud
     let synced = false;
-    if (calendarSyncModule.saveSchedule) {
-      await calendarSyncModule.saveSchedule(currentUserId, dateStr, daySchedule);
-      synced = true;
-      console.log('Schedule synced to cloud:', dateStr);
+    if (syncModule.saveSchedule) {
+      try {
+        await syncModule.saveSchedule(userId, dateStr, daySchedule);
+        synced = true;
+        console.log('✓ Schedule synced to cloud:', dateStr);
+      } catch (syncError) {
+        console.error('Cloud sync failed:', syncError.message);
+      }
     }
     
-    // Schedule notifications if requested
+    // Schedule server-side push notifications if requested
     let notified = false;
-    if (notify && calendarSyncModule.scheduleNotificationsForDay) {
-      const count = await calendarSyncModule.scheduleNotificationsForDay(currentUserId, dateStr);
-      notified = count > 0;
-      console.log('Notifications scheduled:', count);
+    if (notify && synced && syncModule.scheduleNotificationsForDay) {
+      try {
+        const count = await syncModule.scheduleNotificationsForDay(userId, dateStr);
+        notified = count > 0;
+        console.log('✓ Server-side notifications scheduled:', count);
+      } catch (notifyError) {
+        console.error('Notification scheduling failed:', notifyError.message);
+      }
     }
     
     return { synced, notified };
@@ -75,251 +133,160 @@ const syncAndNotify = async (dateStr, notify = true) => {
 
 // ============================================
 // SELF-CONTAINED DATE HELPERS
-// (No external dependencies - these work standalone)
 // ============================================
 
 export const formatDate = (date) => {
-  const d = typeof date === 'string' ? new Date(date) : date;
+  const d = typeof date === 'string' ? new Date(date + 'T00:00:00') : new Date(date);
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
 
-export const getToday = () => formatDate(new Date());
-
-export const getTomorrow = () => {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  return formatDate(tomorrow);
+export const formatTimeDisplay = (time) => {
+  if (!time) return '';
+  const [hours, minutes] = time.split(':');
+  const h = parseInt(hours, 10);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const displayHour = h % 12 || 12;
+  return `${displayHour}:${minutes} ${ampm}`;
 };
 
-export const addDays = (dateStr, days) => {
-  const date = typeof dateStr === 'string' ? new Date(dateStr + 'T00:00:00') : new Date(dateStr);
-  date.setDate(date.getDate() + days);
-  return formatDate(date);
-};
-
-export const formatDisplayDate = (dateStr) => {
-  const date = typeof dateStr === 'string' ? new Date(dateStr + 'T00:00:00') : dateStr;
-  return date.toLocaleDateString('en-US', { 
+export const formatDateDisplay = (date) => {
+  const d = typeof date === 'string' ? new Date(date + 'T00:00:00') : new Date(date);
+  return d.toLocaleDateString('en-US', { 
     weekday: 'short', 
     month: 'short', 
     day: 'numeric' 
   });
 };
 
-// Alias for backward compatibility
-export const formatDateDisplay = formatDisplayDate;
+// ============================================
+// SCHEDULE SOURCES & COLORS
+// ============================================
 
-export const formatTimeDisplay = (time24) => {
-  if (!time24) return '';
-  const [hours, minutes] = time24.split(':').map(Number);
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  const hour12 = hours % 12 || 12;
-  return `${hour12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+export const SCHEDULE_SOURCES = {
+  MANUAL: 'manual',
+  SOCIAL_STORY: 'social_story',
+  CHOICE_BOARD: 'choice_board',
+  AAC: 'aac',
+  EMOTION_MATCH: 'emotion_match',
+  WELLNESS: 'wellness',
+  HEALTHY_CHOICES: 'healthy_choices',
+  SLEEP_TRACKER: 'sleep_tracker',
+  THERAPY: 'therapy',
+  REMINDER: 'reminder',
+};
+
+export const SOURCE_COLORS = {
+  [SCHEDULE_SOURCES.MANUAL]: '#4A9FD4',
+  [SCHEDULE_SOURCES.SOCIAL_STORY]: '#8E6BBF',
+  [SCHEDULE_SOURCES.CHOICE_BOARD]: '#F5A623',
+  [SCHEDULE_SOURCES.AAC]: '#5CB85C',
+  [SCHEDULE_SOURCES.EMOTION_MATCH]: '#E86B9A',
+  [SCHEDULE_SOURCES.WELLNESS]: '#20B2AA',
+  [SCHEDULE_SOURCES.HEALTHY_CHOICES]: '#5CB85C',
+  [SCHEDULE_SOURCES.SLEEP_TRACKER]: '#6B5B95',
+  [SCHEDULE_SOURCES.THERAPY]: '#E63B2E',
+  [SCHEDULE_SOURCES.REMINDER]: '#F5A623',
+};
+
+export const SOURCE_LABELS = {
+  [SCHEDULE_SOURCES.MANUAL]: 'Added manually',
+  [SCHEDULE_SOURCES.SOCIAL_STORY]: 'From Social Stories',
+  [SCHEDULE_SOURCES.CHOICE_BOARD]: 'From Choice Board',
+  [SCHEDULE_SOURCES.AAC]: 'From Point to Talk',
+  [SCHEDULE_SOURCES.EMOTION_MATCH]: 'From Emotion Match',
+  [SCHEDULE_SOURCES.WELLNESS]: 'From Wellness Hub',
+  [SCHEDULE_SOURCES.HEALTHY_CHOICES]: 'From Healthy Choices',
+  [SCHEDULE_SOURCES.SLEEP_TRACKER]: 'From Sleep Tracker',
+  [SCHEDULE_SOURCES.THERAPY]: 'Therapy/Appointment',
+  [SCHEDULE_SOURCES.REMINDER]: 'Reminder',
 };
 
 // ============================================
 // STORAGE KEY
 // ============================================
-const STORAGE_KEY = 'snw_calendar_schedules';
+
+const STORAGE_KEY = 'snw_visual_schedules';
 
 // ============================================
-// SCHEDULE STORAGE FUNCTIONS
+// GET ALL SCHEDULES
 // ============================================
-
-export const getScheduleForDate = (dateStr) => {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    const schedules = data ? JSON.parse(data) : {};
-    return schedules[dateStr] || null;
-  } catch (e) {
-    console.error('Error loading schedule:', e);
-    return null;
-  }
-};
 
 export const getAllSchedules = () => {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
     return data ? JSON.parse(data) : {};
-  } catch {
+  } catch (error) {
+    console.error('Error reading schedules:', error);
     return {};
   }
 };
 
-export const saveScheduleToDate = (dateStr, schedule) => {
-  try {
-    const all = getAllSchedules();
-    all[dateStr] = schedule;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-    return true;
-  } catch (e) {
-    console.error('Error saving schedule:', e);
-    return false;
-  }
+// ============================================
+// GET SCHEDULE FOR DATE
+// ============================================
+
+export const getScheduleForDate = (date) => {
+  const dateStr = typeof date === 'string' ? date : formatDate(date);
+  const schedules = getAllSchedules();
+  return schedules[dateStr] || null;
 };
 
 // ============================================
-// ACTIVITY/SCHEDULE SOURCES
+// ADD ACTIVITY TO SCHEDULE
 // ============================================
-export const SCHEDULE_SOURCES = {
-  MANUAL: 'manual',
-  APPOINTMENT: 'appointment',
-  ROUTINE: 'routine',
-  FIRST_THEN: 'first_then',
-  REMINDER: 'reminder',
-  OT_EXERCISE: 'ot_exercise',
-  SENSORY_BREAK: 'sensory_break',
-  WATER: 'water',
-  MEDICINE: 'medicine',
-  EXERCISE: 'exercise',
-  SLEEP: 'sleep',
-  SOCIAL_STORY: 'social_story',
-  CHOICE_BOARD: 'choice_board',
-  HEALTHY_CHOICES: 'healthy_choices',
-  DAILY_ROUTINE: 'daily_routine',
-};
 
-// Alias for backward compatibility
-export const ACTIVITY_SOURCES = SCHEDULE_SOURCES;
-
-// ============================================
-// SOURCE COLORS FOR UI
-// ============================================
-export const SOURCE_COLORS = {
-  [SCHEDULE_SOURCES.MANUAL]: '#4A9FD4',
-  [SCHEDULE_SOURCES.APPOINTMENT]: '#E63B2E',
-  [SCHEDULE_SOURCES.ROUTINE]: '#5CB85C',
-  [SCHEDULE_SOURCES.FIRST_THEN]: '#F5A623',
-  [SCHEDULE_SOURCES.REMINDER]: '#8E6BBF',
-  [SCHEDULE_SOURCES.OT_EXERCISE]: '#E86B9A',
-  [SCHEDULE_SOURCES.SENSORY_BREAK]: '#20B2AA',
-  [SCHEDULE_SOURCES.WATER]: '#4A9FD4',
-  [SCHEDULE_SOURCES.MEDICINE]: '#FF6B6B',
-  [SCHEDULE_SOURCES.EXERCISE]: '#5CB85C',
-  [SCHEDULE_SOURCES.SLEEP]: '#6B5B95',
-  [SCHEDULE_SOURCES.SOCIAL_STORY]: '#8E6BBF',
-  [SCHEDULE_SOURCES.CHOICE_BOARD]: '#F5A623',
-  [SCHEDULE_SOURCES.HEALTHY_CHOICES]: '#5CB85C',
-  [SCHEDULE_SOURCES.DAILY_ROUTINE]: '#5CB85C',
-};
-
-// Source defaults for emojis
-export const SOURCE_DEFAULTS = {
-  [SCHEDULE_SOURCES.MANUAL]: { emoji: '⭐', color: '#4A9FD4' },
-  [SCHEDULE_SOURCES.APPOINTMENT]: { emoji: '📅', color: '#E63B2E' },
-  [SCHEDULE_SOURCES.ROUTINE]: { emoji: '📋', color: '#5CB85C' },
-  [SCHEDULE_SOURCES.FIRST_THEN]: { emoji: '1️⃣', color: '#F5A623' },
-  [SCHEDULE_SOURCES.REMINDER]: { emoji: '🔔', color: '#8E6BBF' },
-  [SCHEDULE_SOURCES.OT_EXERCISE]: { emoji: '🏋️', color: '#E86B9A' },
-  [SCHEDULE_SOURCES.SENSORY_BREAK]: { emoji: '🧘', color: '#20B2AA' },
-  [SCHEDULE_SOURCES.WATER]: { emoji: '💧', color: '#4A9FD4' },
-  [SCHEDULE_SOURCES.MEDICINE]: { emoji: '💊', color: '#FF6B6B' },
-  [SCHEDULE_SOURCES.EXERCISE]: { emoji: '🏃', color: '#5CB85C' },
-  [SCHEDULE_SOURCES.SLEEP]: { emoji: '😴', color: '#6B5B95' },
-  [SCHEDULE_SOURCES.SOCIAL_STORY]: { emoji: '📖', color: '#8E6BBF' },
-  [SCHEDULE_SOURCES.CHOICE_BOARD]: { emoji: '⭐', color: '#F5A623' },
-  [SCHEDULE_SOURCES.HEALTHY_CHOICES]: { emoji: '✅', color: '#5CB85C' },
-  [SCHEDULE_SOURCES.DAILY_ROUTINE]: { emoji: '📋', color: '#5CB85C' },
-};
-
-// ============================================
-// CORE: ADD ACTIVITY TO SCHEDULE
-// FIXED: Completely self-contained, no external dependencies
-// ============================================
-/**
- * Add a single activity to the schedule
- * @param {Object} options - Activity options
- * @returns {Object} { success: boolean, activity: Object, error?: string }
- */
 export const addActivityToSchedule = ({
   date,
   name,
-  time = null,
-  emoji = null,
-  color = null,
+  time,
+  emoji = '📋',
+  color,
   source = SCHEDULE_SOURCES.MANUAL,
   notify = true,
   metadata = {},
-  customImage = null,
 }) => {
   try {
-    // Validate required fields
-    if (!date) {
-      return { success: false, error: 'Date is required' };
-    }
-    if (!name) {
-      return { success: false, error: 'Name is required' };
+    if (!date || !name) {
+      return { success: false, error: 'Date and name are required' };
     }
 
-    // Parse date - handle both string and Date objects
-    let dateStr;
-    try {
-      if (typeof date === 'string') {
-        // If it's already in YYYY-MM-DD format, use it directly
-        if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-          dateStr = date;
-        } else {
-          const dateObj = new Date(date);
-          dateStr = formatDate(dateObj);
-        }
-      } else {
-        dateStr = formatDate(date);
-      }
-    } catch (dateError) {
-      console.error('Date parsing error:', dateError);
-      return { success: false, error: 'Invalid date format' };
-    }
+    const dateStr = typeof date === 'string' ? date : formatDate(date);
+    const schedules = getAllSchedules();
     
-    // Get defaults from source
-    const defaults = SOURCE_DEFAULTS[source] || { emoji: '⭐', color: '#4A9FD4' };
-    
-    // Create activity object
+    // Create the new activity
     const newActivity = {
-      id: Date.now() + Math.random(),
-      activityId: `${source}-${Date.now()}`,
+      id: Date.now(),
       name,
       time: time || null,
-      emoji: emoji || defaults.emoji,
-      color: color || defaults.color,
+      emoji,
+      color: color || SOURCE_COLORS[source] || '#4A9FD4',
       source,
-      notify,
-      metadata,
-      customImage: customImage || null,
+      notify: notify && !!time,
+      completed: false,
+      createdAt: new Date().toISOString(),
+      ...metadata,
+    };
+    
+    // Get or create schedule for this date
+    let dateSchedule = schedules[dateStr] || {
+      id: Date.now(),
+      date: dateStr,
+      name: `Schedule for ${formatDateDisplay(dateStr)}`,
+      items: [],
+      activities: [],
       createdAt: new Date().toISOString(),
     };
     
-    // Get existing schedules from localStorage
-    let schedules = {};
-    
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        schedules = JSON.parse(saved);
-      }
-    } catch (e) {
-      console.error('Error loading schedules:', e);
-      schedules = {};
-    }
-    
-    // Ensure schedule exists with proper structure
-    let dateSchedule = schedules[dateStr];
-    
-    // If no schedule exists for this date, create one
-    if (!dateSchedule) {
-      dateSchedule = { items: [], activities: [] };
-    }
-    
-    // Ensure items array exists
+    // Handle legacy format
     if (!Array.isArray(dateSchedule.items)) {
       dateSchedule.items = Array.isArray(dateSchedule.activities) 
         ? [...dateSchedule.activities] 
         : [];
     }
     
-    // Ensure activities array exists
     if (!Array.isArray(dateSchedule.activities)) {
       dateSchedule.activities = Array.isArray(dateSchedule.items) 
         ? [...dateSchedule.items] 
@@ -340,6 +307,7 @@ export const addActivityToSchedule = ({
     
     dateSchedule.items.sort(sortByTime);
     dateSchedule.activities.sort(sortByTime);
+    dateSchedule.updatedAt = new Date().toISOString();
     
     // Save back to schedules
     schedules[dateStr] = dateSchedule;
@@ -355,24 +323,29 @@ export const addActivityToSchedule = ({
     // Sync to cloud and schedule push notifications
     // This runs asynchronously and won't block the response
     if (notify && time) {
-      syncAndNotify(dateStr, notify).then(result => {
-        if (result.synced) {
-          console.log('Activity synced to cloud:', newActivity.name);
-        }
-        if (result.notified) {
-          console.log('Push notification scheduled for:', newActivity.name);
-        }
-      }).catch(err => {
-        console.warn('Cloud sync/notification failed (non-blocking):', err.message);
-      });
+      syncAndNotify(dateStr, true)
+        .then(result => {
+          if (result.synced) {
+            console.log('✓ Activity synced to cloud:', newActivity.name);
+          }
+          if (result.notified) {
+            console.log('✓ Push notification scheduled for:', newActivity.name);
+          }
+          if (!result.synced && !result.notified) {
+            console.log('⚠ Cloud sync not available, notification scheduled locally only');
+          }
+        })
+        .catch(err => {
+          console.warn('Cloud sync/notification failed (non-blocking):', err.message);
+        });
     }
     
-    console.log('Activity added successfully:', newActivity);
+    console.log('Activity added successfully:', newActivity.name, 'to', dateStr);
     
     return {
       success: true,
       activity: newActivity,
-      cloudSyncPending: notify && time && !!calendarSyncModule,
+      message: `Added "${name}" to schedule`,
     };
   } catch (error) {
     console.error('Failed to add activity to schedule:', error);
@@ -386,6 +359,7 @@ export const addActivityToSchedule = ({
 // ============================================
 // ADD MULTIPLE ACTIVITIES
 // ============================================
+
 export const addMultipleActivitiesToSchedule = ({
   date,
   activities,
@@ -398,580 +372,160 @@ export const addMultipleActivitiesToSchedule = ({
     }
 
     const dateStr = typeof date === 'string' ? date : formatDate(date);
-    const defaults = SOURCE_DEFAULTS[source] || { emoji: '⭐', color: '#4A9FD4' };
+    const results = [];
+    let hasTime = false;
     
-    let schedules = {};
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        schedules = JSON.parse(saved);
-      }
-    } catch (e) {
-      schedules = {};
+    for (const activity of activities) {
+      const result = addActivityToSchedule({
+        date: dateStr,
+        name: activity.name,
+        time: activity.time,
+        emoji: activity.emoji,
+        color: activity.color,
+        source: activity.source || source,
+        notify: false, // We'll sync once at the end
+        metadata: activity.metadata,
+      });
+      results.push(result);
+      if (activity.time) hasTime = true;
     }
     
-    // Ensure schedule structure
-    let dateSchedule = schedules[dateStr];
-    if (!dateSchedule) {
-      dateSchedule = { items: [], activities: [] };
+    // Sync to cloud once after all activities added
+    if (notify && hasTime) {
+      syncAndNotify(dateStr, true)
+        .then(result => {
+          console.log('Bulk sync result:', result);
+        })
+        .catch(err => {
+          console.warn('Bulk sync failed:', err.message);
+        });
     }
-    if (!Array.isArray(dateSchedule.items)) {
-      dateSchedule.items = Array.isArray(dateSchedule.activities) ? [...dateSchedule.activities] : [];
-    }
-    if (!Array.isArray(dateSchedule.activities)) {
-      dateSchedule.activities = Array.isArray(dateSchedule.items) ? [...dateSchedule.items] : [];
-    }
     
-    // Create and add new activities
-    const newActivities = activities.map((activity, index) => ({
-      id: Date.now() + index + Math.random(),
-      activityId: `${source}-${Date.now()}-${index}`,
-      name: activity.name,
-      time: activity.time || null,
-      emoji: activity.emoji || defaults.emoji,
-      color: activity.color || defaults.color,
-      source,
-      notify: activity.notify !== undefined ? activity.notify : notify,
-      metadata: activity.metadata || {},
-      customImage: activity.customImage || null,
-      createdAt: new Date().toISOString(),
-    }));
-    
-    dateSchedule.items.push(...newActivities);
-    dateSchedule.activities.push(...newActivities);
-    
-    // Sort by time
-    const sortByTime = (a, b) => {
-      if (!a.time && !b.time) return 0;
-      if (!a.time) return 1;
-      if (!b.time) return -1;
-      return a.time.localeCompare(b.time);
-    };
-    
-    dateSchedule.items.sort(sortByTime);
-    dateSchedule.activities.sort(sortByTime);
-    
-    schedules[dateStr] = dateSchedule;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(schedules));
+    const successCount = results.filter(r => r.success).length;
     
     return {
-      success: true,
-      activities: newActivities,
-      count: newActivities.length,
+      success: successCount > 0,
+      added: successCount,
+      total: activities.length,
+      results,
     };
   } catch (error) {
     console.error('Failed to add multiple activities:', error);
     return {
       success: false,
-      error: error.message,
+      error: error.message || 'Failed to add activities',
     };
   }
 };
 
-// Alias for backward compatibility
-export const addMultipleActivities = addMultipleActivitiesToSchedule;
+// ============================================
+// REMOVE ACTIVITY FROM SCHEDULE
+// ============================================
 
-// ============================================
-// REMOVE ACTIVITIES BY SOURCE
-// ============================================
-export const removeActivitiesBySource = (date, source, metadataKey = null, metadataValue = null) => {
+export const removeActivityFromSchedule = (date, activityId) => {
   try {
     const dateStr = typeof date === 'string' ? date : formatDate(date);
-    
-    let schedules = {};
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        schedules = JSON.parse(saved);
-      }
-    } catch (e) {
-      return { success: false, error: 'Failed to load schedules' };
-    }
-    
+    const schedules = getAllSchedules();
     const dateSchedule = schedules[dateStr];
+    
     if (!dateSchedule) {
-      return { success: true, removed: 0 };
+      return { success: false, error: 'No schedule found for this date' };
     }
     
-    const filterFn = (activity) => {
-      if (activity.source !== source) return true;
-      if (metadataKey && metadataValue) {
-        return activity.metadata?.[metadataKey] !== metadataValue;
-      }
-      return false;
-    };
-    
-    const originalCount = (dateSchedule.items?.length || 0) + (dateSchedule.activities?.length || 0);
-    
-    if (dateSchedule.items) {
-      dateSchedule.items = dateSchedule.items.filter(filterFn);
-    }
-    if (dateSchedule.activities) {
-      dateSchedule.activities = dateSchedule.activities.filter(filterFn);
-    }
-    
-    const newCount = (dateSchedule.items?.length || 0) + (dateSchedule.activities?.length || 0);
+    // Remove from both arrays
+    dateSchedule.items = (dateSchedule.items || []).filter(a => a.id !== activityId);
+    dateSchedule.activities = (dateSchedule.activities || []).filter(a => a.id !== activityId);
+    dateSchedule.updatedAt = new Date().toISOString();
     
     schedules[dateStr] = dateSchedule;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(schedules));
     
-    return {
-      success: true,
-      removed: Math.floor((originalCount - newCount) / 2),
-    };
+    // Sync to cloud
+    syncAndNotify(dateStr, true).catch(err => {
+      console.warn('Sync after remove failed:', err.message);
+    });
+    
+    return { success: true };
   } catch (error) {
+    console.error('Failed to remove activity:', error);
     return { success: false, error: error.message };
   }
 };
 
 // ============================================
-// CHECK IF ACTIVITY EXISTS
+// MARK ACTIVITY COMPLETE
 // ============================================
-export const activityExists = (date, source, metadataKey, metadataValue) => {
+
+export const markActivityComplete = async (date, activityId, completed = true) => {
   try {
     const dateStr = typeof date === 'string' ? date : formatDate(date);
-    const schedule = getScheduleForDate(dateStr);
-    if (!schedule?.activities && !schedule?.items) return false;
+    const schedules = getAllSchedules();
+    const dateSchedule = schedules[dateStr];
     
-    const activities = schedule.activities || schedule.items || [];
-    return activities.some(
-      a => a.source === source && a.metadata?.[metadataKey] === metadataValue
-    );
-  } catch {
-    return false;
-  }
-};
-
-// ============================================
-// GET ACTIVITIES BY SOURCE
-// ============================================
-export const getActivitiesBySource = (date, source) => {
-  try {
-    const dateStr = typeof date === 'string' ? date : formatDate(date);
-    const schedule = getScheduleForDate(dateStr);
-    if (!schedule) return [];
+    if (!dateSchedule) {
+      return { success: false, error: 'No schedule found for this date' };
+    }
     
-    const activities = schedule.activities || schedule.items || [];
-    return activities.filter(a => a.source === source);
-  } catch {
-    return [];
+    // Update in both arrays
+    const updateActivity = (arr) => {
+      return arr.map(a => a.id === activityId ? { ...a, completed } : a);
+    };
+    
+    dateSchedule.items = updateActivity(dateSchedule.items || []);
+    dateSchedule.activities = updateActivity(dateSchedule.activities || []);
+    dateSchedule.updatedAt = new Date().toISOString();
+    
+    schedules[dateStr] = dateSchedule;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(schedules));
+    
+    // Also mark complete on server to cancel pending notifications
+    const userId = await ensureUserId();
+    const syncModule = await ensureCalendarSyncModule();
+    
+    if (userId && syncModule?.markActivityCompleteOnServer) {
+      const activityIndex = (dateSchedule.activities || []).findIndex(a => a.id === activityId);
+      if (activityIndex >= 0) {
+        await syncModule.markActivityCompleteOnServer(userId, dateStr, activityIndex);
+        console.log('✓ Marked complete on server, notifications cancelled');
+      }
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to mark activity complete:', error);
+    return { success: false, error: error.message };
   }
 };
 
 // ============================================
-// MODAL HANDLERS HELPER
-// ============================================
-export const createScheduleModalHandlers = (setState) => ({
-  openModal: (activity = null) => setState({ show: true, activity }),
-  closeModal: () => setState({ show: false, activity: null }),
-});
-
-// ============================================
-// SPECIFIC HELPERS
+// CHECK IF DATE HAS SCHEDULE
 // ============================================
 
-// Choice Board helper
-export const addChoiceToSchedule = (choice, time, date = null) => {
-  return addActivityToSchedule({
-    date: date || getToday(),
-    name: choice.name || choice.label,
-    time,
-    emoji: choice.emoji || '⭐',
-    color: '#F5A623',
-    source: SCHEDULE_SOURCES.CHOICE_BOARD,
-    notify: true,
-    customImage: choice.image || null,
-    metadata: {
-      choiceId: choice.id,
-      category: choice.category,
-    },
-  });
-};
-
-// Appointment helper
-export const addAppointmentToSchedule = (appointment) => {
-  const typeEmojis = {
-    therapy: '🗣️',
-    doctor: '👨‍⚕️',
-    school: '🏫',
-    evaluation: '📋',
-    specialist: '🔬',
-    other: '📅',
-  };
-  
-  const displayName = appointment.providerName 
-    ? `${appointment.providerName}${appointment.location ? ` @ ${appointment.location}` : ''}`
-    : appointment.title || 'Appointment';
-  
-  return addActivityToSchedule({
-    date: appointment.date || getToday(),
-    name: displayName,
-    time: appointment.time,
-    emoji: typeEmojis[appointment.type] || '📅',
-    color: '#E63B2E',
-    source: SCHEDULE_SOURCES.APPOINTMENT,
-    notify: true,
-    metadata: {
-      appointmentId: appointment.id,
-      type: appointment.type,
-      provider: appointment.providerName,
-      location: appointment.location,
-      notes: appointment.notes,
-    },
-  });
-};
-
-// Routine helper
-export const addRoutineToSchedule = (routine) => {
-  return addActivityToSchedule({
-    date: routine.date || getToday(),
-    name: routine.name,
-    time: routine.time,
-    emoji: routine.emoji || '📋',
-    color: '#5CB85C',
-    source: SCHEDULE_SOURCES.ROUTINE,
-    notify: true,
-    metadata: {
-      routineId: routine.id,
-      steps: routine.steps,
-    },
-  });
-};
-
-// First-Then helper
-export const addFirstThenToSchedule = (firstTask, thenTask, time, date = null) => {
-  return addActivityToSchedule({
-    date: date || getToday(),
-    name: `First ${firstTask}, Then ${thenTask}`,
-    time,
-    emoji: '1️⃣',
-    color: '#F5A623',
-    source: SCHEDULE_SOURCES.FIRST_THEN,
-    notify: true,
-    metadata: { firstTask, thenTask },
-  });
-};
-
-// Reminder helper
-export const addReminderToSchedule = (reminder) => {
-  const categoryEmojis = {
-    medication: '💊',
-    appointment: '📅',
-    task: '✅',
-    self_care: '🧘',
-    meal: '🍽️',
-    water: '💧',
-    exercise: '🏃',
-    other: '🔔',
-  };
-  
-  return addActivityToSchedule({
-    date: reminder.date || getToday(),
-    name: reminder.title || reminder.name,
-    time: reminder.time,
-    emoji: categoryEmojis[reminder.category] || '🔔',
-    color: '#8E6BBF',
-    source: SCHEDULE_SOURCES.REMINDER,
-    notify: true,
-    metadata: {
-      reminderId: reminder.id,
-      category: reminder.category,
-      repeat: reminder.repeat,
-    },
-  });
-};
-
-// Sensory Break helper
-export const addSensoryBreakToSchedule = (breakActivity, time, date = null) => {
-  return addActivityToSchedule({
-    date: date || getToday(),
-    name: `Break: ${breakActivity.name}`,
-    time,
-    emoji: breakActivity.emoji || '🧘',
-    color: '#20B2AA',
-    source: SCHEDULE_SOURCES.SENSORY_BREAK,
-    notify: true,
-    metadata: {
-      breakId: breakActivity.id,
-      category: breakActivity.category,
-      duration: breakActivity.duration,
-    },
-  });
-};
-
-// Water reminder helper
-export const addWaterReminderToSchedule = (time, date = null) => {
-  return addActivityToSchedule({
-    date: date || getToday(),
-    name: 'Drink Water 💧',
-    time,
-    emoji: '💧',
-    color: '#4A9FD4',
-    source: SCHEDULE_SOURCES.WATER,
-    notify: true,
-    metadata: { type: 'water' },
-  });
-};
-
-// Medicine reminder helper
-export const addMedicineReminderToSchedule = (medicineName, time, dosage = null, date = null) => {
-  const name = dosage ? `${medicineName} (${dosage})` : medicineName;
-  
-  return addActivityToSchedule({
-    date: date || getToday(),
-    name: `Medicine: ${name}`,
-    time,
-    emoji: '💊',
-    color: '#FF6B6B',
-    source: SCHEDULE_SOURCES.MEDICINE,
-    notify: true,
-    metadata: { medicineName, dosage },
-  });
-};
-
-// Exercise helper
-export const addExerciseToSchedule = (exerciseName, time, duration = 30, date = null) => {
-  return addActivityToSchedule({
-    date: date || getToday(),
-    name: `Exercise: ${exerciseName}`,
-    time,
-    emoji: '🏃',
-    color: '#5CB85C',
-    source: SCHEDULE_SOURCES.EXERCISE,
-    notify: true,
-    metadata: { type: 'exercise', exerciseName, duration },
-  });
-};
-
-// Social Story helper
-export const addSocialStoryToSchedule = (story, time, date = null) => {
-  return addActivityToSchedule({
-    date: date || getToday(),
-    name: `Read: ${story.title}`,
-    time,
-    emoji: '📖',
-    color: '#8E6BBF',
-    source: SCHEDULE_SOURCES.SOCIAL_STORY,
-    notify: true,
-    metadata: {
-      storyId: story.id,
-      storyTitle: story.title,
-      category: story.category,
-    },
-  });
-};
-
-// Meal helper
-export const addMealToSchedule = (mealType, recipeName = null, time = null, date = null) => {
-  const mealDefaults = {
-    breakfast: { time: '08:00', emoji: '🥣' },
-    lunch: { time: '12:00', emoji: '🥗' },
-    dinner: { time: '18:00', emoji: '🍽️' },
-    snack: { time: '15:00', emoji: '🍎' },
-  };
-  
-  const defaults = mealDefaults[mealType.toLowerCase()] || mealDefaults.lunch;
-  const displayName = recipeName 
-    ? `${mealType.charAt(0).toUpperCase() + mealType.slice(1)}: ${recipeName}`
-    : mealType.charAt(0).toUpperCase() + mealType.slice(1);
-  
-  return addActivityToSchedule({
-    date: date || getToday(),
-    name: displayName,
-    time: time || defaults.time,
-    emoji: defaults.emoji,
-    color: '#7BC043',
-    source: SCHEDULE_SOURCES.DAILY_ROUTINE,
-    notify: true,
-    metadata: { type: 'meal', mealType, recipeName },
-  });
-};
-
-// Sleep reminder helpers
-export const addBedtimeToSchedule = (time, date = null) => {
-  return addActivityToSchedule({
-    date: date || getToday(),
-    name: 'Bedtime 🌙',
-    time,
-    emoji: '🌙',
-    color: '#6B5B95',
-    source: SCHEDULE_SOURCES.SLEEP,
-    notify: true,
-    metadata: { type: 'bedtime' },
-  });
-};
-
-export const addWaketimeToSchedule = (time, date = null) => {
-  return addActivityToSchedule({
-    date: date || getToday(),
-    name: 'Wake Up ☀️',
-    time,
-    emoji: '☀️',
-    color: '#F5A623',
-    source: SCHEDULE_SOURCES.SLEEP,
-    notify: true,
-    metadata: { type: 'waketime' },
-  });
-};
-
-// Healthy Choice reminder helper
-export const addHealthyChoiceReminderToSchedule = (choice, time, date = null) => {
-  return addActivityToSchedule({
-    date: date || getToday(),
-    name: choice.name,
-    time,
-    emoji: choice.emoji || '✅',
-    color: '#5CB85C',
-    source: SCHEDULE_SOURCES.HEALTHY_CHOICES,
-    notify: true,
-    metadata: {
-      choiceId: choice.id,
-      points: choice.points,
-    },
-  });
-};
-
-// Coping Strategy helper
-export const addCopingStrategyToSchedule = (strategy, time, date = null) => {
-  return addActivityToSchedule({
-    date: date || getToday(),
-    name: strategy.name || strategy.title || 'Coping Strategy',
-    time,
-    emoji: strategy.emoji || '🧘',
-    color: strategy.color || '#20B2AA',
-    source: SCHEDULE_SOURCES.SENSORY_BREAK,
-    notify: true,
-    metadata: {
-      strategyId: strategy.id,
-      category: strategy.category,
-      type: 'coping-strategy',
-    },
-  });
-};
-
-// OT Exercise helper
-export const addOTExerciseToSchedule = (exercise, time, date = null) => {
-  return addActivityToSchedule({
-    date: date || getToday(),
-    name: `OT: ${exercise.name}`,
-    time,
-    emoji: exercise.emoji || '🏋️',
-    color: '#E86B9A',
-    source: SCHEDULE_SOURCES.OT_EXERCISE,
-    notify: true,
-    metadata: {
-      exerciseId: exercise.id,
-      muscleGroup: exercise.muscleGroup,
-      duration: exercise.duration,
-      category: exercise.category,
-    },
-  });
-};
-
-// OT Session helper (alias)
-export const addOTSessionToSchedule = addOTExerciseToSchedule;
-
-// Schedule regular breaks
-export const scheduleRegularBreaks = (startTime, endTime, intervalMinutes = 60, breakActivity = null, date = null) => {
-  const [startHours, startMins] = startTime.split(':').map(Number);
-  const [endHours, endMins] = endTime.split(':').map(Number);
-  
-  let currentMinutes = startHours * 60 + startMins;
-  const endMinutes = endHours * 60 + endMins;
-  
-  const breaks = [];
-  while (currentMinutes <= endMinutes) {
-    const time = `${String(Math.floor(currentMinutes / 60)).padStart(2, '0')}:${String(currentMinutes % 60).padStart(2, '0')}`;
-    breaks.push({
-      name: breakActivity?.name || 'Sensory Break',
-      time,
-      emoji: breakActivity?.emoji || '🧘',
-    });
-    currentMinutes += intervalMinutes;
-  }
-  
-  return addMultipleActivitiesToSchedule({
-    date: date || getToday(),
-    activities: breaks,
-    source: SCHEDULE_SOURCES.SENSORY_BREAK,
-    notify: true,
-  });
-};
-
-// Schedule water reminders
-export const scheduleWaterReminders = (startTime = '08:00', endTime = '20:00', intervalMinutes = 120, date = null) => {
-  const [startHours, startMins] = startTime.split(':').map(Number);
-  const [endHours, endMins] = endTime.split(':').map(Number);
-  
-  let currentMinutes = startHours * 60 + startMins;
-  const endMinutes = endHours * 60 + endMins;
-  
-  const reminders = [];
-  while (currentMinutes <= endMinutes) {
-    const time = `${String(Math.floor(currentMinutes / 60)).padStart(2, '0')}:${String(currentMinutes % 60).padStart(2, '0')}`;
-    reminders.push({ name: 'Drink Water 💧', time, emoji: '💧' });
-    currentMinutes += intervalMinutes;
-  }
-  
-  return addMultipleActivitiesToSchedule({
-    date: date || getToday(),
-    activities: reminders,
-    source: SCHEDULE_SOURCES.WATER,
-    notify: true,
-  });
+export const hasScheduleForDate = (date) => {
+  const schedule = getScheduleForDate(date);
+  return schedule && (
+    (schedule.items && schedule.items.length > 0) ||
+    (schedule.activities && schedule.activities.length > 0)
+  );
 };
 
 // ============================================
-// DEFAULT EXPORT
+// EXPORTS
 // ============================================
+
 export default {
-  // Constants
-  SCHEDULE_SOURCES,
-  ACTIVITY_SOURCES,
-  SOURCE_COLORS,
-  SOURCE_DEFAULTS,
-  
-  // Core functions
   addActivityToSchedule,
   addMultipleActivitiesToSchedule,
-  addMultipleActivities,
-  removeActivitiesBySource,
-  activityExists,
-  getActivitiesBySource,
-  
-  // Date/Calendar helpers
-  formatDate,
-  formatDisplayDate,
-  formatDateDisplay,
-  getToday,
-  getTomorrow,
-  addDays,
+  removeActivityFromSchedule,
+  markActivityComplete,
   getScheduleForDate,
   getAllSchedules,
-  saveScheduleToDate,
-  
-  // Helpers
-  createScheduleModalHandlers,
+  hasScheduleForDate,
+  formatDate,
   formatTimeDisplay,
-  
-  // Specific helpers
-  addAppointmentToSchedule,
-  addRoutineToSchedule,
-  addFirstThenToSchedule,
-  addReminderToSchedule,
-  addCopingStrategyToSchedule,
-  addOTExerciseToSchedule,
-  addOTSessionToSchedule,
-  addSensoryBreakToSchedule,
-  scheduleRegularBreaks,
-  addWaterReminderToSchedule,
-  scheduleWaterReminders,
-  addMedicineReminderToSchedule,
-  addExerciseToSchedule,
-  addSocialStoryToSchedule,
-  addMealToSchedule,
-  addBedtimeToSchedule,
-  addWaketimeToSchedule,
-  addChoiceToSchedule,
-  addHealthyChoiceReminderToSchedule,
+  formatDateDisplay,
+  initCloudSync,
+  SCHEDULE_SOURCES,
+  SOURCE_COLORS,
+  SOURCE_LABELS,
 };

@@ -1,20 +1,19 @@
-// socialStories.js - Social Stories generation and management
-// UPDATED: Now supports AI-generated illustrations via DALL-E
-// Uses Claude API to generate story text, DALL-E for children's book style images
-// Stories are saved to Supabase and shared across all users
+// socialStories.js - Social Stories service for ATLASassist
+// FIXED: Better error handling for Edge Function calls
+// ADDED: getCommunityStories() to fetch all user-generated stories
 
 import { supabase, isSupabaseConfigured } from './supabase';
 
 // ============================================
-// CONFIGURATION
+// CONSTANTS
 // ============================================
 
-const STORY_PAGES = 6; // Number of pages per story
-const GENERATE_IMAGES = true; // Enable image generation by default
+export const STORY_PAGES = 6;
+export const GENERATE_IMAGES = true;
 
-// Status states for story generation
 export const GENERATION_STATUS = {
   IDLE: 'idle',
+  CHECKING_CACHE: 'checking_cache',
   GENERATING_TEXT: 'generating_text',
   GENERATING_IMAGES: 'generating_images',
   SAVING: 'saving',
@@ -22,16 +21,17 @@ export const GENERATION_STATUS = {
   ERROR: 'error',
 };
 
-// ============================================
-// LOCAL STORAGE (Fallback)
-// ============================================
+// Local storage key
+const LOCAL_STORIES_KEY = 'snw_local_stories';
 
-const LOCAL_STORIES_KEY = 'snw_social_stories';
-const LOCAL_SAVED_KEY = 'snw_saved_stories';
+// ============================================
+// LOCAL STORAGE HELPERS
+// ============================================
 
 const getLocalStories = () => {
   try {
-    return JSON.parse(localStorage.getItem(LOCAL_STORIES_KEY) || '{}');
+    const data = localStorage.getItem(LOCAL_STORIES_KEY);
+    return data ? JSON.parse(data) : {};
   } catch {
     return {};
   }
@@ -39,60 +39,68 @@ const getLocalStories = () => {
 
 const saveLocalStory = (story) => {
   const stories = getLocalStories();
-  stories[story.id] = story;
+  stories[story.topic_normalized] = story;
   localStorage.setItem(LOCAL_STORIES_KEY, JSON.stringify(stories));
 };
 
-const getLocalSavedStories = () => {
-  try {
-    return JSON.parse(localStorage.getItem(LOCAL_SAVED_KEY) || '[]');
-  } catch {
-    return [];
-  }
-};
+// ============================================
+// STORY CATEGORIES
+// ============================================
+
+export const STORY_CATEGORIES = [
+  { id: 'daily', name: 'Daily Routines', emoji: '🌅', color: '#F5A623' },
+  { id: 'social', name: 'Social Skills', emoji: '👋', color: '#E86B9A' },
+  { id: 'emotions', name: 'Feelings', emoji: '💜', color: '#8E6BBF' },
+  { id: 'safety', name: 'Safety', emoji: '🛡️', color: '#5CB85C' },
+  { id: 'school', name: 'School', emoji: '🎒', color: '#4A9FD4' },
+  { id: 'health', name: 'Health', emoji: '🏥', color: '#E63B2E' },
+  { id: 'community', name: 'Community', emoji: '🌍', color: '#20B2AA' }, // NEW!
+  { id: 'general', name: 'General', emoji: '📖', color: '#9B9B9B' },
+];
+
+// ============================================
+// SUGGESTED TOPICS
+// ============================================
+
+export const SUGGESTED_TOPICS = [
+  { topic: 'Taking a bath', emoji: '🛁', arasaacKeyword: 'bath' },
+  { topic: 'Going to the dentist', emoji: '🦷', arasaacKeyword: 'dentist' },
+  { topic: 'Making a new friend', emoji: '👋', arasaacKeyword: 'friend' },
+  { topic: 'Going to school', emoji: '🏫', arasaacKeyword: 'school' },
+  { topic: 'Visiting the doctor', emoji: '👨‍⚕️', arasaacKeyword: 'doctor' },
+  { topic: 'Getting a haircut', emoji: '💇', arasaacKeyword: 'haircut' },
+  { topic: 'Going to the grocery store', emoji: '🛒', arasaacKeyword: 'supermarket' },
+  { topic: 'Taking turns', emoji: '🔄', arasaacKeyword: 'turn' },
+  { topic: 'Waiting patiently', emoji: '⏰', arasaacKeyword: 'wait' },
+  { topic: 'Trying new food', emoji: '🍽️', arasaacKeyword: 'food' },
+  { topic: 'Wearing different clothes', emoji: '👕', arasaacKeyword: 'clothes' },
+  { topic: 'Sleeping in my own bed', emoji: '🛏️', arasaacKeyword: 'sleep' },
+  { topic: 'Using the bathroom', emoji: '🚽', arasaacKeyword: 'bathroom' },
+  { topic: 'Riding in the car', emoji: '🚗', arasaacKeyword: 'car' },
+  { topic: 'Going to a birthday party', emoji: '🎂', arasaacKeyword: 'birthday' },
+  { topic: 'Fire drill at school', emoji: '🔔', arasaacKeyword: 'alarm' },
+];
 
 // ============================================
 // FIND EXISTING STORY
 // ============================================
 
-/**
- * Search for an existing story matching the topic
- */
 export const findExistingStory = async (topic) => {
   const normalizedTopic = topic.toLowerCase().trim();
   
-  // Check cloud first
+  // Check database first
   if (isSupabaseConfigured()) {
     try {
-      // Try exact match
-      const { data: exactMatch } = await supabase
+      const { data, error } = await supabase
         .from('social_stories')
         .select('*')
         .eq('topic_normalized', normalizedTopic)
         .eq('is_public', true)
-        .order('use_count', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
       
-      if (exactMatch) {
-        // Increment use count
-        await supabase
-          .from('social_stories')
-          .update({ 
-            use_count: exactMatch.use_count + 1,
-            last_used_at: new Date().toISOString()
-          })
-          .eq('id', exactMatch.id);
-        
-        return exactMatch;
-      }
-      
-      // Try fuzzy search
-      const { data: searchResults } = await supabase
-        .rpc('search_stories', { p_query: topic, p_limit: 1 });
-      
-      if (searchResults && searchResults.length > 0) {
-        return searchResults[0];
+      if (!error && data) {
+        return data;
       }
     } catch (error) {
       console.error('Error searching stories:', error);
@@ -111,18 +119,151 @@ export const findExistingStory = async (topic) => {
 };
 
 // ============================================
+// GET COMMUNITY STORIES (NEW!)
+// ============================================
+
+/**
+ * Fetch all user-generated stories from all users
+ * These are stories created via the AI generator and marked as public
+ */
+export const getCommunityStories = async (options = {}) => {
+  const { 
+    limit = 50, 
+    offset = 0,
+    category = null,
+    searchQuery = null,
+  } = options;
+  
+  if (!isSupabaseConfigured()) {
+    console.log('Supabase not configured, returning empty community stories');
+    return [];
+  }
+  
+  try {
+    let query = supabase
+      .from('social_stories')
+      .select('*')
+      .eq('is_public', true)
+      .not('created_by', 'is', null) // Only user-generated stories
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+    
+    // Filter by category if specified
+    if (category && category !== 'community') {
+      query = query.eq('category', category);
+    }
+    
+    // Search by topic if specified
+    if (searchQuery) {
+      query = query.ilike('topic', `%${searchQuery}%`);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('Error fetching community stories:', error);
+      return [];
+    }
+    
+    // Transform to match expected format
+    return (data || []).map(story => ({
+      ...story,
+      title: story.topic,
+      description: `Community story about ${story.topic}`,
+      isCommunityStory: true,
+    }));
+  } catch (error) {
+    console.error('Failed to fetch community stories:', error);
+    return [];
+  }
+};
+
+// ============================================
+// GET POPULAR STORIES
+// ============================================
+
+export const getPopularStories = async (limit = 10) => {
+  if (!isSupabaseConfigured()) return [];
+  
+  try {
+    const { data, error } = await supabase
+      .from('social_stories')
+      .select('*')
+      .eq('is_public', true)
+      .order('view_count', { ascending: false })
+      .limit(limit);
+    
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching popular stories:', error);
+    return [];
+  }
+};
+
+// ============================================
+// SEARCH STORIES
+// ============================================
+
+export const searchStories = async (query, limit = 20) => {
+  if (!isSupabaseConfigured() || !query) return [];
+  
+  try {
+    const { data, error } = await supabase
+      .from('social_stories')
+      .select('*')
+      .eq('is_public', true)
+      .ilike('topic', `%${query}%`)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error searching stories:', error);
+    return [];
+  }
+};
+
+// ============================================
+// GET STORY BY ID
+// ============================================
+
+export const getStoryById = async (id) => {
+  if (!isSupabaseConfigured()) {
+    const localStories = getLocalStories();
+    return Object.values(localStories).find(s => s.id === id) || null;
+  }
+  
+  try {
+    const { data, error } = await supabase
+      .from('social_stories')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    
+    // Increment view count
+    await supabase
+      .from('social_stories')
+      .update({ view_count: (data.view_count || 0) + 1 })
+      .eq('id', id);
+    
+    return data;
+  } catch (error) {
+    console.error('Error fetching story:', error);
+    return null;
+  }
+};
+
+// ============================================
 // GENERATE NEW STORY
 // ============================================
 
 /**
- * Generate a social story using Claude API + DALL-E for images
- * This calls the Supabase Edge Function which handles both APIs
- * Stories use generic "you" language to enable caching and reuse
- * @param {string} topic - The topic for the story
- * @param {Object} options - Generation options
- * @param {Function} options.onStatusChange - Callback for status updates
- * @param {boolean} options.generateImages - Whether to generate images (default: true)
- * @param {string} options.userId - User ID for attribution
+ * Generate a social story using Claude API
+ * FIXED: Better error handling and auth token passing
  */
 export const generateStory = async (topic, options = {}) => {
   const {
@@ -131,7 +272,7 @@ export const generateStory = async (topic, options = {}) => {
     userId = null,
   } = options;
   
-  onStatusChange(GENERATION_STATUS.GENERATING_TEXT, 'Checking for existing stories...');
+  onStatusChange(GENERATION_STATUS.CHECKING_CACHE, 'Checking for existing stories...');
   
   // First check if a similar story exists
   const existing = await findExistingStory(topic);
@@ -148,16 +289,30 @@ export const generateStory = async (topic, options = {}) => {
     try {
       onStatusChange(GENERATION_STATUS.GENERATING_TEXT, 'Writing your story...');
       
-      // Call Edge Function to generate story with images
+      // Get auth session for the request
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // Call Edge Function to generate story
+      // FIXED: Include authorization header explicitly
       const { data, error } = await supabase.functions.invoke('generate-social-story', {
         body: {
           topic,
           pageCount: STORY_PAGES,
           generateImages,
         },
+        headers: session?.access_token ? {
+          Authorization: `Bearer ${session.access_token}`,
+        } : undefined,
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to generate story');
+      }
+      
+      if (!data || !data.pages) {
+        throw new Error('Invalid response from story generator');
+      }
       
       // Check for insufficient credits warning
       if (data.insufficientCredits) {
@@ -202,19 +357,24 @@ export const generateStory = async (topic, options = {}) => {
       if (saveError) {
         console.error('Error saving story:', saveError);
         // Return the generated story even if save fails
+        const tempStory = {
+          id: `temp_${Date.now()}`,
+          topic,
+          topic_normalized: topic.toLowerCase().trim(),
+          pages: data.pages,
+          is_public: false,
+          has_images: data.imagesGenerated > 0,
+          category: category,
+          emoji: emoji,
+          created_at: new Date().toISOString(),
+        };
+        
+        // Save locally as fallback
+        saveLocalStory(tempStory);
+        
         onStatusChange(GENERATION_STATUS.COMPLETE, 'Story created!');
         return {
-          story: {
-            id: `temp_${Date.now()}`,
-            topic,
-            topic_normalized: topic.toLowerCase().trim(),
-            pages: data.pages,
-            is_public: false,
-            has_images: data.imagesGenerated > 0,
-            category: category,
-            emoji: emoji,
-            created_at: new Date().toISOString(),
-          },
+          story: tempStory,
           fromCache: false,
           savedToCloud: false,
           insufficientCredits: data.insufficientCredits,
@@ -233,297 +393,173 @@ export const generateStory = async (topic, options = {}) => {
         insufficientCredits: data.insufficientCredits,
         creditMessage: data.message,
       };
+      
     } catch (error) {
       console.error('Error generating story:', error);
-      onStatusChange(GENERATION_STATUS.ERROR, error.message || 'Failed to generate story');
-      // Fall back to local generation
+      onStatusChange(GENERATION_STATUS.ERROR, error.message);
+      throw error;
     }
+  } else {
+    // Generate local fallback story
+    onStatusChange(GENERATION_STATUS.GENERATING_TEXT, 'Creating story locally...');
+    
+    const localStory = generateLocalStory(topic);
+    saveLocalStory(localStory);
+    
+    onStatusChange(GENERATION_STATUS.COMPLETE, 'Story created locally!');
+    return {
+      story: localStory,
+      fromCache: false,
+      savedToCloud: false,
+      isLocalFallback: true,
+    };
   }
-  
-  // Local fallback - generate a simple template story (no images)
-  onStatusChange(GENERATION_STATUS.GENERATING_TEXT, 'Creating local story...');
-  const story = generateLocalStory(topic);
-  saveLocalStory(story);
-  
-  onStatusChange(GENERATION_STATUS.COMPLETE, 'Story created locally!');
-  
-  return {
-    story,
-    fromCache: false,
-    savedToCloud: false,
-  };
 };
 
-/**
- * Generate a simple template story locally (fallback)
- * Uses ARASAAC pictogram keywords for images
- * Uses "you" language for universal applicability and caching
- */
+// ============================================
+// LOCAL FALLBACK STORY GENERATOR
+// ============================================
+
 const generateLocalStory = (topic) => {
-  const id = `local_${Date.now()}`;
-  const topicLower = topic.toLowerCase();
-  
-  // Find topic-specific keywords for ARASAAC
-  const topicData = SUGGESTED_TOPICS.find(t => t.topic.toLowerCase() === topicLower);
-  
-  // Generate pages with ARASAAC keywords - using "you" for universal stories
   const pages = [
     {
       pageNumber: 1,
-      text: `Sometimes you need to do ${topic}.`,
-      imageDescription: `A child thinking`,
-      arasaacKeyword: 'think',
-      emoji: '💭',
+      text: `Today I will learn about ${topic}.`,
+      imageDescription: `A friendly child thinking about ${topic}`,
     },
     {
       pageNumber: 2,
-      text: `${topic} is something important.`,
-      imageDescription: topic,
-      arasaacKeyword: topicData?.arasaacKeyword || topic.split(' ').pop(),
-      emoji: topicData?.emoji || '📖',
+      text: `${topic} is something many people do.`,
+      imageDescription: `People doing ${topic}`,
     },
     {
       pageNumber: 3,
-      text: `First, you get ready. It's good to be prepared!`,
-      imageDescription: `Getting ready`,
-      arasaacKeyword: 'prepare',
-      emoji: '✅',
+      text: `When it's time, I can get ready step by step.`,
+      imageDescription: `A child getting ready, step by step`,
     },
     {
       pageNumber: 4,
-      text: `You can take it one step at a time. There's no rush.`,
-      imageDescription: `Taking a step`,
-      arasaacKeyword: 'walk',
-      emoji: '👣',
+      text: `I might feel a little nervous, and that's okay.`,
+      imageDescription: `A child with a gentle expression`,
     },
     {
       pageNumber: 5,
-      text: `If you feel nervous, that's okay. Deep breaths help!`,
-      imageDescription: `Taking a breath`,
-      arasaacKeyword: 'breathe',
-      emoji: '🌬️',
+      text: `I can take deep breaths to feel calm.`,
+      imageDescription: `A child taking a deep breath, calm`,
     },
     {
       pageNumber: 6,
-      text: `You did it! ${topic} wasn't so bad after all.`,
-      imageDescription: `Feeling happy`,
-      arasaacKeyword: 'happy',
-      emoji: '🎉',
+      text: `I did it! I can be proud of myself.`,
+      imageDescription: `A happy child feeling accomplished`,
     },
   ];
   
   return {
-    id,
+    id: `local_${Date.now()}`,
     topic,
     topic_normalized: topic.toLowerCase().trim(),
     pages,
     is_public: false,
-    use_count: 1,
+    has_images: false,
+    category: 'general',
+    emoji: '📖',
     created_at: new Date().toISOString(),
+    isLocalFallback: true,
   };
 };
 
 // ============================================
-// GET STORIES
+// USER SAVED STORIES (FAVORITES)
 // ============================================
 
-/**
- * Get popular stories
- */
-export const getPopularStories = async (limit = 10) => {
-  if (isSupabaseConfigured()) {
-    try {
-      const { data, error } = await supabase
-        .rpc('get_popular_stories', { p_limit: limit });
-      
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('Error getting popular stories:', error);
-    }
-  }
-  
-  // Return local stories
-  const localStories = Object.values(getLocalStories())
-    .sort((a, b) => (b.use_count || 0) - (a.use_count || 0))
-    .slice(0, limit);
-  
-  return localStories;
-};
-
-/**
- * Search stories by topic
- */
-export const searchStories = async (query, limit = 10) => {
-  if (isSupabaseConfigured()) {
-    try {
-      const { data, error } = await supabase
-        .rpc('search_stories', { p_query: query, p_limit: limit });
-      
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('Error searching stories:', error);
-    }
-  }
-  
-  // Search local stories
-  const normalizedQuery = query.toLowerCase();
-  const localStories = Object.values(getLocalStories())
-    .filter(s => s.topic.toLowerCase().includes(normalizedQuery))
-    .slice(0, limit);
-  
-  return localStories;
-};
-
-/**
- * Get story by ID
- */
-export const getStoryById = async (storyId) => {
-  if (isSupabaseConfigured()) {
-    try {
-      const { data, error } = await supabase
-        .from('social_stories')
-        .select('*')
-        .eq('id', storyId)
-        .single();
-      
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('Error getting story:', error);
-    }
-  }
-  
-  // Check local
-  const localStories = getLocalStories();
-  return localStories[storyId] || null;
-};
-
-// ============================================
-// USER SAVED STORIES
-// ============================================
-
-/**
- * Save story to user's favorites
- */
 export const saveStoryToFavorites = async (userId, storyId) => {
-  if (isSupabaseConfigured() && userId) {
-    try {
-      const { error } = await supabase
-        .from('user_saved_stories')
-        .upsert({
-          user_id: userId,
-          story_id: storyId,
-        });
-      
-      if (error) throw error;
-      return true;
-    } catch (error) {
-      console.error('Error saving story:', error);
+  if (!isSupabaseConfigured() || !userId) {
+    // Save locally
+    const favorites = JSON.parse(localStorage.getItem('snw_story_favorites') || '[]');
+    if (!favorites.includes(storyId)) {
+      favorites.push(storyId);
+      localStorage.setItem('snw_story_favorites', JSON.stringify(favorites));
     }
+    return true;
   }
   
-  // Save locally
-  const saved = getLocalSavedStories();
-  if (!saved.includes(storyId)) {
-    saved.push(storyId);
-    localStorage.setItem(LOCAL_SAVED_KEY, JSON.stringify(saved));
+  try {
+    const { error } = await supabase
+      .from('user_saved_stories')
+      .upsert({
+        user_id: userId,
+        story_id: storyId,
+      }, {
+        onConflict: 'user_id,story_id'
+      });
+    
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error saving story to favorites:', error);
+    return false;
   }
-  return true;
 };
 
-/**
- * Remove story from favorites
- */
 export const removeStoryFromFavorites = async (userId, storyId) => {
-  if (isSupabaseConfigured() && userId) {
-    try {
-      const { error } = await supabase
-        .from('user_saved_stories')
-        .delete()
-        .eq('user_id', userId)
-        .eq('story_id', storyId);
-      
-      if (error) throw error;
-      return true;
-    } catch (error) {
-      console.error('Error removing story:', error);
-    }
+  if (!isSupabaseConfigured() || !userId) {
+    // Remove locally
+    const favorites = JSON.parse(localStorage.getItem('snw_story_favorites') || '[]');
+    const updated = favorites.filter(id => id !== storyId);
+    localStorage.setItem('snw_story_favorites', JSON.stringify(updated));
+    return true;
   }
   
-  // Remove locally
-  const saved = getLocalSavedStories();
-  const index = saved.indexOf(storyId);
-  if (index > -1) {
-    saved.splice(index, 1);
-    localStorage.setItem(LOCAL_SAVED_KEY, JSON.stringify(saved));
+  try {
+    const { error } = await supabase
+      .from('user_saved_stories')
+      .delete()
+      .eq('user_id', userId)
+      .eq('story_id', storyId);
+    
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error removing story from favorites:', error);
+    return false;
   }
-  return true;
 };
 
-/**
- * Get user's saved stories
- */
 export const getUserSavedStories = async (userId) => {
-  if (isSupabaseConfigured() && userId) {
-    try {
-      const { data, error } = await supabase
-        .from('user_saved_stories')
-        .select(`
-          story_id,
-          saved_at,
-          custom_character_name,
-          social_stories (*)
-        `)
-        .eq('user_id', userId)
-        .order('saved_at', { ascending: false });
-      
-      if (error) throw error;
-      return data?.map(d => ({ ...d.social_stories, savedAt: d.saved_at })) || [];
-    } catch (error) {
-      console.error('Error getting saved stories:', error);
-    }
+  if (!isSupabaseConfigured() || !userId) {
+    const favorites = JSON.parse(localStorage.getItem('snw_story_favorites') || '[]');
+    return favorites;
   }
   
-  // Get local saved
-  const savedIds = getLocalSavedStories();
-  const localStories = getLocalStories();
-  return savedIds.map(id => localStories[id]).filter(Boolean);
+  try {
+    const { data, error } = await supabase
+      .from('user_saved_stories')
+      .select('story_id')
+      .eq('user_id', userId);
+    
+    if (error) throw error;
+    return (data || []).map(row => row.story_id);
+  } catch (error) {
+    console.error('Error fetching saved stories:', error);
+    return [];
+  }
 };
 
 // ============================================
-// SUGGESTED TOPICS
+// DEFAULT EXPORT
 // ============================================
-
-export const SUGGESTED_TOPICS = [
-  { topic: 'Taking a bath', emoji: '🛁', arasaacKeyword: 'bath' },
-  { topic: 'Going to the dentist', emoji: '🦷', arasaacKeyword: 'dentist' },
-  { topic: 'Making a new friend', emoji: '👋', arasaacKeyword: 'friend' },
-  { topic: 'Going to school', emoji: '🏫', arasaacKeyword: 'school' },
-  { topic: 'Visiting the doctor', emoji: '👨‍⚕️', arasaacKeyword: 'doctor' },
-  { topic: 'Getting a haircut', emoji: '💇', arasaacKeyword: 'haircut' },
-  { topic: 'Going to the grocery store', emoji: '🛒', arasaacKeyword: 'supermarket' },
-  { topic: 'Taking turns', emoji: '🔄', arasaacKeyword: 'turn' },
-  { topic: 'Waiting patiently', emoji: '⏰', arasaacKeyword: 'wait' },
-  { topic: 'Trying new food', emoji: '🍽️', arasaacKeyword: 'food' },
-  { topic: 'Wearing different clothes', emoji: '👕', arasaacKeyword: 'clothes' },
-  { topic: 'Sleeping in my own bed', emoji: '🛏️', arasaacKeyword: 'sleep' },
-  { topic: 'Using the bathroom', emoji: '🚽', arasaacKeyword: 'bathroom' },
-  { topic: 'Riding in the car', emoji: '🚗', arasaacKeyword: 'car' },
-  { topic: 'Going to a birthday party', emoji: '🎂', arasaacKeyword: 'birthday' },
-  { topic: 'Fire drill at school', emoji: '🔔', arasaacKeyword: 'alarm' },
-];
 
 export default {
   findExistingStory,
   generateStory,
   getPopularStories,
+  getCommunityStories,
   searchStories,
   getStoryById,
   saveStoryToFavorites,
   removeStoryFromFavorites,
   getUserSavedStories,
   SUGGESTED_TOPICS,
+  STORY_CATEGORIES,
   GENERATION_STATUS,
 };

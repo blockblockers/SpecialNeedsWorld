@@ -357,7 +357,7 @@ export const showNotification = async (id) => {
       await registration.showNotification(notification.title, {
         body: notification.body,
         icon: notification.icon || '/logo.jpeg',
-        badge: '/favicon-32.png',
+        badge: '/badge-icon.png',
         tag: notification.id,
         requireInteraction: true,
         vibrate: [200, 100, 200],
@@ -575,7 +575,7 @@ export const sendTestNotification = async (title, body) => {
       await registration.showNotification(title || '🎉 Test Notification!', {
         body: body || 'Notifications are working! You\'ll receive reminders for your scheduled activities.',
         icon: '/logo.jpeg',
-        badge: '/favicon-32.png',
+        badge: '/badge-icon.png',
         tag: 'test-notification-' + Date.now(),
         requireInteraction: false,
         vibrate: [200, 100, 200],

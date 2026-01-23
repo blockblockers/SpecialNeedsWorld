@@ -1,5 +1,6 @@
-// Custom service worker additions for ATLASassist
-// This file extends the Workbox-generated service worker
+// sw-custom.js - Custom service worker for ATLASassist
+// UPDATED: Uses monochrome heart badge icon for Android notifications
+// The badge icon MUST be monochrome (white on transparent) for Android
 
 // Handle notification clicks
 self.addEventListener('notificationclick', (event) => {
@@ -32,7 +33,7 @@ self.addEventListener('notificationclick', (event) => {
           self.registration.showNotification(event.notification.title, {
             body: '⏰ Snoozed reminder - time to check on this!',
             icon: '/logo.jpeg',
-            badge: '/favicon-32.png',
+            badge: '/badge-icon.png', // Monochrome heart icon
             tag: event.notification.tag + '_snooze',
             requireInteraction: true,
             vibrate: [200, 100, 200],
@@ -70,26 +71,54 @@ self.addEventListener('notificationclose', (event) => {
   console.log('Notification closed:', event);
 });
 
-// Listen for push events (for future push notification support)
+// Listen for push events
 self.addEventListener('push', (event) => {
   console.log('Push received:', event);
   
+  // Default notification options with monochrome badge
+  let notificationOptions = {
+    title: 'ATLASassist',
+    body: 'You have a new notification',
+    icon: '/logo.jpeg',
+    badge: '/badge-icon.png', // Monochrome heart icon for Android tray
+    tag: 'atlas-notification',
+    requireInteraction: true,
+    vibrate: [200, 100, 200],
+    data: { url: '/' },
+    actions: [
+      { action: 'complete', title: '✓ Done' },
+      { action: 'snooze', title: '⏰ Snooze' },
+    ],
+  };
+  
   if (event.data) {
-    const data = event.data.json();
-    
-    event.waitUntil(
-      self.registration.showNotification(data.title || 'ATLASassist', {
-        body: data.body || 'You have a new notification',
-        icon: data.icon || '/logo.jpeg',
-        badge: '/favicon-32.png',
-        tag: data.tag || 'atlas-notification',
-        requireInteraction: data.requireInteraction || false,
-        vibrate: data.vibrate || [200, 100, 200],
-        data: data.data || {},
-        actions: data.actions || [],
-      })
-    );
+    try {
+      const payload = event.data.json();
+      notificationOptions = {
+        ...notificationOptions,
+        title: payload.title || notificationOptions.title,
+        body: payload.body || notificationOptions.body,
+        icon: payload.icon || notificationOptions.icon,
+        badge: '/badge-icon.png', // Always use monochrome badge
+        tag: payload.tag || notificationOptions.tag,
+        requireInteraction: payload.requireInteraction ?? notificationOptions.requireInteraction,
+        vibrate: payload.vibrate || notificationOptions.vibrate,
+        data: payload.data || notificationOptions.data,
+        actions: payload.actions || notificationOptions.actions,
+      };
+    } catch (e) {
+      console.error('[SW] Error parsing push data:', e);
+      // Try as text
+      const text = event.data.text();
+      if (text) {
+        notificationOptions.body = text;
+      }
+    }
   }
+  
+  event.waitUntil(
+    self.registration.showNotification(notificationOptions.title, notificationOptions)
+  );
 });
 
 // Handle messages from the main app
@@ -103,7 +132,7 @@ self.addEventListener('message', (event) => {
       self.registration.showNotification(title, {
         body,
         icon: icon || '/logo.jpeg',
-        badge: '/favicon-32.png',
+        badge: '/badge-icon.png', // Monochrome heart icon
         tag: tag || 'atlas-notification-' + Date.now(),
         requireInteraction: requireInteraction || false,
         vibrate: vibrate || [200, 100, 200],

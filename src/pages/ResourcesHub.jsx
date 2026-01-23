@@ -1,5 +1,5 @@
 // ResourcesHub.jsx - Resources & Research hub for ATLASassist
-// UPDATED: Combined featured resources, condensed spacing
+// FIXED: Corrected path for US & State Resources (was /knowledge, now /resources/knowledge)
 
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -26,7 +26,7 @@ const resourceSections = [
     icon: Scale,
     color: 'bg-[#4A9FD4]',
     borderColor: 'border-blue-500',
-    path: '/knowledge',
+    path: '/resources/knowledge', // FIXED: was '/knowledge'
     emoji: '⚖️',
     ready: true,
   },
@@ -98,7 +98,7 @@ const resourceSections = [
   },
 ];
 
-// Featured external resources - Combined from all sources
+// Featured external resources
 const FEATURED_RESOURCES = [
   {
     name: 'DREDF',
@@ -168,12 +168,12 @@ const ResourcesHub = () => {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-4">
-        {/* Intro - condensed */}
+        {/* Intro */}
         <p className="text-center text-gray-600 font-crayon mb-4">
           Helpful information, guides, and tools
         </p>
 
-        {/* Resource Sections Grid - condensed gap */}
+        {/* Resource Sections Grid */}
         <div className="grid grid-cols-2 gap-2 mb-4">
           {resourceSections.map((section, index) => {
             const IconComponent = section.icon;
@@ -192,69 +192,74 @@ const ResourcesHub = () => {
                   }
                 `}
                 style={{
-                  borderRadius: index % 2 === 0 ? '1rem 1.5rem 1rem 1rem' : '1.5rem 1rem 1rem 1rem',
+                  borderRadius: index % 2 === 0 
+                    ? '1.5rem 1rem 1.5rem 1rem' 
+                    : '1rem 1.5rem 1rem 1.5rem'
                 }}
               >
+                <div className="flex items-start gap-2">
+                  <span className="text-2xl">{section.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-display text-white text-sm leading-tight mb-0.5">
+                      {section.name}
+                    </h3>
+                    <p className="font-crayon text-white/80 text-xs leading-tight">
+                      {section.description}
+                    </p>
+                  </div>
+                </div>
                 {!section.ready && (
-                  <span className="absolute top-2 right-2 text-xs bg-white/90 px-2 py-0.5 rounded-full font-crayon">
-                    Coming Soon
+                  <span className="absolute top-1 right-1 px-1.5 py-0.5 bg-white/90 text-xs font-crayon rounded-full text-gray-600">
+                    Soon
                   </span>
                 )}
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xl">{section.emoji}</span>
-                  <IconComponent size={16} className="text-white" />
-                </div>
-                <h3 className="font-display text-white text-sm leading-tight">
-                  {section.name}
-                </h3>
-                <p className="font-crayon text-white/80 text-xs mt-0.5">
-                  {section.description}
-                </p>
               </button>
             );
           })}
         </div>
 
-        {/* Featured Resources - condensed spacing */}
-        <div className="mb-4">
-          <h2 className="font-display text-[#8E6BBF] text-sm mb-2 flex items-center gap-2">
-            <Star size={16} className="text-[#F8D14A]" />
+        {/* Featured External Resources */}
+        <div className="bg-white rounded-2xl border-4 border-[#8E6BBF] p-4 shadow-crayon mb-4">
+          <h2 className="font-display text-[#8E6BBF] text-lg mb-3 flex items-center gap-2">
+            <Star size={20} className="text-yellow-500" />
             Featured Resources
           </h2>
-          <div className="space-y-1.5">
-            {FEATURED_RESOURCES.map((resource) => (
+          <div className="space-y-2">
+            {FEATURED_RESOURCES.map((resource, index) => (
               <a
-                key={resource.name}
+                key={index}
                 href={resource.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block p-2.5 bg-white rounded-xl border-2 border-gray-200 
-                         hover:border-[#8E6BBF] hover:shadow-sm transition-all"
+                className="flex items-center gap-3 p-2 rounded-xl hover:bg-purple-50 transition-colors group"
               >
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">{resource.emoji}</span>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-display text-sm text-[#8E6BBF] flex items-center gap-1">
-                      <span className="truncate">{resource.name}</span>
-                      <ExternalLink size={10} className="text-gray-400 flex-shrink-0" />
-                    </h3>
-                    <p className="font-crayon text-xs text-gray-500 truncate">{resource.description}</p>
-                  </div>
+                <span className="text-xl">{resource.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-display text-gray-800 text-sm group-hover:text-[#8E6BBF] transition-colors">
+                    {resource.name}
+                  </h4>
+                  <p className="font-crayon text-gray-500 text-xs truncate">
+                    {resource.description}
+                  </p>
                 </div>
+                <ExternalLink size={16} className="text-gray-400 group-hover:text-[#8E6BBF] flex-shrink-0" />
               </a>
             ))}
           </div>
         </div>
 
-        {/* Disclaimer - condensed */}
-        <div className="p-2.5 bg-gray-50 rounded-xl border-2 border-gray-200">
-          <div className="flex gap-2">
-            <Info size={12} className="text-gray-400 flex-shrink-0 mt-0.5" />
-            <p className="font-crayon text-xs text-gray-500">
-              Product recommendations are based on research and community feedback. 
-              ATLASassist does not receive compensation for product mentions. 
-              Always consult with your healthcare providers.
-            </p>
+        {/* Info Box */}
+        <div className="bg-purple-50 rounded-2xl border-3 border-purple-200 p-4">
+          <div className="flex items-start gap-3">
+            <Info size={20} className="text-[#8E6BBF] flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-display text-[#8E6BBF] text-sm mb-1">
+                Know a great resource?
+              </h3>
+              <p className="font-crayon text-purple-700 text-sm">
+                We're always looking to add helpful resources. Use the feedback button to share your suggestions!
+              </p>
+            </div>
           </div>
         </div>
       </main>
