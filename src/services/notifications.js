@@ -1,6 +1,9 @@
 // notifications.js - Push notification support for schedules
 // Uses the Notification API and Service Worker
 // Supports global/individual settings and recurring reminders
+// FIXED: Added Supabase sync for notification settings
+
+import { supabase, isSupabaseConfigured } from './supabase';
 
 // ============================================
 // ENCOURAGING REMINDER MESSAGES
@@ -78,7 +81,7 @@ const getRandomRepeatMessage = () => {
 };
 
 // ============================================
-// SETTINGS STORAGE
+// SETTINGS STORAGE (LOCAL + CLOUD)
 // ============================================
 
 const SETTINGS_KEY = 'snw_notification_settings';
@@ -121,6 +124,78 @@ export const getNotificationSettings = () => {
 
 export const saveNotificationSettings = (settings) => {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+};
+
+/**
+ * Sync notification settings to Supabase
+ * This is required for server-side push notifications to work
+ */
+export const syncSettingsToCloud = async (userId) => {
+  if (!isSupabaseConfigured() || !userId) {
+    console.log('Cannot sync settings: Supabase not configured or no user ID');
+    return false;
+  }
+  
+  const settings = getNotificationSettings();
+  
+  try {
+    const { error } = await supabase
+      .from('notification_settings')
+      .upsert({
+        user_id: userId,
+        global_enabled: settings.globalEnabled,
+        settings: settings.apps,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'user_id'
+      });
+    
+    if (error) {
+      console.error('Error syncing notification settings:', error);
+      return false;
+    }
+    
+    console.log('✓ Notification settings synced to cloud');
+    return true;
+  } catch (error) {
+    console.error('Failed to sync notification settings:', error);
+    return false;
+  }
+};
+
+/**
+ * Load notification settings from Supabase
+ */
+export const loadSettingsFromCloud = async (userId) => {
+  if (!isSupabaseConfigured() || !userId) return null;
+  
+  try {
+    const { data, error } = await supabase
+      .from('notification_settings')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+    
+    if (error) {
+      console.error('Error loading notification settings:', error);
+      return null;
+    }
+    
+    if (data) {
+      const settings = {
+        globalEnabled: data.global_enabled,
+        apps: { ...defaultSettings.apps, ...data.settings },
+      };
+      // Update local storage with cloud settings
+      saveNotificationSettings(settings);
+      return settings;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Failed to load notification settings:', error);
+    return null;
+  }
 };
 
 export const updateAppNotificationSetting = (appId, settings) => {
@@ -214,6 +289,7 @@ export const scheduleNotification = (id, title, body, scheduledTime, options = {
     icon: options.icon || '/logo.jpeg',
     appId: options.appId || 'general',
     activityId: options.activityId,
+    activityName: options.activityName,
     shown: false,
     recurring: options.recurring || false,
     repeatInterval: options.repeatInterval || 5, // minutes
@@ -451,7 +527,7 @@ export const scheduleActivityNotifications = (dateStr, activities, options = {})
     }
   });
   
-  console.log(`Scheduled ${scheduledCount} notifications for ${dateStr}`);
+  console.log(`Scheduled ${scheduledCount} local notifications for ${dateStr}`);
 };
 
 // Mark activity complete and stop reminders
@@ -564,6 +640,8 @@ export default {
   requestPermission,
   getNotificationSettings,
   saveNotificationSettings,
+  syncSettingsToCloud,
+  loadSettingsFromCloud,
   updateAppNotificationSetting,
   setGlobalNotifications,
   scheduleNotification,

@@ -1,12 +1,11 @@
-// FIXED: Updated FeelingsTracker color from yellow (#F5A623) to coral (#FF6B6B)
-// EmotionalWellnessHub.jsx - Emotional Wellness sub-hub under Health
-// NAVIGATION: Back button goes to /health (parent hub)
-// FIXED: Single icon (emoji only), darker Growth Mindset color
+// EmotionalWellnessHub.jsx - Emotional Wellness sub-hub
+// FIXED: Back button says "Back" (not "Home")
+// NAVIGATION: Back button goes to /hub (main app hub)
 
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Brain } from 'lucide-react';
 
-// Wellness apps - FIXED: Removed icon property from render
+// Wellness apps - Using emoji only (no lucide icons in buttons)
 const wellnessApps = [
   {
     id: 'calm-down',
@@ -66,8 +65,7 @@ const wellnessApps = [
     id: 'growth-mindset',
     name: 'Growth Mindset',
     description: 'Learn to grow from challenges',
-    // FIXED: Darker gold instead of #F8D14A
-    color: '#DAA520',
+    color: '#DAA520', // Darker gold for better visibility
     emoji: '🌱',
     path: '/wellness/growth-mindset',
     ready: true,
@@ -97,15 +95,15 @@ const EmotionalWellnessHub = () => {
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#8E6BBF]">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
-          {/* FIXED: Navigate to main app hub, not health */}
+          {/* FIXED: Button says "Back" and navigates to /hub */}
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/hub')}
             className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#8E6BBF] 
                        rounded-xl font-display font-bold text-[#8E6BBF] hover:bg-[#8E6BBF] 
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
-            Home
+            Back
           </button>
           <img src="/logo.jpeg" alt="ATLASassist" className="w-10 h-10 rounded-lg shadow-sm" />
           <h1 className="text-xl sm:text-2xl font-display text-[#8E6BBF] crayon-text flex items-center gap-2">
@@ -120,7 +118,7 @@ const EmotionalWellnessHub = () => {
           Tools to understand and manage your feelings
         </p>
 
-        {/* Apps Grid - FIXED: Only emoji, no Icon */}
+        {/* Apps Grid - Using emoji only */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {wellnessApps.map((app, index) => (
             <button
@@ -138,34 +136,44 @@ const EmotionalWellnessHub = () => {
               style={{
                 backgroundColor: app.color + '20',
                 borderColor: app.color,
-                borderRadius: index % 2 === 0 ? '20px 8px 20px 8px' : '8px 20px 8px 20px',
+                borderRadius: index % 2 === 0 ? '30px 10px 30px 10px' : '10px 30px 10px 30px',
               }}
             >
-              {/* FIXED: Only emoji - removed IconComponent */}
-              <div 
-                className="w-14 h-14 rounded-2xl bg-white/80 flex items-center justify-center mb-2 mx-auto"
-                style={{ border: `2px solid ${app.color}` }}
-              >
-                <span className="text-3xl">{app.emoji}</span>
-              </div>
+              {/* Emoji Icon */}
+              <span className="text-4xl block mb-2">{app.emoji}</span>
               
-              {/* Name */}
-              <h3 className="font-display text-gray-800 text-sm leading-tight">
+              {/* App Name */}
+              <h3 
+                className="font-display text-sm mb-1"
+                style={{ color: app.color }}
+              >
                 {app.name}
               </h3>
               
               {/* Description */}
-              <p className="font-crayon text-xs text-gray-500 mt-1">
+              <p className="font-crayon text-xs text-gray-500">
                 {app.description}
               </p>
+              
+              {/* Coming Soon Badge */}
+              {!app.ready && (
+                <span className="absolute top-2 right-2 px-2 py-0.5 bg-gray-200 text-gray-500 text-xs font-crayon rounded-full">
+                  Soon
+                </span>
+              )}
             </button>
           ))}
         </div>
 
-        {/* Info Note */}
-        <div className="mt-8 p-4 bg-white rounded-2xl border-3 border-[#8E6BBF]/30 shadow-sm">
-          <p className="text-center text-gray-600 font-crayon text-sm">
-            🧠 Understanding your feelings is a superpower! Explore these tools to learn about emotions.
+        {/* Info Section */}
+        <div className="mt-8 p-4 bg-purple-50 rounded-2xl border-3 border-purple-200">
+          <h3 className="font-display text-purple-700 mb-2 flex items-center gap-2">
+            <span className="text-xl">💜</span> About Emotional Wellness
+          </h3>
+          <p className="font-crayon text-gray-600 text-sm">
+            Understanding and managing emotions is an important skill. These tools help identify feelings, 
+            learn coping strategies, and develop emotional regulation abilities. Take your time exploring 
+            each activity at your own pace.
           </p>
         </div>
       </main>

@@ -1,4 +1,7 @@
 // Settings.jsx - Global app settings
+// FIXED: Now properly saves push subscription and notification settings to Supabase
+// This enables server-side push notifications to work!
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -17,7 +20,12 @@ import {
   Info,
   User,
   Edit2,
-  Save
+  Save,
+  Cloud,
+  CloudOff,
+  Loader2,
+  CheckCircle,
+  AlertCircle,
 } from 'lucide-react';
 import {
   isNotificationSupported,
@@ -28,7 +36,15 @@ import {
   setGlobalNotifications,
   updateAppNotificationSetting,
   sendTestNotification,
+  syncSettingsToCloud,
+  loadSettingsFromCloud,
 } from '../services/notifications';
+import { 
+  subscribeToPush, 
+  unsubscribeFromPush,
+  isPushSupported,
+  getCurrentSubscription,
+} from '../services/pushSubscription';
 import { useAuth } from '../App';
 
 // Reminder time options
@@ -102,6 +118,12 @@ const Settings = () => {
   const [displayName, setDisplayName] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState('');
+  
+  // Push subscription state
+  const [pushSubscribed, setPushSubscribed] = useState(false);
+  const [syncingSettings, setSyncingSettings] = useState(false);
+  const [syncStatus, setSyncStatus] = useState(null); // 'success', 'error', null
+  const [enablingPush, setEnablingPush] = useState(false);
 
   // Load profile settings
   useEffect(() => {
@@ -115,10 +137,32 @@ const Settings = () => {
     }
   }, [user]);
 
-  // Check permission on mount
+  // Check permission and push subscription on mount
   useEffect(() => {
     setPermissionStatus(getPermissionStatus());
-  }, []);
+    checkPushSubscription();
+    
+    // Load settings from cloud if logged in
+    if (user?.id && !isGuest) {
+      loadSettingsFromCloud(user.id).then(cloudSettings => {
+        if (cloudSettings) {
+          setSettings(cloudSettings);
+        }
+      });
+    }
+  }, [user?.id, isGuest]);
+  
+  // Check if user is subscribed to push notifications
+  const checkPushSubscription = async () => {
+    if (!isPushSupported()) return;
+    
+    try {
+      const subscription = await getCurrentSubscription();
+      setPushSubscribed(!!subscription);
+    } catch (error) {
+      console.error('Error checking push subscription:', error);
+    }
+  };
 
   // Save display name
   const handleSaveName = () => {
@@ -142,45 +186,114 @@ const Settings = () => {
     }
   }, [displayName, isEditingName, tempName]);
 
-  // Handle global toggle
+  // Handle global toggle - THIS IS THE KEY FIX
   const handleGlobalToggle = async () => {
-    if (!settings.globalEnabled && permissionStatus !== 'granted') {
-      const result = await requestPermission();
-      setPermissionStatus(result);
-      if (result !== 'granted') return;
+    // If turning ON notifications
+    if (!settings.globalEnabled) {
+      setEnablingPush(true);
+      
+      try {
+        // First, request browser permission
+        if (permissionStatus !== 'granted') {
+          const result = await requestPermission();
+          setPermissionStatus(result);
+          if (result !== 'granted') {
+            setEnablingPush(false);
+            return;
+          }
+        }
+        
+        // Subscribe to push notifications (saves to Supabase)
+        if (user?.id && !isGuest && isPushSupported()) {
+          try {
+            await subscribeToPush(user.id);
+            setPushSubscribed(true);
+            console.log('✓ Push subscription saved to Supabase');
+          } catch (pushError) {
+            console.error('Push subscription error:', pushError);
+            // Continue anyway - local notifications will still work
+          }
+        }
+        
+        // Update settings
+        const newSettings = setGlobalNotifications(true);
+        setSettings(newSettings);
+        
+        // Sync settings to Supabase
+        if (user?.id && !isGuest) {
+          setSyncingSettings(true);
+          const synced = await syncSettingsToCloud(user.id);
+          setSyncStatus(synced ? 'success' : 'error');
+          setSyncingSettings(false);
+          
+          // Clear status after 3 seconds
+          setTimeout(() => setSyncStatus(null), 3000);
+        }
+      } catch (error) {
+        console.error('Error enabling notifications:', error);
+        setSyncStatus('error');
+      } finally {
+        setEnablingPush(false);
+      }
+    } else {
+      // Turning OFF notifications
+      const newSettings = setGlobalNotifications(false);
+      setSettings(newSettings);
+      
+      // Unsubscribe from push
+      if (user?.id && !isGuest) {
+        try {
+          await unsubscribeFromPush(user.id);
+          setPushSubscribed(false);
+        } catch (error) {
+          console.error('Unsubscribe error:', error);
+        }
+        
+        // Sync settings to Supabase
+        const synced = await syncSettingsToCloud(user.id);
+        setSyncStatus(synced ? 'success' : 'error');
+        setTimeout(() => setSyncStatus(null), 3000);
+      }
     }
-    
-    const newSettings = setGlobalNotifications(!settings.globalEnabled);
-    setSettings(newSettings);
   };
 
   // Handle app toggle
-  const handleAppToggle = (appId) => {
+  const handleAppToggle = async (appId) => {
     const currentEnabled = settings.apps[appId]?.enabled ?? true;
     const newSettings = updateAppNotificationSetting(appId, { enabled: !currentEnabled });
     setSettings(newSettings);
+    
+    // Sync to cloud
+    if (user?.id && !isGuest) {
+      await syncSettingsToCloud(user.id);
+    }
   };
 
-  // Handle reminder time selection
-  const handleReminderChange = (appId, minutes) => {
-    const current = settings.apps[appId]?.reminderMinutes || [5];
-    let newMinutes;
-    
-    if (current.includes(minutes)) {
-      newMinutes = current.filter(m => m !== minutes);
-      if (newMinutes.length === 0) newMinutes = [5]; // Keep at least one
-    } else {
-      newMinutes = [...current, minutes].sort((a, b) => b - a);
-    }
+  // Handle reminder change
+  const handleReminderChange = async (appId, minutes) => {
+    const current = settings.apps[appId]?.reminderMinutes || [0, 5];
+    const newMinutes = current.includes(minutes)
+      ? current.filter(m => m !== minutes)
+      : [...current, minutes].sort((a, b) => a - b);
     
     const newSettings = updateAppNotificationSetting(appId, { reminderMinutes: newMinutes });
     setSettings(newSettings);
+    
+    // Sync to cloud
+    if (user?.id && !isGuest) {
+      await syncSettingsToCloud(user.id);
+    }
   };
 
   // Handle repeat interval change
-  const handleRepeatChange = (appId, interval) => {
+  const handleRepeatChange = async (appId, interval) => {
     const newSettings = updateAppNotificationSetting(appId, { repeatInterval: interval });
     setSettings(newSettings);
+    
+    // Sync to cloud
+    if (user?.id && !isGuest) {
+      await syncSettingsToCloud(user.id);
+    }
   };
 
   return (
@@ -197,102 +310,72 @@ const Settings = () => {
             <ArrowLeft size={16} />
             Back
           </button>
-          <img 
-            src="/logo.jpeg" 
-            alt="ATLASassist" 
-            className="w-10 h-10 rounded-lg shadow-sm"
-          />
-          <h1 className="text-lg sm:text-xl font-display text-[#8E6BBF] crayon-text flex items-center gap-2">
-            <SettingsIcon size={20} />
+          <SettingsIcon size={24} className="text-[#8E6BBF]" />
+          <h1 className="text-xl font-display text-[#8E6BBF] crayon-text">
             Settings
           </h1>
         </div>
       </header>
 
+      {/* Main Content */}
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+        
         {/* Profile Section */}
-        <section className="bg-white rounded-2xl border-4 border-[#5CB85C] shadow-crayon overflow-hidden">
-          <div className="bg-[#5CB85C] text-white p-4">
+        <section className="bg-white rounded-2xl border-4 border-[#8E6BBF] shadow-crayon overflow-hidden">
+          <div className="bg-[#8E6BBF] text-white p-4">
             <h2 className="font-display text-xl flex items-center gap-2">
               <User size={24} />
-              Your Profile
+              Profile
             </h2>
           </div>
           
-          <div className="p-4 space-y-4">
-            {/* Display Name */}
-            <div className="p-4 bg-gray-50 rounded-xl">
-              <label className="block font-crayon text-sm text-gray-600 mb-2">
-                Display Name
-              </label>
-              {isEditingName ? (
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={tempName}
-                    onChange={(e) => setTempName(e.target.value)}
-                    placeholder="Enter your name"
-                    maxLength={30}
-                    className="flex-1 p-3 border-3 border-gray-300 rounded-xl font-crayon
-                             focus:border-[#5CB85C] focus:outline-none"
-                    autoFocus
-                  />
-                  <button
-                    onClick={handleSaveName}
-                    className="px-4 py-2 bg-[#5CB85C] text-white rounded-xl font-crayon
-                             hover:bg-green-600 transition-colors flex items-center gap-1"
-                  >
-                    <Save size={16} />
-                    Save
-                  </button>
+          <div className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-[#8E6BBF]/20 rounded-full flex items-center justify-center">
+                  <span className="text-2xl">👤</span>
                 </div>
-              ) : (
-                <div className="flex items-center justify-between">
-                  <span className="font-display text-lg text-gray-800">
-                    {displayName || 'Not set'}
-                  </span>
-                  <button
-                    onClick={startEditingName}
-                    className="px-3 py-1.5 bg-white border-2 border-gray-300 rounded-lg font-crayon text-sm
-                             hover:border-[#5CB85C] transition-colors flex items-center gap-1"
-                  >
-                    <Edit2 size={14} />
-                    Edit
-                  </button>
+                <div>
+                  {isEditingName ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={tempName}
+                        onChange={(e) => setTempName(e.target.value)}
+                        className="px-3 py-1.5 border-2 border-[#8E6BBF] rounded-lg font-crayon focus:outline-none focus:ring-2 focus:ring-[#8E6BBF]/50"
+                        placeholder="Your name"
+                        autoFocus
+                        onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
+                      />
+                      <button
+                        onClick={handleSaveName}
+                        className="p-2 bg-[#5CB85C] text-white rounded-lg hover:bg-green-600"
+                      >
+                        <Save size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <p className="font-display text-lg">{displayName || 'Friend'}</p>
+                      <button
+                        onClick={startEditingName}
+                        className="p-1.5 text-gray-400 hover:text-[#8E6BBF] hover:bg-[#8E6BBF]/10 rounded-lg transition-colors"
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                    </div>
+                  )}
+                  <p className="font-crayon text-sm text-gray-500">
+                    {isGuest ? 'Guest Mode' : user?.app_metadata?.provider === 'google' ? 'Signed in with Google' : ' Signed in with Email'}
+                  </p>
                 </div>
-              )}
-              <p className="font-crayon text-xs text-gray-400 mt-2">
-                This name is shown in the app.
-              </p>
+              </div>
             </div>
-
-            {/* Community Profile Link */}
-            {!isGuest && user && (
-              <button
-                onClick={() => navigate('/community/profile/setup')}
-                className="w-full p-4 bg-purple-50 rounded-xl border-2 border-purple-200
-                         hover:border-purple-400 transition-colors text-left"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-display text-purple-700">Community Profile</p>
-                    <p className="font-crayon text-sm text-purple-500">
-                      Set up your avatar and community name
-                    </p>
-                  </div>
-                  <ChevronRight size={20} className="text-purple-400" />
-                </div>
-              </button>
-            )}
-
-            {/* Account Info */}
+            
             {user && !isGuest && (
-              <div className="p-3 bg-blue-50 rounded-xl border-2 border-blue-200">
-                <p className="font-crayon text-sm text-blue-600">
-                  ✓ Signed in{user.app_metadata?.provider === 'google' ? ' with Google' : ' with Email'}
-                </p>
-                <p className="font-crayon text-xs text-blue-400 mt-1">
-                  {user.email}
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <p className="font-crayon text-xs text-gray-500">
+                  Email: {user.email}
                 </p>
               </div>
             )}
@@ -328,6 +411,56 @@ const Settings = () => {
               </div>
             )}
             
+            {/* Push Subscription Status */}
+            {user && !isGuest && settings.globalEnabled && permissionStatus === 'granted' && (
+              <div className={`p-3 rounded-xl border-2 flex items-center gap-2 ${
+                pushSubscribed 
+                  ? 'bg-green-50 border-green-300' 
+                  : 'bg-orange-50 border-orange-300'
+              }`}>
+                {pushSubscribed ? (
+                  <>
+                    <CheckCircle size={16} className="text-green-600" />
+                    <p className="font-crayon text-sm text-green-700">
+                      Push notifications enabled - works even when app is closed!
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle size={16} className="text-orange-600" />
+                    <p className="font-crayon text-sm text-orange-700">
+                      Push subscription not active. Toggle off and on to fix.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+            
+            {/* Cloud Sync Status */}
+            {syncStatus && (
+              <div className={`p-3 rounded-xl border-2 flex items-center gap-2 ${
+                syncStatus === 'success' 
+                  ? 'bg-green-50 border-green-300' 
+                  : 'bg-red-50 border-red-300'
+              }`}>
+                {syncStatus === 'success' ? (
+                  <>
+                    <Cloud size={16} className="text-green-600" />
+                    <p className="font-crayon text-sm text-green-700">
+                      Settings synced to cloud ✓
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <CloudOff size={16} className="text-red-600" />
+                    <p className="font-crayon text-sm text-red-700">
+                      Failed to sync settings
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+            
             {/* Global Toggle */}
             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
               <div className="flex items-center gap-3">
@@ -346,14 +479,20 @@ const Settings = () => {
               
               <button
                 onClick={handleGlobalToggle}
-                disabled={!notificationsSupported}
+                disabled={!notificationsSupported || enablingPush}
                 className={`w-14 h-8 rounded-full transition-all relative ${
                   settings.globalEnabled ? 'bg-[#5CB85C]' : 'bg-gray-300'
-                } ${!notificationsSupported ? 'opacity-50 cursor-not-allowed' : ''}`}
+                } ${(!notificationsSupported || enablingPush) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <div className={`w-6 h-6 bg-white rounded-full shadow absolute top-1 transition-all ${
-                  settings.globalEnabled ? 'right-1' : 'left-1'
-                }`} />
+                {enablingPush ? (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Loader2 size={16} className="animate-spin text-white" />
+                  </div>
+                ) : (
+                  <div className={`w-6 h-6 bg-white rounded-full shadow absolute top-1 transition-all ${
+                    settings.globalEnabled ? 'right-1' : 'left-1'
+                  }`} />
+                )}
               </button>
             </div>
             
@@ -376,14 +515,21 @@ const Settings = () => {
             {/* Request Permission Button */}
             {notificationsSupported && permissionStatus === 'default' && (
               <button
-                onClick={async () => {
-                  const permission = await requestPermission();
-                  setPermissionStatus(permission);
-                }}
-                className="w-full py-3 bg-[#4A9FD4] text-white rounded-xl font-crayon flex items-center justify-center gap-2 hover:bg-[#3A8FC4] transition-colors"
+                onClick={handleGlobalToggle}
+                disabled={enablingPush}
+                className="w-full py-3 bg-[#4A9FD4] text-white rounded-xl font-crayon flex items-center justify-center gap-2 hover:bg-[#3A8FC4] transition-colors disabled:opacity-50"
               >
-                <Bell size={18} />
-                Enable Notifications
+                {enablingPush ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Enabling...
+                  </>
+                ) : (
+                  <>
+                    <Bell size={18} />
+                    Enable Notifications
+                  </>
+                )}
               </button>
             )}
             
@@ -396,120 +542,117 @@ const Settings = () => {
               </div>
             )}
             
+            {/* Guest Mode Warning */}
+            {isGuest && (
+              <div className="p-3 bg-[#F5A623]/20 rounded-xl border-2 border-[#F5A623]">
+                <p className="font-crayon text-sm text-[#F5A623]">
+                  ⚠️ <strong>Guest Mode:</strong> Notifications work locally but won't sync across devices. Sign in for full notification support.
+                </p>
+              </div>
+            )}
+            
             {/* Per-App Settings */}
-            {settings.globalEnabled && (
-              <div className="space-y-2">
-                <h3 className="font-crayon text-sm text-gray-600 px-2">App Notifications</h3>
+            {settings.globalEnabled && permissionStatus === 'granted' && (
+              <div className="space-y-2 pt-4 border-t border-gray-200">
+                <h3 className="font-display text-sm text-gray-600">App Notifications</h3>
                 
-                {APP_CONFIGS.map((app) => {
-                  const appSettings = settings.apps[app.id] || { enabled: true };
+                {APP_CONFIGS.map(app => {
+                  const AppIcon = app.icon;
+                  const appSettings = settings.apps[app.id] || {};
                   const isExpanded = expandedApp === app.id;
-                  const IconComponent = app.icon;
                   
                   return (
-                    <div key={app.id} className="border-2 border-gray-200 rounded-xl overflow-hidden">
+                    <div 
+                      key={app.id}
+                      className="border-2 border-gray-200 rounded-xl overflow-hidden"
+                    >
                       {/* App Header */}
-                      <button
+                      <div 
+                        className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50"
                         onClick={() => setExpandedApp(isExpanded ? null : app.id)}
-                        className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors"
                       >
                         <div className="flex items-center gap-3">
                           <div 
-                            className="w-10 h-10 rounded-xl flex items-center justify-center"
-                            style={{ backgroundColor: app.color }}
+                            className="w-10 h-10 rounded-lg flex items-center justify-center"
+                            style={{ backgroundColor: `${app.color}20` }}
                           >
-                            <IconComponent size={20} className="text-white" />
+                            <AppIcon size={20} style={{ color: app.color }} />
                           </div>
-                          <div className="text-left">
-                            <p className="font-display">{app.name}</p>
+                          <div>
+                            <p className="font-display text-sm">{app.name}</p>
                             <p className="font-crayon text-xs text-gray-500">{app.description}</p>
                           </div>
                         </div>
                         
                         <div className="flex items-center gap-2">
-                          {appSettings.enabled ? (
-                            <span className="text-xs font-crayon text-[#5CB85C] bg-[#5CB85C]/20 px-2 py-1 rounded-full">
-                              ON
-                            </span>
-                          ) : (
-                            <span className="text-xs font-crayon text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
-                              OFF
-                            </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAppToggle(app.id);
+                            }}
+                            className={`w-12 h-6 rounded-full transition-all relative ${
+                              appSettings.enabled !== false ? 'bg-[#5CB85C]' : 'bg-gray-300'
+                            }`}
+                          >
+                            <div className={`w-5 h-5 bg-white rounded-full shadow absolute top-0.5 transition-all ${
+                              appSettings.enabled !== false ? 'right-0.5' : 'left-0.5'
+                            }`} />
+                          </button>
+                          {app.hasReminders && (
+                            <ChevronRight 
+                              size={20} 
+                              className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                            />
                           )}
-                          <ChevronRight 
-                            size={20} 
-                            className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} 
-                          />
                         </div>
-                      </button>
+                      </div>
                       
                       {/* Expanded Settings */}
-                      {isExpanded && (
-                        <div className="border-t-2 border-gray-100 p-4 bg-gray-50 space-y-4">
-                          {/* Enable Toggle */}
-                          <div className="flex items-center justify-between">
-                            <span className="font-crayon text-sm">Enable notifications</span>
-                            <button
-                              onClick={() => handleAppToggle(app.id)}
-                              className={`w-12 h-6 rounded-full transition-all relative ${
-                                appSettings.enabled ? 'bg-[#5CB85C]' : 'bg-gray-300'
-                              }`}
-                            >
-                              <div className={`w-5 h-5 bg-white rounded-full shadow absolute top-0.5 transition-all ${
-                                appSettings.enabled ? 'right-0.5' : 'left-0.5'
-                              }`} />
-                            </button>
+                      {isExpanded && app.hasReminders && appSettings.enabled !== false && (
+                        <div className="p-3 pt-0 space-y-3 border-t border-gray-100">
+                          {/* Reminder Times */}
+                          <div>
+                            <p className="font-crayon text-xs text-gray-600 mb-2">Remind me:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {REMINDER_OPTIONS.map(option => {
+                                const isSelected = (appSettings.reminderMinutes || [0, 5]).includes(option.value);
+                                return (
+                                  <button
+                                    key={option.value}
+                                    onClick={() => handleReminderChange(app.id, option.value)}
+                                    className={`px-3 py-1.5 rounded-lg font-crayon text-xs transition-all ${
+                                      isSelected
+                                        ? 'bg-[#4A9FD4] text-white'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    }`}
+                                  >
+                                    {isSelected && <Check size={12} className="inline mr-1" />}
+                                    {option.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
                           
-                          {/* Reminder Times */}
-                          {app.hasReminders && appSettings.enabled && (
+                          {/* Repeat Interval */}
+                          {app.hasRepeat && (
                             <div>
-                              <p className="font-crayon text-sm text-gray-600 mb-2 flex items-center gap-1">
-                                <Clock size={14} /> Remind me:
-                              </p>
+                              <p className="font-crayon text-xs text-gray-600 mb-2">Repeat until done:</p>
                               <div className="flex flex-wrap gap-2">
-                                {REMINDER_OPTIONS.map((opt) => {
-                                  const isSelected = (appSettings.reminderMinutes || [5]).includes(opt.value);
+                                {REPEAT_OPTIONS.map(option => {
+                                  const isSelected = (appSettings.repeatInterval || 5) === option.value;
                                   return (
                                     <button
-                                      key={opt.value}
-                                      onClick={() => handleReminderChange(app.id, opt.value)}
-                                      className={`px-3 py-1.5 rounded-full text-xs font-crayon transition-all ${
-                                        isSelected 
-                                          ? 'bg-[#4A9FD4] text-white' 
-                                          : 'bg-white border-2 border-gray-200 text-gray-600 hover:border-[#4A9FD4]'
+                                      key={option.value}
+                                      onClick={() => handleRepeatChange(app.id, option.value)}
+                                      className={`px-3 py-1.5 rounded-lg font-crayon text-xs transition-all ${
+                                        isSelected
+                                          ? 'bg-[#8E6BBF] text-white'
+                                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                       }`}
                                     >
                                       {isSelected && <Check size={12} className="inline mr-1" />}
-                                      {opt.label}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                          
-                          {/* Repeat Until Complete */}
-                          {app.hasRepeat && appSettings.enabled && (
-                            <div>
-                              <p className="font-crayon text-sm text-gray-600 mb-2">
-                                🔁 Repeat until marked complete:
-                              </p>
-                              <div className="flex flex-wrap gap-2">
-                                {REPEAT_OPTIONS.map((opt) => {
-                                  const isSelected = (appSettings.repeatInterval || 5) === opt.value;
-                                  return (
-                                    <button
-                                      key={opt.value}
-                                      onClick={() => handleRepeatChange(app.id, opt.value)}
-                                      className={`px-3 py-1.5 rounded-full text-xs font-crayon transition-all ${
-                                        isSelected 
-                                          ? 'bg-[#8E6BBF] text-white' 
-                                          : 'bg-white border-2 border-gray-200 text-gray-600 hover:border-[#8E6BBF]'
-                                      }`}
-                                    >
-                                      {isSelected && <Check size={12} className="inline mr-1" />}
-                                      {opt.label}
+                                      {option.label}
                                     </button>
                                   );
                                 })}
@@ -525,25 +668,18 @@ const Settings = () => {
             )}
           </div>
         </section>
-        
-        {/* About Section */}
-        <section className="bg-white rounded-2xl border-4 border-[#87CEEB] shadow-crayon p-6">
-          <h2 className="font-display text-xl text-[#4A9FD4] mb-4">About</h2>
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <img 
-                src="/logo.jpeg" 
-                alt="" 
-                className="w-8 h-8 rounded-md"
-              />
-              <p className="font-display text-lg text-[#8E6BBF]">
-                ATLASassist
-              </p>
-            </div>
-            <p className="text-crayon-purple font-display text-sm italic">
-              For Finn, and for people like him. 💜
+
+        {/* App Info */}
+        <section className="bg-white rounded-2xl border-4 border-gray-200 shadow-crayon p-4">
+          <div className="text-center space-y-2">
+            <img src="/logo.jpeg" alt="ATLASassist" className="w-16 h-16 rounded-xl mx-auto shadow-md" />
+            <h3 className="font-display text-lg text-gray-700">ATLASassist</h3>
+            <p className="font-crayon text-sm text-gray-500">
+              Assistive Tools for Learning, Access & Support
             </p>
-            <p className="font-crayon text-xs text-gray-400">Version 1.0.0</p>
+            <p className="font-crayon text-xs text-gray-400">
+              Made with 💜 for Finn and people like him
+            </p>
           </div>
         </section>
       </main>

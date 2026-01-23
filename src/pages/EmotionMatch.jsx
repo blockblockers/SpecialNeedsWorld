@@ -1,37 +1,109 @@
-// EmotionMatch.jsx - Match faces to emotions game
-// Uses ARASAAC pictograms for emotion representation
+// EmotionMatch.jsx - Emotion Recognition Game
+// FIXED: Back button navigates to /activities (parent hub), not /games or main hub
+// Game modes: Face → Word, Word → Face
+
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, RotateCcw, Trophy, Star, Volume2 } from 'lucide-react';
-import { getPictogramUrl, ARASAAC_ATTRIBUTION } from '../services/arasaac';
+import { 
+  ArrowLeft, 
+  Volume2, 
+  RotateCcw, 
+  Star,
+  Trophy,
+  Sparkles,
+  HelpCircle
+} from 'lucide-react';
+import { getPictogramUrl } from '../services/arasaac';
 
-// Emotions with ARASAAC pictogram IDs and colors
-const EMOTIONS = [
-  { id: 'happy', arasaacId: 26684, word: 'Happy', color: '#F8D14A', description: 'feeling good and joyful' },
-  { id: 'sad', arasaacId: 11321, word: 'Sad', color: '#4A9FD4', description: 'feeling unhappy or down' },
-  { id: 'angry', arasaacId: 11318, word: 'Angry', color: '#E63B2E', description: 'feeling mad or upset' },
-  { id: 'scared', arasaacId: 6459, word: 'Scared', color: '#8E6BBF', description: 'feeling afraid or worried' },
-  { id: 'surprised', arasaacId: 11326, word: 'Surprised', color: '#F5A623', description: 'feeling amazed or shocked' },
-  { id: 'tired', arasaacId: 11950, word: 'Tired', color: '#6B7280', description: 'feeling sleepy or worn out' },
-  { id: 'excited', arasaacId: 11319, word: 'Excited', color: '#E86B9A', description: 'feeling very happy and eager' },
-  { id: 'calm', arasaacId: 28753, word: 'Calm', color: '#5CB85C', description: 'feeling peaceful and relaxed' },
-  { id: 'confused', arasaacId: 11322, word: 'Confused', color: '#9CA3AF', description: 'not sure what is happening' },
-  { id: 'silly', arasaacId: 11330, word: 'Silly', color: '#EC4899', description: 'feeling playful and funny' },
-  { id: 'proud', arasaacId: 11327, word: 'Proud', color: '#10B981', description: 'feeling good about yourself' },
-  { id: 'loved', arasaacId: 26790, word: 'Loved', color: '#F472B6', description: 'feeling cared for and special' },
-];
-
-// Preload emotion images
+// Preload images function
 const preloadImages = () => {
   EMOTIONS.forEach(emotion => {
-    const img = new Image();
-    img.src = getPictogramUrl(emotion.arasaacId);
+    if (emotion.pictogramId) {
+      const img = new Image();
+      img.src = getPictogramUrl(emotion.pictogramId);
+    }
   });
 };
 
+// Emotions with ARASAAC pictogram IDs
+const EMOTIONS = [
+  { 
+    id: 'happy', 
+    word: 'Happy', 
+    emoji: '😊', 
+    color: '#F8D14A', 
+    bgColor: '#FEF9E7',
+    pictogramId: 26684,
+    examples: ['Smiling', 'Laughing', 'Excited']
+  },
+  { 
+    id: 'sad', 
+    word: 'Sad', 
+    emoji: '😢', 
+    color: '#4A9FD4', 
+    bgColor: '#EBF5FB',
+    pictogramId: 11321,
+    examples: ['Crying', 'Frowning', 'Down']
+  },
+  { 
+    id: 'angry', 
+    word: 'Angry', 
+    emoji: '😠', 
+    color: '#E63B2E', 
+    bgColor: '#FDEDEC',
+    pictogramId: 26682,
+    examples: ['Mad', 'Frustrated', 'Upset']
+  },
+  { 
+    id: 'scared', 
+    word: 'Scared', 
+    emoji: '😨', 
+    color: '#8E6BBF', 
+    bgColor: '#F4ECF7',
+    pictogramId: 26747,
+    examples: ['Afraid', 'Worried', 'Nervous']
+  },
+  { 
+    id: 'surprised', 
+    word: 'Surprised', 
+    emoji: '😲', 
+    color: '#E86B9A', 
+    bgColor: '#FDEBF0',
+    pictogramId: 26688,
+    examples: ['Shocked', 'Amazed', 'Startled']
+  },
+  { 
+    id: 'disgusted', 
+    word: 'Disgusted', 
+    emoji: '🤢', 
+    color: '#5CB85C', 
+    bgColor: '#EAFAF1',
+    pictogramId: 26686,
+    examples: ['Grossed out', 'Yucky', 'Icky']
+  },
+  { 
+    id: 'tired', 
+    word: 'Tired', 
+    emoji: '😴', 
+    color: '#87CEEB', 
+    bgColor: '#EBF5FB',
+    pictogramId: 11950,
+    examples: ['Sleepy', 'Exhausted', 'Worn out']
+  },
+  { 
+    id: 'excited', 
+    word: 'Excited', 
+    emoji: '🤩', 
+    color: '#F5A623', 
+    bgColor: '#FEF5E7',
+    pictogramId: 26684,
+    examples: ['Thrilled', 'Eager', 'Pumped']
+  },
+];
+
 // Game modes
-const MODES = {
-  faceToWord: { label: 'Face → Word', instruction: 'Tap the word that matches the face!' },
+const GAME_MODES = {
+  faceToWord: { label: 'Face → Word', instruction: 'What is this face feeling? Tap the correct word!' },
   wordToFace: { label: 'Word → Face', instruction: 'Tap the face that matches the word!' },
 };
 
@@ -152,6 +224,7 @@ const EmotionMatch = () => {
         {/* Header */}
         <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#F5A623]">
           <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
+            {/* FIXED: Navigate to /activities (parent hub) */}
             <button
               onClick={() => navigate('/activities')}
               className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F5A623] 
@@ -163,12 +236,7 @@ const EmotionMatch = () => {
             </button>
             <div className="flex-1">
               <h1 className="text-lg sm:text-xl font-display text-[#F5A623] crayon-text flex items-center gap-2">
-                <img 
-                  src={getPictogramUrl(26684)} 
-                  alt="Happy" 
-                  className="w-7 h-7 object-contain"
-                />
-                Emotion Match
+                😊 Emotion Match
               </h1>
             </div>
           </div>
@@ -191,61 +259,46 @@ const EmotionMatch = () => {
                   onClick={() => setMode('faceToWord')}
                   className={`p-4 rounded-xl border-3 font-crayon transition-all
                     ${mode === 'faceToWord' 
-                      ? 'border-[#F5A623] bg-orange-50 text-[#F5A623]' 
-                      : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
+                      ? 'bg-[#F5A623] text-white border-[#F5A623]' 
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-[#F5A623]'
                     }`}
                 >
-                  <span className="flex items-center justify-center gap-1 mb-1">
-                    <img src={getPictogramUrl(26684)} alt="face" className="w-8 h-8" />
-                    <span className="text-xl">→ ?</span>
-                  </span>
-                  <span className="text-sm">See Face</span>
-                  <span className="block text-xs">Find Word</span>
+                  <span className="text-2xl block mb-1">😊→📝</span>
+                  Face → Word
                 </button>
                 <button
                   onClick={() => setMode('wordToFace')}
                   className={`p-4 rounded-xl border-3 font-crayon transition-all
                     ${mode === 'wordToFace' 
-                      ? 'border-[#F5A623] bg-orange-50 text-[#F5A623]' 
-                      : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
+                      ? 'bg-[#F5A623] text-white border-[#F5A623]' 
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-[#F5A623]'
                     }`}
                 >
-                  <span className="flex items-center justify-center gap-1 mb-1">
-                    <span className="text-xl">? →</span>
-                    <span className="font-display text-sm">Happy</span>
-                  </span>
-                  <span className="text-sm">See Word</span>
-                  <span className="block text-xs">Find Face</span>
+                  <span className="text-2xl block mb-1">📝→😊</span>
+                  Word → Face
                 </button>
               </div>
             </div>
 
-            {/* Emotion Preview */}
+            {/* Preview of Emotions */}
             <div className="mb-6 p-4 bg-gray-50 rounded-xl">
-              <p className="font-crayon text-gray-600 text-sm mb-3 text-center">
-                You'll learn these emotions:
-              </p>
-              <div className="flex flex-wrap justify-center gap-2">
-                {EMOTIONS.slice(0, 8).map(emotion => (
-                  <span 
-                    key={emotion.id}
-                    className="text-2xl"
-                    title={emotion.word}
-                  >
-                    {emotion.face}
-                  </span>
+              <p className="font-crayon text-sm text-gray-500 mb-2">You'll learn {EMOTIONS.length} emotions:</p>
+              <div className="flex flex-wrap gap-2 justify-center">
+                {EMOTIONS.map(e => (
+                  <span key={e.id} className="text-2xl" title={e.word}>{e.emoji}</span>
                 ))}
-                <span className="text-gray-400">+{EMOTIONS.length - 8}</span>
               </div>
             </div>
 
             {/* Start Button */}
             <button
               onClick={startGame}
-              className="w-full py-4 bg-[#5CB85C] text-white rounded-2xl border-4 border-green-600
-                         font-display text-xl hover:scale-105 transition-transform shadow-crayon"
+              className="w-full py-4 bg-[#5CB85C] text-white rounded-xl border-3 border-green-600
+                         font-display text-lg hover:scale-105 transition-transform
+                         flex items-center justify-center gap-2 shadow-md"
             >
-              Let's Start! 🌟
+              <Sparkles size={24} />
+              Start Game!
             </button>
           </div>
         </main>
@@ -256,23 +309,21 @@ const EmotionMatch = () => {
   // Game complete screen
   if (gameComplete) {
     const percentage = Math.round((score / totalQuestions) * 100);
-    const stars = percentage >= 90 ? 3 : percentage >= 70 ? 2 : 1;
-
+    const stars = percentage >= 90 ? 3 : percentage >= 70 ? 2 : percentage >= 50 ? 1 : 0;
+    
     return (
       <div className="min-h-screen bg-[#FFFEF5] flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl border-4 border-[#F8D14A] p-8 shadow-crayon text-center max-w-sm">
-          <Trophy className="w-20 h-20 text-[#F8D14A] mx-auto mb-4 animate-bounce" />
-          <h2 className="text-3xl font-display text-[#5CB85C] mb-4">
-            Amazing! 🎉
-          </h2>
+        <div className="bg-white rounded-3xl border-4 border-[#F5A623] p-8 max-w-md w-full text-center shadow-crayon">
+          <Trophy className="w-16 h-16 text-[#F8D14A] mx-auto mb-4 animate-bounce" />
+          <h2 className="text-2xl font-display text-[#F5A623] mb-2">Amazing Job!</h2>
           
           {/* Stars */}
           <div className="flex justify-center gap-2 mb-4">
-            {[1, 2, 3].map((star) => (
-              <Star
-                key={star}
-                size={40}
-                className={star <= stars ? 'text-[#F8D14A] fill-[#F8D14A]' : 'text-gray-300'}
+            {[1, 2, 3].map(n => (
+              <Star 
+                key={n}
+                size={36} 
+                className={n <= stars ? 'text-[#F8D14A] fill-[#F8D14A]' : 'text-gray-300'}
               />
             ))}
           </div>
@@ -293,12 +344,13 @@ const EmotionMatch = () => {
               <RotateCcw size={20} />
               Play Again
             </button>
+            {/* FIXED: Navigate to /activities */}
             <button
               onClick={() => navigate('/activities')}
               className="flex-1 py-3 bg-[#4A9FD4] text-white rounded-xl border-3 border-blue-600
                          font-crayon hover:scale-105 transition-transform"
             >
-              More Games
+              More Activities
             </button>
           </div>
         </div>
@@ -343,74 +395,75 @@ const EmotionMatch = () => {
                 What is this face feeling?
               </p>
               <div 
-                className="text-8xl mb-4 animate-bounce"
-                style={{ animationDuration: '2s' }}
+                className="w-32 h-32 mx-auto rounded-2xl flex items-center justify-center mb-4 border-4"
+                style={{ 
+                  backgroundColor: currentEmotion?.bgColor,
+                  borderColor: currentEmotion?.color 
+                }}
               >
-                {currentEmotion?.face}
+                <span className="text-7xl">{currentEmotion?.emoji}</span>
               </div>
             </>
           ) : (
             <>
-              <p className="font-crayon text-gray-600 mb-4">
+              <p className="font-crayon text-gray-600 mb-2">
                 Find the face that shows:
               </p>
-              <div 
-                className="text-4xl font-display mb-4"
+              <p 
+                className="text-3xl font-display mb-4"
                 style={{ color: currentEmotion?.color }}
               >
                 {currentEmotion?.word}
-              </div>
-              <p className="text-sm text-gray-500 font-crayon">
-                ({currentEmotion?.description})
               </p>
             </>
           )}
           
-          {/* Sound button */}
+          {/* Speak button */}
           <button
             onClick={speakCurrent}
-            className="mt-4 p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
-            title="Hear it"
+            className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+            title="Hear the question"
           >
-            <Volume2 size={24} className="text-gray-600" />
+            <Volume2 size={20} className="text-gray-600" />
           </button>
         </div>
 
         {/* Answer Options */}
         <div className="grid grid-cols-2 gap-3">
-          {options.map((emotion) => {
+          {options.map(emotion => {
             const isSelected = selectedAnswer === emotion.id;
-            const isCorrect = emotion.id === currentEmotion?.id;
-            const showCorrect = feedback && isCorrect;
-            const showWrong = feedback === 'wrong' && isSelected;
-
+            const isCorrect = feedback && emotion.id === currentEmotion?.id;
+            const isWrong = feedback === 'wrong' && isSelected;
+            
             return (
               <button
                 key={emotion.id}
                 onClick={() => handleAnswer(emotion)}
-                disabled={!!feedback}
+                disabled={feedback !== null}
                 className={`
-                  p-4 rounded-2xl border-4 transition-all duration-300
-                  ${showCorrect 
-                    ? 'border-[#5CB85C] bg-green-100 scale-105' 
-                    : showWrong 
-                      ? 'border-[#E63B2E] bg-red-100 shake' 
-                      : 'border-gray-300 bg-white hover:border-[#F5A623] hover:scale-105'
+                  p-4 rounded-2xl border-4 transition-all
+                  ${isCorrect 
+                    ? 'bg-green-100 border-green-500 scale-105 ring-4 ring-green-300' 
+                    : isWrong
+                      ? 'bg-red-100 border-red-500 shake'
+                      : isSelected
+                        ? 'border-gray-400 bg-gray-50'
+                        : 'bg-white border-gray-200 hover:border-[#F5A623] hover:scale-105'
                   }
-                  ${feedback && !showCorrect && !showWrong ? 'opacity-50' : ''}
+                  disabled:cursor-not-allowed
                 `}
               >
                 {mode === 'faceToWord' ? (
-                  <>
-                    <span 
-                      className="block text-xl font-display"
-                      style={{ color: emotion.color }}
-                    >
-                      {emotion.word}
-                    </span>
-                  </>
+                  // Show words
+                  <span 
+                    className="font-display text-lg block"
+                    style={{ color: isCorrect ? '#5CB85C' : isWrong ? '#E63B2E' : emotion.color }}
+                  >
+                    {emotion.word}
+                  </span>
                 ) : (
-                  <span className="text-5xl">{emotion.face}</span>
+                  // Show faces
+                  <span className="text-5xl block">{emotion.emoji}</span>
                 )}
               </button>
             );
@@ -420,23 +473,38 @@ const EmotionMatch = () => {
         {/* Feedback Message */}
         {feedback && (
           <div className={`
-            mt-6 p-4 rounded-2xl text-center font-crayon text-lg
+            mt-6 p-4 rounded-xl text-center font-display
             ${feedback === 'correct' 
-              ? 'bg-green-100 text-green-700 border-3 border-green-400' 
-              : 'bg-red-100 text-red-700 border-3 border-red-400'
+              ? 'bg-green-100 text-green-700 border-3 border-green-300' 
+              : 'bg-red-100 text-red-700 border-3 border-red-300'
             }
           `}>
             {feedback === 'correct' ? (
-              <>🎉 Yes! That's {currentEmotion?.word}!</>
+              <span className="flex items-center justify-center gap-2">
+                <Sparkles size={20} /> Great job! That's {currentEmotion?.word}!
+              </span>
             ) : (
-              <>Try again! Look for {currentEmotion?.word}</>
+              <span>Try again! Look for {currentEmotion?.word}.</span>
             )}
           </div>
         )}
+
+        {/* Progress Bar */}
+        <div className="mt-6">
+          <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-[#F5A623] transition-all duration-500 rounded-full"
+              style={{ width: `${(questionsAnswered.length / EMOTIONS.length) * 100}%` }}
+            />
+          </div>
+          <p className="text-center font-crayon text-sm text-gray-500 mt-2">
+            {questionsAnswered.length} of {EMOTIONS.length} emotions learned
+          </p>
+        </div>
       </main>
 
-      {/* Add shake animation */}
-      <style>{`
+      {/* CSS for shake animation */}
+      <style jsx>{`
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
           25% { transform: translateX(-5px); }

@@ -1,13 +1,19 @@
-import { useState, useEffect, useCallback } from 'react';
+// PointToTalk.jsx - AAC Communication Board for ATLASassist
+// UPDATED: Combined board layouts (Basic/MyWords/Cloud) with customizable footer
+// UPDATED: AI-powered word suggestions with Claude API
+// UPDATED: Fixed ARASAAC pictogram alignment
+// NAVIGATION: Back button goes to /tools
+
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
   Volume2, 
-  Home,
   Settings,
   Grid3X3,
   Trash2,
   ChevronLeft,
+  ChevronRight,
   Image,
   Smile,
   X,
@@ -15,18 +21,58 @@ import {
   MessageSquare,
   Edit2,
   Check,
-  RotateCcw
+  RotateCcw,
+  Plus,
+  Cloud,
+  User,
+  Sparkles,
+  Upload,
+  Loader2,
+  FolderOpen,
+  Info,
+  TrendingUp,
+  Users
 } from 'lucide-react';
 import { 
   getButtonPictogramUrl, 
   ARASAAC_PICTOGRAM_IDS 
 } from '../services/arasaac';
+import { supabase, isSupabaseConfigured } from '../services/supabase';
+import { useToast } from '../components/ThemedToast';
+import { useAuth } from '../context/AuthContext';
+
+// ============================================
+// LAYOUT DESCRIPTIONS
+// ============================================
+
+const LAYOUT_INFO = {
+  basic: {
+    title: 'Basic',
+    icon: Grid3X3,
+    color: '#5CB85C',
+    description: 'Standard vocabulary with essential words. Great for getting started.',
+    details: 'Includes common words organized by category. Your custom words appear alongside defaults.'
+  },
+  personal: {
+    title: 'My Words',
+    icon: User,
+    color: '#F5A623',
+    description: 'Your personal collection of custom words.',
+    details: 'Words you create are saved here. Only you can see your personal words. Perfect for customizing vocabulary to your needs.'
+  },
+  cloud: {
+    title: 'Community',
+    icon: Cloud,
+    color: '#4A9FD4',
+    description: 'Most popular words from all users.',
+    details: 'Shows the top 15 most-used words per category across all ATLASassist users. Words need at least 2 uses to appear. The community decides which words rise to the top!'
+  }
+};
 
 // ============================================
 // PHRASE BUILDING VOCABULARY
 // ============================================
 
-// Core vocabulary organized by function
 const CORE_WORDS = {
   starters: [
     { id: 'i', text: 'I', emoji: '👤', color: '#4A9FD4' },
@@ -37,16 +83,16 @@ const CORE_WORDS = {
     { id: 'it', text: 'It', emoji: '👆', color: '#F5A623' },
   ],
   verbs: [
-    { id: 'want', text: 'want', emoji: '🙏', color: '#E63B2E', needsNoun: true },
-    { id: 'need', text: 'need', emoji: '❗', color: '#E63B2E', needsNoun: true },
-    { id: 'like', text: 'like', emoji: '👍', color: '#5CB85C', needsNoun: true },
-    { id: 'dont-like', text: "don't like", emoji: '👎', color: '#E63B2E', needsNoun: true },
-    { id: 'feel', text: 'feel', emoji: '💭', color: '#8E6BBF', needsAdjective: true },
-    { id: 'am', text: 'am', emoji: '✨', color: '#F5A623', needsAdjective: true },
-    { id: 'see', text: 'see', emoji: '👀', color: '#4A9FD4', needsNoun: true },
-    { id: 'hear', text: 'hear', emoji: '👂', color: '#4A9FD4', needsNoun: true },
-    { id: 'have', text: 'have', emoji: '🤲', color: '#5CB85C', needsNoun: true },
-    { id: 'go', text: 'go', emoji: '🚶', color: '#4A9FD4', needsPlace: true },
+    { id: 'want', text: 'want', emoji: '🙏', color: '#E63B2E', needsNoun: true, hasSubmenu: true },
+    { id: 'need', text: 'need', emoji: '❗', color: '#E63B2E', needsNoun: true, hasSubmenu: true },
+    { id: 'like', text: 'like', emoji: '👍', color: '#5CB85C', needsNoun: true, hasSubmenu: true },
+    { id: 'dont-like', text: "don't like", emoji: '👎', color: '#E63B2E', needsNoun: true, hasSubmenu: true },
+    { id: 'feel', text: 'feel', emoji: '💭', color: '#8E6BBF', needsAdjective: true, hasSubmenu: true },
+    { id: 'am', text: 'am', emoji: '✨', color: '#F5A623', needsAdjective: true, hasSubmenu: true },
+    { id: 'see', text: 'see', emoji: '👀', color: '#4A9FD4', needsNoun: true, hasSubmenu: true },
+    { id: 'hear', text: 'hear', emoji: '👂', color: '#4A9FD4', needsNoun: true, hasSubmenu: true },
+    { id: 'have', text: 'have', emoji: '🤲', color: '#5CB85C', needsNoun: true, hasSubmenu: true },
+    { id: 'go', text: 'go', emoji: '🚶', color: '#4A9FD4', needsPlace: true, hasSubmenu: true },
     { id: 'can', text: 'can', emoji: '💪', color: '#5CB85C' },
     { id: 'cant', text: "can't", emoji: '🚫', color: '#E63B2E' },
   ],
@@ -101,7 +147,6 @@ const CORE_WORDS = {
 // ============================================
 const FOOTER_STORAGE_KEY = 'snw_ptt_footer_words';
 
-// All available footer word options
 const AVAILABLE_FOOTER_WORDS = [
   { id: 'yes', text: 'Yes', emoji: '✅', color: '#5CB85C' },
   { id: 'no', text: 'No', emoji: '❌', color: '#E63B2E' },
@@ -125,16 +170,13 @@ const AVAILABLE_FOOTER_WORDS = [
   { id: 'my-turn', text: 'My turn', emoji: '👆', color: '#5CB85C' },
 ];
 
-// Default footer configuration
 const DEFAULT_FOOTER_WORDS = ['yes', 'no', 'please', 'thank-you'];
 
-// Load footer words from localStorage
 const loadFooterWords = () => {
   try {
     const saved = localStorage.getItem(FOOTER_STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      // Validate that all IDs exist
       const valid = parsed.filter(id => AVAILABLE_FOOTER_WORDS.some(w => w.id === id));
       return valid.length === 4 ? valid : DEFAULT_FOOTER_WORDS;
     }
@@ -142,12 +184,13 @@ const loadFooterWords = () => {
   return DEFAULT_FOOTER_WORDS;
 };
 
-// Save footer words to localStorage
 const saveFooterWords = (words) => {
   localStorage.setItem(FOOTER_STORAGE_KEY, JSON.stringify(words));
 };
 
+// ============================================
 // Noun categories
+// ============================================
 const NOUN_CATEGORIES = [
   { id: 'food', name: 'Food', emoji: '🍎', color: '#5CB85C' },
   { id: 'drinks', name: 'Drinks', emoji: '🥤', color: '#4A9FD4' },
@@ -156,6 +199,7 @@ const NOUN_CATEGORIES = [
   { id: 'people', name: 'People', emoji: '👨‍👩‍👧', color: '#E86B9A' },
   { id: 'things', name: 'Things', emoji: '🎾', color: '#F8D14A' },
   { id: 'body', name: 'Body', emoji: '🦵', color: '#E63B2E' },
+  { id: 'feelings', name: 'Feelings', emoji: '💜', color: '#8E6BBF' },
 ];
 
 // Nouns organized by category
@@ -235,6 +279,38 @@ const NOUNS = {
     { id: 'hand', text: 'hand', emoji: '✋', color: '#F8D14A' },
     { id: 'foot', text: 'foot', emoji: '🦶', color: '#E63B2E' },
   ],
+  feelings: [
+    { id: 'happy', text: 'happy', emoji: '😊', color: '#F8D14A' },
+    { id: 'sad', text: 'sad', emoji: '😢', color: '#4A9FD4' },
+    { id: 'angry', text: 'angry', emoji: '😠', color: '#E63B2E' },
+    { id: 'scared', text: 'scared', emoji: '😨', color: '#8E6BBF' },
+    { id: 'excited', text: 'excited', emoji: '🤩', color: '#F5A623' },
+    { id: 'calm', text: 'calm', emoji: '😌', color: '#87CEEB' },
+  ],
+};
+
+// ============================================
+// Custom Words Storage
+// ============================================
+const CUSTOM_WORDS_KEY = 'snw_aac_custom_words';
+const LAYOUT_KEY = 'snw_aac_layout';
+
+const loadCustomWords = () => {
+  try {
+    return JSON.parse(localStorage.getItem(CUSTOM_WORDS_KEY) || '[]');
+  } catch { return []; }
+};
+
+const saveCustomWords = (words) => {
+  localStorage.setItem(CUSTOM_WORDS_KEY, JSON.stringify(words));
+};
+
+const loadLayout = () => {
+  return localStorage.getItem(LAYOUT_KEY) || 'basic';
+};
+
+const saveLayout = (layout) => {
+  localStorage.setItem(LAYOUT_KEY, layout);
 };
 
 // ============================================
@@ -278,13 +354,13 @@ const useSpeech = () => {
 // Word Button Component - Fixed alignment
 // ============================================
 
-const WordButton = ({ word, onClick, size = 'normal', useArasaac = false }) => {
+const WordButton = ({ word, onClick, size = 'normal', useArasaac = false, showSubmenuIndicator = false }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   
-  const pictogramUrl = useArasaac && ARASAAC_PICTOGRAM_IDS[word.id] 
-    ? getButtonPictogramUrl(word.id) 
-    : null;
+  // Get the correct pictogram ID from the word's ID
+  const pictogramId = useArasaac && ARASAAC_PICTOGRAM_IDS[word.id];
+  const pictogramUrl = pictogramId ? getButtonPictogramUrl(word.id) : null;
   
   const showPictogram = useArasaac && pictogramUrl && !imageError;
   
@@ -294,21 +370,21 @@ const WordButton = ({ word, onClick, size = 'normal', useArasaac = false }) => {
       minHeight: 'min-h-[70px]', 
       text: 'text-xs',
       emoji: 'text-2xl',
-      imgSize: 36 // pixels
+      imgSize: 36
     },
     normal: { 
       padding: 'p-3', 
       minHeight: 'min-h-[85px]', 
       text: 'text-sm',
       emoji: 'text-3xl',
-      imgSize: 44 // pixels
+      imgSize: 44
     },
     large: { 
       padding: 'p-4', 
       minHeight: 'min-h-[100px]', 
       text: 'text-base',
       emoji: 'text-4xl',
-      imgSize: 56 // pixels
+      imgSize: 56
     },
   };
   
@@ -319,7 +395,7 @@ const WordButton = ({ word, onClick, size = 'normal', useArasaac = false }) => {
       onClick={() => onClick(word)}
       className={`
         ${config.padding} ${config.minHeight} rounded-xl border-3 transition-all
-        hover:scale-105 active:scale-95 shadow-md
+        hover:scale-105 active:scale-95 shadow-md relative
         flex flex-col items-center justify-center gap-1
       `}
       style={{ 
@@ -328,6 +404,13 @@ const WordButton = ({ word, onClick, size = 'normal', useArasaac = false }) => {
         color: word.textColor || 'white',
       }}
     >
+      {/* Submenu indicator */}
+      {showSubmenuIndicator && word.hasSubmenu && (
+        <div className="absolute top-1 right-1 bg-white/30 rounded-full p-0.5">
+          <ChevronRight size={10} />
+        </div>
+      )}
+      
       {/* Image/Emoji container - fixed size box for alignment */}
       <div 
         className="flex items-center justify-center relative"
@@ -407,7 +490,6 @@ const SentenceStrip = ({ words, onSpeak, onClear, onUndo, isSpeaking }) => {
   return (
     <div className="bg-white rounded-2xl border-4 border-[#4A9FD4] p-3 shadow-lg">
       <div className="flex items-center gap-2">
-        {/* Words */}
         <div className="flex-1 flex flex-wrap gap-1.5 min-h-[44px] items-center">
           {words.map((word, index) => (
             <span 
@@ -421,7 +503,6 @@ const SentenceStrip = ({ words, onSpeak, onClear, onUndo, isSpeaking }) => {
           ))}
         </div>
         
-        {/* Actions */}
         <div className="flex gap-1.5">
           <button
             onClick={onUndo}
@@ -452,11 +533,224 @@ const SentenceStrip = ({ words, onSpeak, onClear, onUndo, isSpeaking }) => {
 };
 
 // ============================================
+// Add Word Modal Component
+// ============================================
+
+const AddWordModal = ({ isOpen, onClose, onSave, isLoading }) => {
+  const [word, setWord] = useState('');
+  const [emoji, setEmoji] = useState('💬');
+  const [color, setColor] = useState('#4A9FD4');
+  const [category, setCategory] = useState('things');
+  const [isSuggesting, setIsSuggesting] = useState(false);
+
+  const colors = [
+    '#5CB85C', '#4A9FD4', '#E63B2E', '#F5A623', 
+    '#8E6BBF', '#E86B9A', '#87CEEB', '#F8D14A', '#20B2AA'
+  ];
+
+  const handleAiSuggest = async () => {
+    if (!word.trim() || !isSupabaseConfigured()) return;
+    
+    setIsSuggesting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('suggest-aac-word', {
+        body: { word: word.trim() }
+      });
+      
+      if (!error && data) {
+        if (data.emoji) setEmoji(data.emoji);
+        if (data.color) setColor(data.color);
+        if (data.category) setCategory(data.category);
+      }
+    } catch (err) {
+      console.error('AI suggestion error:', err);
+    }
+    setIsSuggesting(false);
+  };
+
+  const handleSubmit = () => {
+    if (!word.trim()) return;
+    
+    onSave({
+      id: `custom_${Date.now()}`,
+      text: word.trim(),
+      emoji,
+      color,
+      category,
+      isCustom: true,
+    });
+    
+    setWord('');
+    setEmoji('💬');
+    setColor('#4A9FD4');
+    setCategory('things');
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-[#FFFEF5] w-full max-w-md rounded-3xl overflow-hidden border-4 border-[#5CB85C]">
+        <div className="bg-[#5CB85C] text-white p-4 flex items-center justify-between">
+          <h3 className="font-display text-xl flex items-center gap-2">
+            <Plus size={24} />
+            Add Custom Word
+          </h3>
+          <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
+            <X size={24} />
+          </button>
+        </div>
+        
+        <div className="p-6 space-y-4">
+          {/* Word Input */}
+          <div>
+            <label className="block font-crayon text-gray-600 mb-2">Word or Phrase</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={word}
+                onChange={(e) => setWord(e.target.value)}
+                placeholder="Enter word..."
+                className="flex-1 px-4 py-2 border-3 border-gray-200 rounded-xl font-crayon focus:border-[#5CB85C] focus:outline-none"
+              />
+              {isSupabaseConfigured() && (
+                <button
+                  onClick={handleAiSuggest}
+                  disabled={!word.trim() || isSuggesting}
+                  className="p-2 bg-[#8E6BBF] text-white rounded-xl hover:bg-purple-600 disabled:opacity-50 transition-all"
+                  title="AI Suggest"
+                >
+                  {isSuggesting ? <Loader2 size={20} className="animate-spin" /> : <Sparkles size={20} />}
+                </button>
+              )}
+            </div>
+          </div>
+          
+          {/* Emoji Input */}
+          <div>
+            <label className="block font-crayon text-gray-600 mb-2">Emoji</label>
+            <input
+              type="text"
+              value={emoji}
+              onChange={(e) => setEmoji(e.target.value)}
+              className="w-20 px-4 py-2 border-3 border-gray-200 rounded-xl text-2xl text-center focus:border-[#5CB85C] focus:outline-none"
+            />
+          </div>
+          
+          {/* Color Selection */}
+          <div>
+            <label className="block font-crayon text-gray-600 mb-2">Color</label>
+            <div className="flex flex-wrap gap-2">
+              {colors.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setColor(c)}
+                  className={`w-10 h-10 rounded-full border-3 transition-all ${
+                    color === c ? 'ring-2 ring-offset-2 ring-gray-800 scale-110' : ''
+                  }`}
+                  style={{ backgroundColor: c, borderColor: c }}
+                />
+              ))}
+            </div>
+          </div>
+          
+          {/* Category Selection */}
+          <div>
+            <label className="block font-crayon text-gray-600 mb-2">Category</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full px-4 py-2 border-3 border-gray-200 rounded-xl font-crayon focus:border-[#5CB85C] focus:outline-none"
+            >
+              {NOUN_CATEGORIES.map((cat) => (
+                <option key={cat.id} value={cat.id}>{cat.emoji} {cat.name}</option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Preview */}
+          <div className="p-4 bg-gray-50 rounded-xl">
+            <p className="font-crayon text-sm text-gray-500 mb-2">Preview:</p>
+            <div
+              className="inline-flex flex-col items-center p-3 rounded-xl border-3"
+              style={{ backgroundColor: color, borderColor: color }}
+            >
+              <span className="text-3xl">{emoji}</span>
+              <span className="font-crayon text-white text-sm">{word || 'Word'}</span>
+            </div>
+          </div>
+          
+          {/* Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 py-3 rounded-xl font-display border-3 border-gray-200 text-gray-600
+                       hover:bg-gray-50 transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={!word.trim() || isLoading}
+              className="flex-1 py-3 rounded-xl font-display bg-[#5CB85C] text-white
+                       hover:bg-green-600 transition-all disabled:opacity-50
+                       flex items-center justify-center gap-2"
+            >
+              {isLoading ? <Loader2 size={20} className="animate-spin" /> : <Check size={20} />}
+              Save Word
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================
+// Layout Info Modal
+// ============================================
+
+const LayoutInfoModal = ({ isOpen, onClose, layout }) => {
+  if (!isOpen || !layout) return null;
+  
+  const info = LAYOUT_INFO[layout];
+  const Icon = info.icon;
+  
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-[#FFFEF5] w-full max-w-sm rounded-3xl overflow-hidden border-4" style={{ borderColor: info.color }}>
+        <div className="p-4 text-white flex items-center gap-3" style={{ backgroundColor: info.color }}>
+          <Icon size={28} />
+          <h3 className="font-display text-xl">{info.title} Layout</h3>
+          <button onClick={onClose} className="ml-auto p-1 hover:bg-white/20 rounded-full">
+            <X size={24} />
+          </button>
+        </div>
+        <div className="p-6">
+          <p className="font-crayon text-gray-700 mb-4">{info.description}</p>
+          <p className="font-crayon text-gray-500 text-sm">{info.details}</p>
+          <button
+            onClick={onClose}
+            className="w-full mt-6 py-3 rounded-xl font-display text-white transition-all"
+            style={{ backgroundColor: info.color }}
+          >
+            Got it!
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================
 // Main Component
 // ============================================
 
 const PointToTalk = () => {
   const navigate = useNavigate();
+  const toast = useToast();
+  const { user } = useAuth();
   const { speak, isSpeaking } = useSpeech();
   
   // State
@@ -471,68 +765,119 @@ const PointToTalk = () => {
   const [editingFooter, setEditingFooter] = useState(false);
   const [tempFooterWords, setTempFooterWords] = useState([]);
   
+  // Layout state
+  const [layout, setLayout] = useState(() => loadLayout());
+  const [customWords, setCustomWords] = useState(() => loadCustomWords());
+  const [cloudWords, setCloudWords] = useState([]);
+  const [loadingCloud, setLoadingCloud] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showLayoutInfo, setShowLayoutInfo] = useState(false);
+  const [selectedLayoutInfo, setSelectedLayoutInfo] = useState(null);
+  
   // Determine what to show based on sentence context
   const lastWord = sentence[sentence.length - 1];
   const needsNoun = lastWord?.needsNoun;
   const needsAdjective = lastWord?.needsAdjective;
   const needsPlace = lastWord?.needsPlace;
   
-  // Save preference
+  // Save preferences
   useEffect(() => {
     localStorage.setItem('snw_aac_symbols', useArasaac ? 'arasaac' : 'emoji');
   }, [useArasaac]);
+  
+  useEffect(() => {
+    saveLayout(layout);
+  }, [layout]);
+  
+  // Load cloud words when layout is 'cloud'
+  useEffect(() => {
+    if (layout === 'cloud' && isSupabaseConfigured()) {
+      loadCloudWords();
+    }
+  }, [layout]);
+  
+  const loadCloudWords = async () => {
+    setLoadingCloud(true);
+    try {
+      // Get popular words from database
+      const { data, error } = await supabase
+        .from('aac_words')
+        .select('*')
+        .eq('is_public', true)
+        .gte('use_count', 2)
+        .order('use_count', { ascending: false })
+        .limit(100);
+      
+      if (!error && data) {
+        setCloudWords(data);
+      }
+    } catch (err) {
+      console.error('Error loading cloud words:', err);
+    }
+    setLoadingCloud(false);
+  };
+  
+  // Add custom word
+  const handleAddCustomWord = async (word) => {
+    const newWords = [...customWords, word];
+    setCustomWords(newWords);
+    saveCustomWords(newWords);
+    
+    // Also save to cloud if signed in
+    if (user && !user.isGuest && isSupabaseConfigured()) {
+      try {
+        await supabase.from('aac_words').insert({
+          text: word.text,
+          text_normalized: word.text.toLowerCase().trim(),
+          emoji: word.emoji,
+          color: word.color,
+          category: word.category,
+          is_public: true,
+          use_count: 0,
+          created_by: user.id,
+        });
+        toast.success('Word Added', 'Saved locally and to cloud');
+      } catch (err) {
+        console.error('Cloud save error:', err);
+        toast.success('Word Added', 'Saved locally');
+      }
+    } else {
+      toast.success('Word Added', 'Saved to your local library');
+    }
+  };
   
   // Add word to sentence
   const addWord = (word) => {
     setSentence(prev => [...prev, word]);
     speak(word.text);
     
-    // Auto-navigate based on what's needed next
-    if (word.needsNoun) {
-      setView('categories');
-    } else if (word.needsPlace) {
+    if (word.needsNoun) setView('categories');
+    else if (word.needsPlace) {
       setSelectedCategory('places');
       setView('nouns');
     }
   };
-  
-  // Add category noun
+
+  // Add noun and return to main
   const addNoun = (noun) => {
     setSentence(prev => [...prev, noun]);
     speak(noun.text);
     setView('main');
     setSelectedCategory(null);
   };
-  
-  // Speak full sentence
+
+  // Actions
   const speakSentence = () => {
-    const text = sentence.map(w => w.text).join(' ');
-    speak(text);
-  };
-  
-  // Clear sentence
-  const clearSentence = () => {
-    setSentence([]);
-    setView('main');
-    setSelectedCategory(null);
-  };
-  
-  // Undo last word
-  const undoLastWord = () => {
-    setSentence(prev => prev.slice(0, -1));
-    if (view === 'nouns' || view === 'categories') {
-      setView('main');
-      setSelectedCategory(null);
+    if (sentence.length > 0) {
+      speak(sentence.map(w => w.text).join(' '));
     }
   };
-  
-  // Select category
-  const selectCategory = (category) => {
-    setSelectedCategory(category.id);
+  const clearSentence = () => setSentence([]);
+  const undoLastWord = () => setSentence(prev => prev.slice(0, -1));
+  const selectCategory = (cat) => {
+    setSelectedCategory(cat.id);
     setView('nouns');
   };
-  
-  // Go back
   const goBack = () => {
     if (view === 'nouns') {
       setView('categories');
@@ -541,14 +886,13 @@ const PointToTalk = () => {
       setView('main');
     }
   };
-  
-  // Start editing footer
+
+  // Footer editing
   const startEditingFooter = () => {
     setTempFooterWords([...footerWords]);
     setEditingFooter(true);
   };
   
-  // Toggle footer word selection
   const toggleFooterWord = (wordId) => {
     if (tempFooterWords.includes(wordId)) {
       setTempFooterWords(prev => prev.filter(id => id !== wordId));
@@ -557,7 +901,6 @@ const PointToTalk = () => {
     }
   };
   
-  // Save footer configuration
   const saveFooterConfig = () => {
     if (tempFooterWords.length === 4) {
       setFooterWords(tempFooterWords);
@@ -566,24 +909,46 @@ const PointToTalk = () => {
     }
   };
   
-  // Cancel footer editing
   const cancelFooterEdit = () => {
     setTempFooterWords([]);
     setEditingFooter(false);
   };
   
-  // Reset footer to defaults
   const resetFooterDefaults = () => {
     setTempFooterWords([...DEFAULT_FOOTER_WORDS]);
   };
   
-  // Get footer word object by ID
   const getFooterWord = (wordId) => {
     return AVAILABLE_FOOTER_WORDS.find(w => w.id === wordId) || AVAILABLE_FOOTER_WORDS[0];
   };
-  
+
+  // Get words based on layout
+  const getWordsForCategory = (categoryId) => {
+    const baseWords = NOUNS[categoryId] || [];
+    
+    if (layout === 'personal') {
+      const myWords = customWords.filter(w => w.category === categoryId);
+      return [...myWords, ...baseWords];
+    }
+    
+    if (layout === 'cloud') {
+      const cloudCatWords = cloudWords.filter(w => w.category === categoryId);
+      return [...cloudCatWords.map(w => ({
+        id: w.id,
+        text: w.text,
+        emoji: w.emoji,
+        color: w.color,
+        useCount: w.use_count,
+      })), ...baseWords];
+    }
+    
+    // Basic layout - default + custom
+    const myWords = customWords.filter(w => w.category === categoryId);
+    return [...baseWords, ...myWords];
+  };
+
   return (
-    <div className="min-h-screen bg-[#FFFEF5] flex flex-col">
+    <div className="min-h-screen bg-[#FFFEF5] flex flex-col pb-20">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#4A9FD4]">
         <div className="max-w-4xl mx-auto px-3 py-2 flex items-center gap-2">
@@ -597,25 +962,22 @@ const PointToTalk = () => {
             Back
           </button>
           <div className="flex-1">
-            <h1 className="text-lg font-display text-[#4A9FD4]">
-              💬 Point to Talk
-            </h1>
+            <h1 className="text-lg font-display text-[#4A9FD4]">💬 Point to Talk</h1>
           </div>
           
-          {/* Symbol Style Toggle - Prominent button */}
+          {/* Combined EMOJI/ARASAAC Toggle */}
           <button
             onClick={() => setUseArasaac(!useArasaac)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-full border-2 font-crayon text-sm transition-all
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border-3 font-display text-sm font-bold transition-all
               ${useArasaac 
-                ? 'bg-[#4A9FD4]/10 border-[#4A9FD4] text-[#4A9FD4]' 
-                : 'bg-[#F5A623]/10 border-[#F5A623] text-[#F5A623]'
+                ? 'bg-[#4A9FD4] border-[#4A9FD4] text-white' 
+                : 'bg-[#F5A623] border-[#F5A623] text-white'
               }`}
-            title={useArasaac ? 'Using ARASAAC symbols - tap to switch to emoji' : 'Using emoji - tap to switch to ARASAAC symbols'}
           >
             {useArasaac ? (
               <>
                 <Image size={16} />
-                <span className="hidden sm:inline">Symbols</span>
+                <span className="hidden sm:inline">ARASAAC</span>
               </>
             ) : (
               <>
@@ -625,12 +987,53 @@ const PointToTalk = () => {
             )}
           </button>
           
+          {/* Add Word Button */}
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="p-2 bg-[#5CB85C] text-white rounded-full hover:bg-green-600 transition-colors"
+            title="Add custom word"
+          >
+            <Plus size={18} />
+          </button>
+          
           <button
             onClick={() => setShowSettings(true)}
             className="p-2 bg-white border-2 border-gray-200 rounded-full hover:border-[#4A9FD4] transition-colors"
           >
             <Settings size={18} className="text-gray-600" />
           </button>
+        </div>
+        
+        {/* Layout Selector */}
+        <div className="max-w-4xl mx-auto px-3 pb-2 flex gap-2">
+          {Object.entries(LAYOUT_INFO).map(([key, info]) => {
+            const Icon = info.icon;
+            return (
+              <button
+                key={key}
+                onClick={() => setLayout(key)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl font-crayon text-xs transition-all
+                  ${layout === key 
+                    ? 'text-white shadow-md' 
+                    : 'bg-white border-2 text-gray-600 hover:border-gray-400'
+                  }`}
+                style={layout === key ? { backgroundColor: info.color, borderColor: info.color } : { borderColor: '#e5e7eb' }}
+              >
+                <Icon size={14} />
+                {info.title}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedLayoutInfo(key);
+                    setShowLayoutInfo(true);
+                  }}
+                  className="ml-1 opacity-60 hover:opacity-100"
+                >
+                  <Info size={12} />
+                </button>
+              </button>
+            );
+          })}
         </div>
       </header>
 
@@ -687,7 +1090,7 @@ const PointToTalk = () => {
               </div>
             )}
             
-            {/* Starters (I, You, We...) - hide when selecting adjective */}
+            {/* Starters */}
             {!needsAdjective && (
               <div>
                 <h3 className="font-display text-sm text-gray-600 mb-2">👤 Start with...</h3>
@@ -705,7 +1108,7 @@ const PointToTalk = () => {
               </div>
             )}
             
-            {/* Verbs (want, need, like...) - hide when selecting adjective */}
+            {/* Verbs */}
             {!needsAdjective && (
               <div>
                 <h3 className="font-display text-sm text-gray-600 mb-2">🎬 Action Words</h3>
@@ -717,13 +1120,14 @@ const PointToTalk = () => {
                       onClick={addWord}
                       size="small"
                       useArasaac={useArasaac}
+                      showSubmenuIndicator={true}
                     />
                   ))}
                 </div>
               </div>
             )}
             
-            {/* Questions - hide when selecting adjective */}
+            {/* Questions */}
             {!needsAdjective && (
               <div>
                 <h3 className="font-display text-sm text-gray-600 mb-2">❓ Questions</h3>
@@ -753,27 +1157,21 @@ const PointToTalk = () => {
               >
                 <ChevronLeft size={20} />
               </button>
-              <h3 className="font-display text-lg text-gray-800">📁 Choose what you want</h3>
+              <h3 className="font-display text-gray-700">Choose a category</h3>
             </div>
             <div className="grid grid-cols-4 gap-3">
-              {NOUN_CATEGORIES.map(category => (
-                <CategoryButton 
-                  key={category.id}
-                  category={category}
+              {NOUN_CATEGORIES.map(cat => (
+                <CategoryButton
+                  key={cat.id}
+                  category={cat}
                   onClick={selectCategory}
-                  isActive={selectedCategory === category.id}
                 />
               ))}
             </div>
-            
-            {/* Hint */}
-            <p className="text-center text-sm text-gray-500 font-crayon mt-4">
-              Pick a category to see more options
-            </p>
           </div>
         )}
         
-        {/* Nouns View */}
+        {/* Noun Selection View */}
         {view === 'nouns' && selectedCategory && (
           <div>
             <div className="flex items-center gap-2 mb-3">
@@ -783,55 +1181,45 @@ const PointToTalk = () => {
               >
                 <ChevronLeft size={20} />
               </button>
-              <h3 className="font-display text-lg text-gray-800">
-                {NOUN_CATEGORIES.find(c => c.id === selectedCategory)?.emoji}{' '}
+              <h3 className="font-display text-gray-700 flex items-center gap-2">
+                {NOUN_CATEGORIES.find(c => c.id === selectedCategory)?.emoji}
                 {NOUN_CATEGORIES.find(c => c.id === selectedCategory)?.name}
+                {layout === 'cloud' && loadingCloud && (
+                  <Loader2 size={16} className="animate-spin text-gray-400" />
+                )}
               </h3>
             </div>
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-              {NOUNS[selectedCategory]?.map(noun => (
-                <WordButton 
-                  key={noun.id}
-                  word={noun}
+            <div className="grid grid-cols-4 gap-2">
+              {getWordsForCategory(selectedCategory).map(word => (
+                <WordButton
+                  key={word.id}
+                  word={word}
                   onClick={addNoun}
-                  size="normal"
+                  size="small"
                   useArasaac={useArasaac}
                 />
               ))}
             </div>
           </div>
         )}
-        
-        {/* Attribution */}
-        {useArasaac && (
-          <div className="mt-4 text-center">
-            <a 
-              href="https://arasaac.org" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-xs text-gray-400 hover:text-[#4A9FD4]"
-            >
-              Pictograms by ARASAAC (CC BY-NC-SA)
-            </a>
-          </div>
-        )}
       </main>
 
-      {/* Bottom Quick Access - Customizable */}
-      <nav className="sticky bottom-0 bg-white border-t-4 border-[#87CEEB] px-3 py-2 safe-area-bottom">
-        <div className="max-w-4xl mx-auto flex justify-around items-center">
-          {/* Customizable Quick Words */}
+      {/* Footer - Customizable Quick Words */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t-4 border-[#4A9FD4] z-40">
+        <div className="max-w-4xl mx-auto px-3 py-2 flex items-center justify-around gap-2">
           {footerWords.map((wordId) => {
             const word = getFooterWord(wordId);
             return (
               <button
                 key={wordId}
-                onClick={() => addWord({ id: `${wordId}-quick`, text: word.text, emoji: word.emoji, color: word.color })}
-                className="flex flex-col items-center p-2 hover:scale-110 transition-transform"
-                style={{ color: word.color }}
+                onClick={() => addWord(word)}
+                className="flex flex-col items-center p-2 rounded-xl transition-all hover:scale-105 active:scale-95"
+                style={{ backgroundColor: `${word.color}20` }}
               >
                 <span className="text-2xl">{word.emoji}</span>
-                <span className="text-xs font-crayon mt-0.5">{word.text.length > 8 ? word.text.slice(0, 7) + '…' : word.text}</span>
+                <span className="font-crayon text-xs" style={{ color: word.color }}>
+                  {word.text}
+                </span>
               </button>
             );
           })}
@@ -863,7 +1251,6 @@ const PointToTalk = () => {
             </div>
             
             <div className="p-4">
-              {/* Instructions */}
               <p className="font-crayon text-gray-600 text-center mb-4">
                 Choose 4 words for your quick access bar
               </p>
@@ -896,7 +1283,7 @@ const PointToTalk = () => {
                       key={word.id}
                       onClick={() => toggleFooterWord(word.id)}
                       disabled={!isSelected && tempFooterWords.length >= 4}
-                      className={`p-2 rounded-xl border-3 flex flex-col items-center transition-all
+                      className={`p-2 rounded-xl border-3 flex flex-col items-center transition-all relative
                         ${isSelected 
                           ? 'border-green-500 bg-green-50 ring-2 ring-green-300' 
                           : 'border-gray-200 bg-white hover:border-gray-300'
@@ -1004,6 +1391,21 @@ const PointToTalk = () => {
           </div>
         </div>
       )}
+      
+      {/* Add Word Modal */}
+      <AddWordModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSave={handleAddCustomWord}
+        isLoading={false}
+      />
+      
+      {/* Layout Info Modal */}
+      <LayoutInfoModal
+        isOpen={showLayoutInfo}
+        onClose={() => setShowLayoutInfo(false)}
+        layout={selectedLayoutInfo}
+      />
     </div>
   );
 };
