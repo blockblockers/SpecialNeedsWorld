@@ -1,4 +1,4 @@
-// EmotionMatch.jsx - Match faces to emotions game
+// EmotionMatch.jsx - Match faces to emotions activity
 // 
 // FEATURES:
 // - AI-generated realistic faces from shared library (Supabase)
@@ -387,7 +387,7 @@ const EmotionMatch = () => {
     const wrongAnswers = others.sort(() => Math.random() - 0.5).slice(0, 3);
     const allOptions = [correct, ...wrongAnswers].sort(() => Math.random() - 0.5);
     
-    // Attach images to options
+    // Attach images to options - getExpressionImage will use current state
     const optionsWithImages = allOptions.map(opt => ({
       ...opt,
       imageUrl: getExpressionImage(opt.id),
@@ -400,15 +400,61 @@ const EmotionMatch = () => {
     setOptions(optionsWithImages);
     setFeedback(null);
     setSelectedAnswer(null);
-  }, [questionsAnswered, expressions]);
+  }, [questionsAnswered, personalPhotos, usePersonalPhotos, expressions]);
 
   const startGame = useCallback(() => {
     setScore(0);
     setTotalQuestions(0);
     setQuestionsAnswered([]);
     setGameComplete(false);
+    setCurrentEmotion(null);
     setGameStarted(true);
-  }, []);
+    
+    // Use setTimeout to ensure state is set before generating
+    setTimeout(() => {
+      // Generate the first question after state is updated
+      const remaining = EMOTIONS;
+      if (remaining.length === 0) return;
+      
+      const correct = remaining[Math.floor(Math.random() * remaining.length)];
+      const others = EMOTIONS.filter(e => e.id !== correct.id);
+      const wrongAnswers = others.sort(() => Math.random() - 0.5).slice(0, 3);
+      const allOptions = [correct, ...wrongAnswers].sort(() => Math.random() - 0.5);
+      
+      // Get images for options
+      const getImage = (emotionId) => {
+        // Check personal photos first
+        const storedPersonal = localStorage.getItem('atlas_emotion_personal_photos');
+        const usePersonal = localStorage.getItem('atlas_emotion_use_personal') === 'true';
+        if (usePersonal && storedPersonal) {
+          try {
+            const photos = JSON.parse(storedPersonal);
+            if (photos[emotionId]?.length > 0) {
+              return photos[emotionId][Math.floor(Math.random() * photos[emotionId].length)];
+            }
+          } catch (e) {}
+        }
+        // Fall back to expressions state
+        if (expressions[emotionId]?.length > 0) {
+          return expressions[emotionId][Math.floor(Math.random() * expressions[emotionId].length)];
+        }
+        return null;
+      };
+      
+      const optionsWithImages = allOptions.map(opt => ({
+        ...opt,
+        imageUrl: getImage(opt.id),
+      }));
+      
+      setCurrentEmotion({
+        ...correct,
+        imageUrl: getImage(correct.id),
+      });
+      setOptions(optionsWithImages);
+      setFeedback(null);
+      setSelectedAnswer(null);
+    }, 50);
+  }, [expressions]);
 
   useEffect(() => {
     if (gameStarted && !gameComplete && !currentEmotion) {
@@ -780,7 +826,7 @@ const EmotionMatch = () => {
         <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#F5A623]">
           <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
             <button
-              onClick={() => navigate('/games')}
+              onClick={() => navigate('/activities')}
               className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F5A623] 
                          rounded-xl font-display font-bold text-[#F5A623] hover:bg-[#F5A623] 
                          hover:text-white transition-all shadow-md"
@@ -846,7 +892,7 @@ const EmotionMatch = () => {
 
             {/* Mode Selection */}
             <div className="mb-6">
-              <label className="block font-crayon text-gray-700 mb-2">Game Type:</label>
+              <label className="block font-crayon text-gray-700 mb-2">Activity Type:</label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setMode('faceToWord')}
@@ -887,7 +933,7 @@ const EmotionMatch = () => {
                        rounded-2xl font-display text-xl shadow-lg hover:scale-105 
                        transition-transform disabled:opacity-50"
             >
-              🎮 Start Game!
+              ▶️ Start Activity!
             </button>
 
             {/* More Expressions Button */}
@@ -898,13 +944,13 @@ const EmotionMatch = () => {
                        flex items-center justify-center gap-2"
             >
               <Plus size={18} />
-              More Expressions
+              Add Photos
             </button>
           </div>
 
           {/* Info */}
           <div className="mt-6 p-4 bg-orange-50 rounded-2xl border-3 border-orange-200">
-            <h3 className="font-display text-[#F5A623] mb-2">About This Game</h3>
+            <h3 className="font-display text-[#F5A623] mb-2">About This Activity</h3>
             <ul className="font-crayon text-sm text-orange-700 space-y-1">
               <li>• Learn to recognize emotions in faces</li>
               <li>• {EMOTIONS.length} different emotions to learn</li>
@@ -931,7 +977,7 @@ const EmotionMatch = () => {
         <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#F5A623]">
           <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
             <button
-              onClick={() => navigate('/games')}
+              onClick={() => navigate('/activities')}
               className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F5A623] 
                          rounded-xl font-display font-bold text-[#F5A623] hover:bg-[#F5A623] 
                          hover:text-white transition-all shadow-md"
@@ -968,7 +1014,7 @@ const EmotionMatch = () => {
                          hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
               >
                 <RotateCcw size={20} />
-                Play Again
+                Try Again
               </button>
               <button
                 onClick={() => setGameStarted(false)}
@@ -987,6 +1033,18 @@ const EmotionMatch = () => {
   // ============================================
   // GAME PLAY SCREEN
   // ============================================
+  
+  // Show loading while generating question
+  if (!currentEmotion) {
+    return (
+      <div className="min-h-screen bg-[#FFFEF5] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 size={48} className="text-[#F5A623] animate-spin mx-auto mb-4" />
+          <p className="font-crayon text-gray-600">Loading question...</p>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen bg-[#FFFEF5]">

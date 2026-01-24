@@ -2,12 +2,19 @@
 // FIXED: All date helpers exported (getToday, getTomorrow, addDays, etc.)
 // FIXED: Cloud sync and push notifications
 // FIXED: Gets userId from Supabase session if not explicitly initialized
+// FIXED: Local notification fallback when cloud is unavailable
+
+// ============================================
+// STORAGE KEY - MUST BE DEFINED FIRST
+// ============================================
+const STORAGE_KEY = 'snw_visual_schedules';
 
 // ============================================
 // CLOUD SYNC INTEGRATION
 // ============================================
 
 let calendarSyncModule = null;
+let notificationsModule = null;
 let currentUserId = null;
 
 const getCurrentUserIdFromSession = async () => {
@@ -35,6 +42,18 @@ const ensureCalendarSyncModule = async () => {
   }
 };
 
+const ensureNotificationsModule = async () => {
+  if (notificationsModule) return notificationsModule;
+  
+  try {
+    notificationsModule = await import('./notifications.js');
+    return notificationsModule;
+  } catch (error) {
+    console.warn('Notifications module not available:', error.message);
+    return null;
+  }
+};
+
 export const initCloudSync = async (userId) => {
   currentUserId = userId;
   if (!userId) {
@@ -42,6 +61,7 @@ export const initCloudSync = async (userId) => {
     return;
   }
   await ensureCalendarSyncModule();
+  await ensureNotificationsModule();
   console.log('Cloud sync initialized for scheduleHelper');
 };
 
@@ -58,44 +78,63 @@ const ensureUserId = async () => {
 const syncAndNotify = async (dateStr, notify = true) => {
   const userId = await ensureUserId();
   const syncModule = await ensureCalendarSyncModule();
+  const notifyModule = await ensureNotificationsModule();
   
-  if (!syncModule || !userId) {
+  let synced = false;
+  let notified = false;
+  
+  // Get the schedule
+  const schedules = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  const daySchedule = schedules[dateStr];
+  
+  if (!daySchedule) {
+    console.log('No schedule found for date:', dateStr);
     return { synced: false, notified: false };
   }
   
-  try {
-    const schedules = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    const daySchedule = schedules[dateStr];
-    
-    if (!daySchedule) {
-      return { synced: false, notified: false };
-    }
-    
-    let synced = false;
-    if (syncModule.saveSchedule) {
-      try {
+  // Try cloud sync first
+  if (syncModule && userId) {
+    try {
+      if (syncModule.saveSchedule) {
         await syncModule.saveSchedule(userId, dateStr, daySchedule);
         synced = true;
-      } catch (syncError) {
-        console.error('Cloud sync failed:', syncError.message);
+        console.log('✓ Schedule synced to cloud:', dateStr);
       }
-    }
-    
-    let notified = false;
-    if (notify && synced && syncModule.scheduleNotificationsForDay) {
-      try {
-        const count = await syncModule.scheduleNotificationsForDay(userId, dateStr);
-        notified = count > 0;
-      } catch (notifyError) {
-        console.error('Notification scheduling failed:', notifyError.message);
+      
+      // Try server-side notifications
+      if (notify && synced && syncModule.scheduleNotificationsForDay) {
+        try {
+          const count = await syncModule.scheduleNotificationsForDay(userId, dateStr);
+          notified = count > 0;
+          if (notified) {
+            console.log('✓ Server-side notifications scheduled:', count);
+          }
+        } catch (notifyError) {
+          console.warn('Server notification scheduling failed:', notifyError.message);
+        }
       }
+    } catch (syncError) {
+      console.error('Cloud sync failed:', syncError.message);
     }
-    
-    return { synced, notified };
-  } catch (error) {
-    console.warn('Cloud sync/notify failed:', error.message);
-    return { synced: false, notified: false };
   }
+  
+  // Fallback to local notifications if server notifications didn't work
+  if (notify && !notified && notifyModule) {
+    try {
+      const activities = daySchedule.activities || daySchedule.items || [];
+      if (activities.length > 0 && notifyModule.scheduleActivityNotifications) {
+        notifyModule.scheduleActivityNotifications(dateStr, activities, { 
+          repeatUntilComplete: true 
+        });
+        notified = true;
+        console.log('✓ Local notifications scheduled for:', dateStr);
+      }
+    } catch (localNotifyError) {
+      console.warn('Local notification scheduling failed:', localNotifyError.message);
+    }
+  }
+  
+  return { synced, notified };
 };
 
 // ============================================
@@ -218,12 +257,6 @@ export const SOURCE_LABELS = {
   [SCHEDULE_SOURCES.CALM_DOWN]: 'Calm Down Activity',
   [SCHEDULE_SOURCES.COPING_SKILL]: 'Coping Strategy',
 };
-
-// ============================================
-// STORAGE KEY
-// ============================================
-
-const STORAGE_KEY = 'snw_visual_schedules';
 
 // ============================================
 // SCHEDULE STORAGE FUNCTIONS

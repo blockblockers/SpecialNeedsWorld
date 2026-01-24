@@ -2,7 +2,7 @@
 // UPDATED: Combined board layouts (Basic/MyWords/Cloud) with customizable footer
 // UPDATED: AI-powered word suggestions with Claude API
 // UPDATED: Fixed ARASAAC pictogram alignment
-// NAVIGATION: Back button goes to /tools
+// NAVIGATION: Back button goes to /hub
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -953,7 +953,7 @@ const PointToTalk = () => {
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#4A9FD4]">
         <div className="max-w-4xl mx-auto px-3 py-2 flex items-center gap-2">
           <button
-            onClick={() => navigate('/tools')}
+            onClick={() => navigate('/hub')}
             className="flex items-center gap-1 px-3 py-2 bg-white border-3 border-[#4A9FD4] 
                      rounded-xl font-display font-bold text-[#4A9FD4] hover:bg-[#4A9FD4] 
                      hover:text-white transition-all text-sm"
