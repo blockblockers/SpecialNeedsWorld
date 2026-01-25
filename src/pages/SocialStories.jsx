@@ -320,14 +320,15 @@ const SocialStories = () => {
     try {
       // First check if story already exists
       if (isSupabaseConfigured()) {
-        const { data: existing } = await supabase
+        const { data: existingStories, error: searchError } = await supabase
           .from('social_stories')
           .select('*')
           .ilike('topic_normalized', newTopic.toLowerCase().trim())
-          .limit(1)
-          .single();
+          .limit(1);
 
-        if (existing) {
+        // Check if we found an existing story (ignore errors, just continue)
+        if (!searchError && existingStories && existingStories.length > 0) {
+          const existing = existingStories[0];
           setGenerationStatus('Found existing story!');
           setSelectedStory(existing);
           setCurrentPage(0);
@@ -342,8 +343,20 @@ const SocialStories = () => {
 
       // Call Edge Function
       if (isSupabaseConfigured()) {
+        // Get the current session for auth token
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session?.access_token) {
+          showToast('Session expired. Please sign in again.', 'error');
+          navigate('/login');
+          return;
+        }
+
         const { data, error } = await supabase.functions.invoke('generate-social-story', {
           body: { topic: newTopic.trim(), pageCount: 6 },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
         });
 
         if (error) {
@@ -400,25 +413,26 @@ const SocialStories = () => {
     } catch (error) {
       console.error('Error generating story:', error);
       
+      const errorMessage = error?.message || 'Unknown error';
+      
       // Check for specific error types
-      if (error.message?.includes('401') || error.message?.includes('authentication')) {
-        showToast('Please sign in to create custom stories', 'error');
+      if (errorMessage.includes('401') || errorMessage.includes('authentication') || errorMessage.includes('unauthorized')) {
+        showToast('Session expired. Please sign in again.', 'error');
+        setGenerating(false);
+        setGenerationStatus('');
         navigate('/login');
-      } else if (error.message?.includes('API key')) {
+        return;
+      } else if (errorMessage.includes('API key')) {
         showToast('API key not configured. Using fallback story.', 'warning');
-        // Use local fallback
-        const localStory = generateLocalStory(newTopic);
-        setSelectedStory(localStory);
-        setCurrentPage(0);
-        setView('reading');
       } else {
-        showToast(`Error: ${error.message}`, 'error');
-        // Use local fallback
-        const localStory = generateLocalStory(newTopic);
-        setSelectedStory(localStory);
-        setCurrentPage(0);
-        setView('reading');
+        showToast(`Error: ${errorMessage}`, 'error');
       }
+      
+      // Use local fallback for any error
+      const localStory = generateLocalStory(newTopic);
+      setSelectedStory(localStory);
+      setCurrentPage(0);
+      setView('reading');
     } finally {
       setGenerating(false);
       setGenerationStatus('');
