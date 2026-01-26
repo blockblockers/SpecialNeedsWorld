@@ -1,20 +1,12 @@
 // Activities.jsx - Activities hub for ATLASassist
-// UPDATED: Removed Emotion Match (now only in Games hub)
+// UPDATED: EmotionMatch removed (only in Games hub)
+// UPDATED: Apps sorted alphabetically by name
 
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 
-// Activity apps - Emotion Match removed (now only in Games)
+// Activity apps - SORTED ALPHABETICALLY (EmotionMatch removed - only in Games)
 const activityApps = [
-  {
-    id: 'sensory-breaks',
-    name: 'Sensory Breaks',
-    description: 'Calming activities with timers',
-    color: '#8E6BBF',
-    emoji: '🧘',
-    path: '/activities/sensory-breaks',
-    ready: true,
-  },
   {
     id: 'choice-board',
     name: 'Choice Board',
@@ -22,24 +14,6 @@ const activityApps = [
     color: '#F5A623',
     emoji: '⭐',
     path: '/activities/choice-board',
-    ready: true,
-  },
-  {
-    id: 'social-stories',
-    name: 'Social Stories',
-    description: 'Visual stories for situations',
-    color: '#5CB85C',
-    emoji: '📖',
-    path: '/activities/social-stories',
-    ready: true,
-  },
-  {
-    id: 'pronunciation',
-    name: 'Say It Right',
-    description: 'Practice pronouncing words',
-    color: '#4A9FD4',
-    emoji: '🗣️',
-    path: '/activities/pronunciation',
     ready: true,
   },
   {
@@ -78,7 +52,34 @@ const activityApps = [
     path: '/activities/rewards',
     ready: true,
   },
-];
+  {
+    id: 'pronunciation',
+    name: 'Say It Right',
+    description: 'Practice pronouncing words',
+    color: '#4A9FD4',
+    emoji: '🗣️',
+    path: '/activities/pronunciation',
+    ready: true,
+  },
+  {
+    id: 'sensory-breaks',
+    name: 'Sensory Breaks',
+    description: 'Calming activities with timers',
+    color: '#8E6BBF',
+    emoji: '🧘',
+    path: '/activities/sensory-breaks',
+    ready: true,
+  },
+  {
+    id: 'social-stories',
+    name: 'Social Stories',
+    description: 'Visual stories for situations',
+    color: '#5CB85C',
+    emoji: '📖',
+    path: '/activities/social-stories',
+    ready: true,
+  },
+].sort((a, b) => a.name.localeCompare(b.name));
 
 const Activities = () => {
   const navigate = useNavigate();
@@ -95,13 +96,13 @@ const Activities = () => {
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#E86B9A]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/hub')}
             className="flex items-center gap-2 px-3 py-2 bg-white border-3 border-[#E86B9A] 
                        rounded-xl font-display text-[#E86B9A] hover:bg-[#E86B9A] 
                        hover:text-white transition-all text-sm"
           >
             <ArrowLeft size={16} />
-            Home
+            Back
           </button>
           <h1 className="text-lg font-display text-[#E86B9A] flex items-center gap-2">
             <Sparkles size={24} />
@@ -111,9 +112,13 @@ const Activities = () => {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6">
+        <p className="text-center text-gray-600 font-crayon mb-6">
+          Fun activities to learn and explore!
+        </p>
+
         {/* App Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {activityApps.map((app) => (
+          {activityApps.map((app, index) => (
             <button
               key={app.id}
               onClick={() => handleAppClick(app)}
@@ -123,7 +128,10 @@ const Activities = () => {
                   ? 'bg-white shadow-crayon hover:shadow-lg cursor-pointer' 
                   : 'bg-gray-100 opacity-60 cursor-not-allowed'
                 }`}
-              style={{ borderColor: app.color }}
+              style={{ 
+                borderColor: app.color,
+                borderRadius: index % 2 === 0 ? '20px 8px 20px 8px' : '8px 20px 8px 20px',
+              }}
             >
               {/* Emoji Icon */}
               <div 

@@ -1,39 +1,11 @@
 // Tools.jsx - Daily Tools hub
-// FIXED: Single icon (emoji only)
-// FIXED: Darker header color (#B8860B dark gold instead of #F8D14A light yellow)
+// UPDATED: Apps sorted alphabetically by name
 
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 
-// Tool definitions - FIXED: Removed icon property from render
+// Tool definitions - SORTED ALPHABETICALLY
 const tools = [
-  {
-    id: 'timer',
-    name: 'Visual Timer',
-    description: 'See time counting down',
-    color: '#E63B2E',
-    emoji: '⏱️',
-    path: '/tools/timer',
-    ready: true,
-  },
-  {
-    id: 'first-then',
-    name: 'First-Then',
-    description: 'First this, then that!',
-    color: '#5CB85C',
-    emoji: '1️⃣',
-    path: '/tools/first-then',
-    ready: true,
-  },
-  {
-    id: 'sound-board',
-    name: 'Sound Board',
-    description: 'Fun sounds to play',
-    color: '#8E6BBF',
-    emoji: '🔊',
-    path: '/tools/soundboard',
-    ready: true,
-  },
   {
     id: 'counter',
     name: 'Counter',
@@ -52,7 +24,43 @@ const tools = [
     path: '/tools/daily-routines',
     ready: true,
   },
-];
+  {
+    id: 'first-then',
+    name: 'First-Then',
+    description: 'First this, then that!',
+    color: '#5CB85C',
+    emoji: '1️⃣',
+    path: '/tools/first-then',
+    ready: true,
+  },
+  {
+    id: 'milestones',
+    name: 'Milestone Guide',
+    description: 'Track development milestones',
+    color: '#4A9FD4',
+    emoji: '📈',
+    path: '/tools/milestones',
+    ready: true,
+  },
+  {
+    id: 'sound-board',
+    name: 'Sound Board',
+    description: 'Fun sounds to play',
+    color: '#8E6BBF',
+    emoji: '🔊',
+    path: '/tools/soundboard',
+    ready: true,
+  },
+  {
+    id: 'timer',
+    name: 'Visual Timer',
+    description: 'See time counting down',
+    color: '#E63B2E',
+    emoji: '⏱️',
+    path: '/tools/timer',
+    ready: true,
+  },
+].sort((a, b) => a.name.localeCompare(b.name));
 
 const Tools = () => {
   const navigate = useNavigate();
@@ -65,10 +73,9 @@ const Tools = () => {
 
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
-      {/* Header - FIXED: Using darker colors */}
+      {/* Header */}
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#B8860B]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
-          {/* FIXED: Back button uses darker gold color */}
           <button
             onClick={() => navigate('/hub')}
             className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#B8860B] 
@@ -80,7 +87,6 @@ const Tools = () => {
           </button>
           <img src="/logo.jpeg" alt="ATLASassist" className="w-10 h-10 rounded-lg shadow-sm" />
           <div className="flex-1">
-            {/* FIXED: Using darker text color */}
             <h1 className="text-lg sm:text-xl font-display text-[#996515] crayon-text">
               🔧 Daily Tools
             </h1>
@@ -94,7 +100,7 @@ const Tools = () => {
           Helpful tools for everyday! Tap to open.
         </p>
 
-        {/* Tools Grid - Updated to match EmotionalWellnessHub style */}
+        {/* Tools Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {tools.map((tool, index) => (
             <button
@@ -115,7 +121,7 @@ const Tools = () => {
                 borderRadius: index % 2 === 0 ? '20px 8px 20px 8px' : '8px 20px 8px 20px',
               }}
             >
-              {/* Icon container with white background */}
+              {/* Icon container */}
               <div 
                 className="w-14 h-14 rounded-2xl bg-white/80 flex items-center justify-center mb-2 mx-auto"
                 style={{ border: `2px solid ${tool.color}` }}
@@ -123,7 +129,7 @@ const Tools = () => {
                 <span className="text-3xl">{tool.emoji}</span>
               </div>
               
-              {/* Name - dark text */}
+              {/* Name */}
               <h3 className="font-display text-gray-800 text-sm leading-tight">
                 {tool.name}
               </h3>

@@ -1,55 +1,64 @@
 // AppHub.jsx - Main navigation hub for ATLASassist
-// UPDATED: Added Info button and AppGuide for new user onboarding
-// FIXED: Single icon (emoji only, no duplicate Lucide icon)
-// FIXED: Daily Tools uses darker color (#B8860B instead of #F8D14A)
+// UPDATED: Visual Schedule & Point to Talk featured at top
+// UPDATED: Other apps alphabetized
+// UPDATED: Upcoming activities widget from Visual Schedule
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   LogOut,
-  Star,
   Sparkles,
-  Cloud,
   Settings,
-  Info,
-  HelpCircle,
+  Clock,
+  ChevronRight,
+  Calendar,
+  MessageSquare,
 } from 'lucide-react';
 import { useIsAppInstalled } from '../components/PWAInstallPrompt';
 import PushNotificationPrompt from '../components/PushNotificationPrompt';
-import AppGuide from './AppGuide';
 import { useAuth } from '../App';
-import { supabase, isSupabaseConfigured } from '../services/supabase';
 
-// App categories - FIXED: Removed icon property, only emoji is rendered
-const appCategories = [
+// ============================================
+// FEATURED APPS (Visual Schedule & Point to Talk)
+// ============================================
+const featuredApps = [
   {
     id: 'visual-schedule',
     name: 'Visual Schedule',
     description: 'Plan your day with pictures!',
-    color: 'bg-[#E63B2E]',
-    borderColor: 'border-red-700',
-    hoverRotate: 'hover:rotate-2',
+    color: '#E63B2E',
     path: '/visual-schedule',
     emoji: '📅',
+    icon: Calendar,
   },
   {
     id: 'point-to-talk',
     name: 'Point to Talk',
     description: 'Say what you need!',
-    color: 'bg-[#F5A623]',
-    borderColor: 'border-orange-600',
-    hoverRotate: 'hover:-rotate-2',
+    color: '#F5A623',
     path: '/point-to-talk',
     emoji: '💬',
+    icon: MessageSquare,
+  },
+];
+
+// ============================================
+// OTHER APP CATEGORIES (Alphabetized by name)
+// ============================================
+const appCategories = [
+  {
+    id: 'activities',
+    name: 'Activities & Learning',
+    description: 'Create, learn & explore!',
+    color: '#4A9FD4',
+    path: '/activities',
+    emoji: '🎨',
   },
   {
-    // FIXED: Using darker gold instead of light yellow
     id: 'tools',
     name: 'Daily Tools',
     description: 'Helpful everyday tools!',
-    color: 'bg-[#B8860B]',
-    borderColor: 'border-yellow-700',
-    hoverRotate: 'hover:rotate-1',
+    color: '#B8860B',
     path: '/tools',
     emoji: '🔧',
   },
@@ -57,59 +66,39 @@ const appCategories = [
     id: 'wellness',
     name: 'Emotional Wellness',
     description: 'Tools to understand feelings',
-    color: 'bg-[#20B2AA]',
-    borderColor: 'border-teal-600',
-    hoverRotate: 'hover:-rotate-1',
+    color: '#20B2AA',
     path: '/wellness',
     emoji: '💚',
-  },
-  {
-    id: 'care-team',
-    name: 'My Care Team',
-    description: 'Your support network!',
-    color: 'bg-[#008B8B]',
-    borderColor: 'border-teal-700',
-    hoverRotate: 'hover:rotate-1',
-    path: '/care-team',
-    emoji: '👥',
-  },
-  {
-    id: 'health',
-    name: 'Health & Wellness',
-    description: 'Track your body & health!',
-    color: 'bg-[#E86B9A]',
-    borderColor: 'border-pink-600',
-    hoverRotate: 'hover:-rotate-1',
-    path: '/health',
-    emoji: '❤️',
   },
   {
     id: 'games',
     name: 'Games',
     description: 'Fun games to play!',
-    color: 'bg-[#5CB85C]',
-    borderColor: 'border-green-600',
-    hoverRotate: 'hover:rotate-2',
+    color: '#5CB85C',
     path: '/games',
     emoji: '🎮',
   },
   {
-    id: 'activities',
-    name: 'Activities & Learning',
-    description: 'Create, learn & explore!',
-    color: 'bg-[#4A9FD4]',
-    borderColor: 'border-blue-600',
-    hoverRotate: 'hover:-rotate-2',
-    path: '/activities',
-    emoji: '🎨',
+    id: 'health',
+    name: 'Health & Wellness',
+    description: 'Track your body & health!',
+    color: '#E86B9A',
+    path: '/health',
+    emoji: '❤️',
+  },
+  {
+    id: 'care-team',
+    name: 'My Care Team',
+    description: 'Your support network!',
+    color: '#008B8B',
+    path: '/care-team',
+    emoji: '👥',
   },
   {
     id: 'planning',
     name: 'Planning & Documents',
     description: 'Important documents & planning',
-    color: 'bg-[#CD853F]',
-    borderColor: 'border-amber-700',
-    hoverRotate: 'hover:rotate-1',
+    color: '#CD853F',
     path: '/planning',
     emoji: '📋',
   },
@@ -117,288 +106,322 @@ const appCategories = [
     id: 'resources',
     name: 'Resources & Research',
     description: 'Laws, research & printables!',
-    color: 'bg-[#8E6BBF]',
-    borderColor: 'border-purple-700',
-    hoverRotate: 'hover:-rotate-1',
+    color: '#8E6BBF',
     path: '/resources',
     emoji: '📚',
   },
-  {
-    id: 'community',
-    name: 'Community',
-    description: 'Connect with others!',
-    color: 'bg-[#4A9FD4]',
-    borderColor: 'border-blue-700',
-    hoverRotate: 'hover:rotate-1',
-    path: '/community',
-    emoji: '🤝',
-  },
-];
+].sort((a, b) => a.name.localeCompare(b.name));
 
+// ============================================
+// UPCOMING ACTIVITIES WIDGET
+// ============================================
+const UpcomingActivities = ({ activities, onViewAll }) => {
+  if (!activities || activities.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border-4 border-[#E63B2E] p-4 mb-6 shadow-crayon">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-display text-[#E63B2E] flex items-center gap-2">
+            <Clock size={20} />
+            Upcoming Activities
+          </h2>
+          <button 
+            onClick={onViewAll}
+            className="text-sm font-crayon text-[#E63B2E] hover:underline flex items-center gap-1"
+          >
+            View Schedule <ChevronRight size={16} />
+          </button>
+        </div>
+        <p className="text-gray-500 font-crayon text-sm text-center py-4">
+          No activities scheduled. Tap to add some! 📅
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border-4 border-[#E63B2E] p-4 mb-6 shadow-crayon">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-display text-[#E63B2E] flex items-center gap-2">
+          <Clock size={20} />
+          Coming Up
+        </h2>
+        <button 
+          onClick={onViewAll}
+          className="text-sm font-crayon text-[#E63B2E] hover:underline flex items-center gap-1"
+        >
+          View All <ChevronRight size={16} />
+        </button>
+      </div>
+      
+      <div className="space-y-2">
+        {activities.map((activity, index) => {
+          const isNext = index === 0;
+          return (
+            <div 
+              key={activity.id || index}
+              className={`flex items-center gap-3 p-3 rounded-xl transition-all ${
+                isNext 
+                  ? 'bg-[#E63B2E]/10 border-2 border-[#E63B2E]/30' 
+                  : 'bg-gray-50'
+              }`}
+            >
+              <div 
+                className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl ${
+                  isNext ? 'bg-[#E63B2E] text-white' : 'bg-white border-2'
+                }`}
+                style={{ borderColor: isNext ? undefined : activity.color }}
+              >
+                {activity.emoji || '📌'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`font-crayon truncate ${isNext ? 'text-[#E63B2E] font-bold' : 'text-gray-700'}`}>
+                  {activity.name}
+                </p>
+                <p className={`text-xs font-crayon ${isNext ? 'text-[#E63B2E]/70' : 'text-gray-500'}`}>
+                  {formatTime(activity.time)}
+                  {isNext && ' — Up Next!'}
+                </p>
+              </div>
+              {activity.completed && (
+                <span className="text-green-500 text-lg">✓</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// Format time from 24h to 12h
+const formatTime = (time24) => {
+  if (!time24) return '';
+  const [hours, minutes] = time24.split(':').map(Number);
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const hour12 = hours % 12 || 12;
+  return `${hour12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+};
+
+// ============================================
+// MAIN COMPONENT
+// ============================================
 const AppHub = () => {
   const navigate = useNavigate();
-  const { user, signOut, isGuest } = useAuth();
+  const { signOut, user } = useAuth();
   const isInstalled = useIsAppInstalled();
-  
-  // Guide state
-  const [showGuide, setShowGuide] = useState(false);
-  const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
-  
-  // Check if user is new (first time seeing the guide)
+  const [upcomingActivities, setUpcomingActivities] = useState([]);
+
+  // Load upcoming activities from localStorage
   useEffect(() => {
-    const checkFirstTimeUser = async () => {
-      // Check localStorage first for quick response
-      const guideSeen = localStorage.getItem('snw_guide_seen');
+    loadUpcomingActivities();
+    
+    // Refresh every minute
+    const interval = setInterval(loadUpcomingActivities, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadUpcomingActivities = () => {
+    try {
+      // Get today's date
+      const today = new Date();
+      const dateKey = today.toISOString().split('T')[0];
       
-      if (guideSeen === 'true') {
-        // User has seen the guide before
-        return;
-      }
+      // Try to load from various storage keys
+      const storageKeys = [
+        `snw_schedule_${dateKey}`,
+        'snw_visual_schedule',
+        'snw_schedule_today',
+      ];
       
-      // For logged-in users, also check Supabase for cross-device sync
-      if (user && !isGuest && isSupabaseConfigured()) {
-        try {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('preferences')
-            .eq('id', user.id)
-            .maybeSingle();
-          
-          if (!error && data?.preferences?.guide_seen) {
-            // User has seen guide on another device
-            localStorage.setItem('snw_guide_seen', 'true');
-            return;
+      let activities = [];
+      
+      for (const key of storageKeys) {
+        const saved = localStorage.getItem(key);
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) {
+              activities = parsed;
+              break;
+            } else if (parsed.activities) {
+              activities = parsed.activities;
+              break;
+            } else if (parsed.items) {
+              activities = parsed.items;
+              break;
+            }
+          } catch (e) {
+            continue;
           }
-        } catch (e) {
-          console.error('Error checking guide status:', e);
         }
       }
-      
-      // User is new - show the guide!
-      setIsFirstTimeUser(true);
-      setShowGuide(true);
-    };
-    
-    // Small delay to let the page render first
-    const timer = setTimeout(checkFirstTimeUser, 500);
-    return () => clearTimeout(timer);
-  }, [user, isGuest]);
-  
-  // Save guide seen status
-  const handleGuideClose = async () => {
-    setShowGuide(false);
-    localStorage.setItem('snw_guide_seen', 'true');
-    
-    // Also save to Supabase for cross-device sync
-    if (user && !isGuest && isSupabaseConfigured()) {
-      try {
-        // Get current preferences
-        const { data } = await supabase
-          .from('profiles')
-          .select('preferences')
-          .eq('id', user.id)
-          .maybeSingle();
-        
-        const currentPrefs = data?.preferences || {};
-        
-        // Update with guide_seen
-        await supabase
-          .from('profiles')
-          .update({
-            preferences: {
-              ...currentPrefs,
-              guide_seen: true,
-              guide_seen_at: new Date().toISOString(),
-            }
-          })
-          .eq('id', user.id);
-      } catch (e) {
-        console.error('Error saving guide status:', e);
-      }
+
+      // Filter to upcoming activities (next 3 hours)
+      const now = new Date();
+      const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+      const threeHoursLater = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+      const maxTime = `${threeHoursLater.getHours().toString().padStart(2, '0')}:${threeHoursLater.getMinutes().toString().padStart(2, '0')}`;
+
+      const upcoming = activities
+        .filter(a => a.time && a.time >= currentTime && a.time <= maxTime && !a.completed)
+        .sort((a, b) => a.time.localeCompare(b.time))
+        .slice(0, 4);
+
+      setUpcomingActivities(upcoming);
+    } catch (error) {
+      console.error('Error loading upcoming activities:', error);
+      setUpcomingActivities([]);
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
-
-  const handleAppClick = (path) => {
-    navigate(path);
-  };
-
-  // Get display name
-  const displayName = user?.displayName || 
-                     localStorage.getItem('snw_display_name') || 
-                     'Friend';
 
   return (
-    <div className="min-h-screen bg-[#FFFEF5] flex flex-col">
-      {/* Fun background pattern */}
-      <div className="fixed inset-0 opacity-5 pointer-events-none">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-        }} />
-      </div>
-
+    <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#8E6BBF] shadow-md">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          {/* Logo and Welcome */}
-          <div className="flex items-center gap-3">
-            <img 
-              src="/logo.jpeg" 
-              alt="ATLASassist" 
-              className="w-12 h-12 rounded-xl shadow-crayon border-2 border-[#8E6BBF]"
-            />
-            <div>
-              <h1 className="text-lg sm:text-xl font-display text-[#8E6BBF] crayon-text">
-                Hi, {displayName}! 👋
-              </h1>
-              <p className="text-gray-600 font-crayon text-sm">
-                What would you like to do today?
-              </p>
-            </div>
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#4A9FD4]">
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
+          <img 
+            src="/logo.jpeg" 
+            alt="ATLASassist" 
+            className="w-12 h-12 rounded-xl shadow-md border-2 border-[#4A9FD4]"
+          />
+          <div className="flex-1">
+            <h1 className="text-xl font-display text-[#4A9FD4] crayon-text">
+              ATLASassist
+            </h1>
+            <p className="text-xs font-crayon text-gray-500">
+              {user?.email ? `Hi there! 👋` : 'Welcome!'}
+            </p>
           </div>
-
-          {/* Header Actions */}
-          <div className="flex items-center gap-2">
-            {/* Info/Help Button - NEW */}
-            <button
-              onClick={() => setShowGuide(true)}
-              className="flex items-center gap-2 px-3 py-2 bg-white border-3 border-[#4A9FD4] 
-                         rounded-xl font-display font-bold text-[#4A9FD4] hover:bg-[#4A9FD4] 
-                         hover:text-white transition-all shadow-sm hover:shadow-crayon"
-              title="App Guide & Help"
-            >
-              <HelpCircle size={18} />
-              <span className="hidden sm:inline">Guide</span>
-            </button>
-            
-            {/* Settings Button */}
-            <button
-              onClick={() => navigate('/settings')}
-              className="flex items-center gap-2 px-3 py-2 bg-white border-3 border-[#8E6BBF] 
-                         rounded-xl font-display font-bold text-[#8E6BBF] hover:bg-[#8E6BBF] 
-                         hover:text-white transition-all shadow-sm hover:shadow-crayon"
-            >
-              <Settings size={18} />
-              <span className="hidden sm:inline">Settings</span>
-            </button>
-            
-            {/* Sign Out Button */}
-            <button
-              onClick={handleSignOut}
-              className="flex items-center gap-2 px-3 py-2 bg-white border-3 border-gray-300 
-                         rounded-full font-crayon text-gray-600 hover:border-crayon-red 
-                         hover:text-crayon-red transition-all shadow-sm hover:shadow-crayon"
-            >
-              <LogOut size={18} />
-              <span className="hidden sm:inline">Sign Out</span>
-            </button>
-          </div>
+          <Sparkles className="text-[#F8D14A] w-6 h-6 animate-pulse" />
+          
+          {/* Settings */}
+          <button
+            onClick={() => navigate('/settings')}
+            className="p-2 bg-white border-3 border-gray-300 rounded-xl hover:border-[#4A9FD4] transition-all"
+          >
+            <Settings size={20} className="text-gray-600" />
+          </button>
+          
+          {/* Logout */}
+          <button
+            onClick={handleLogout}
+            className="p-2 bg-white border-3 border-gray-300 rounded-xl hover:border-red-400 transition-all"
+          >
+            <LogOut size={20} className="text-gray-600" />
+          </button>
         </div>
       </header>
 
       {/* Push Notification Prompt */}
       <PushNotificationPrompt />
 
-      {/* Main Content - App Grid */}
-      <main className="relative z-10 px-4 pb-8 flex-1">
-        <div className="max-w-4xl mx-auto">
-          {/* Title and Tagline */}
-          <div className="text-center mb-6 mt-4">
-            <h2 className="font-display mb-1">
-              <span className="text-2xl sm:text-3xl rainbow-text crayon-text">ATLAS</span>
-              <span className="text-xl sm:text-2xl text-[#4A9FD4] crayon-text">assist</span>
-            </h2>
-            <p className="text-gray-600 font-crayon text-sm sm:text-base max-w-md mx-auto">
-              Assistive Tools for Learning, Access &amp; Support
-            </p>
-            <p className="text-[#8E6BBF] font-crayon text-xs sm:text-sm mt-1">
-              Tools for individuals with neurodiverse abilities
-            </p>
-          </div>
-          
-          {/* First-time user hint */}
-          {!localStorage.getItem('snw_guide_seen') && (
-            <div className="max-w-md mx-auto mb-4">
-              <button
-                onClick={() => setShowGuide(true)}
-                className="w-full p-3 bg-gradient-to-r from-[#8E6BBF] to-[#4A9FD4] rounded-xl 
-                           text-white font-crayon text-sm flex items-center justify-center gap-2
-                           hover:opacity-90 transition-opacity shadow-lg animate-pulse"
-              >
-                <Sparkles size={18} />
-                New here? Tap to learn about all our features!
-                <Sparkles size={18} />
-              </button>
-            </div>
-          )}
-          
-          {/* App Grid - FIXED: Only emoji shown, no duplicate Icon */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-            {appCategories.map((app) => (
+      {/* Main Content */}
+      <main className="max-w-2xl mx-auto px-4 py-6">
+        
+        {/* Upcoming Activities Widget */}
+        <UpcomingActivities 
+          activities={upcomingActivities} 
+          onViewAll={() => navigate('/visual-schedule')}
+        />
+
+        {/* Featured Apps - Visual Schedule & Point to Talk */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          {featuredApps.map((app) => {
+            const IconComponent = app.icon;
+            return (
               <button
                 key={app.id}
-                onClick={() => handleAppClick(app.path)}
-                className={`relative group ${app.color} ${app.borderColor} border-4 rounded-2xl p-4 sm:p-5
-                           shadow-crayon hover:shadow-crayon-lg transition-all duration-200 
-                           ${app.hoverRotate} hover:scale-105 active:scale-95
-                           flex flex-col items-center gap-2 text-white`}
+                onClick={() => navigate(app.path)}
+                className="relative p-5 rounded-2xl border-4 text-center transition-all duration-200 
+                         shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
                 style={{
-                  borderRadius: '20px 8px 20px 8px',
+                  backgroundColor: app.color,
+                  borderColor: app.color,
                 }}
               >
-                {/* Emoji Icon - larger and centered */}
-                <span className="text-4xl sm:text-5xl drop-shadow-md">
-                  {app.emoji}
-                </span>
-                
-                {/* App Name */}
-                <span className="font-display text-sm sm:text-base text-center leading-tight">
-                  {app.name}
-                </span>
-                
-                {/* Description - hidden on small screens */}
-                <span className="hidden sm:block text-xs font-crayon text-white/80 text-center">
-                  {app.description}
-                </span>
-                
-                {/* Sparkle decoration */}
-                <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Star size={16} className="text-white fill-white" />
+                {/* Decorative star */}
+                <div className="absolute -top-2 -right-2 w-8 h-8 bg-[#F8D14A] rounded-full 
+                              flex items-center justify-center border-2 border-white shadow-md">
+                  <span className="text-sm">⭐</span>
                 </div>
+                
+                {/* Icon */}
+                <div className="w-16 h-16 rounded-2xl bg-white/30 flex items-center justify-center mb-3 mx-auto">
+                  <span className="text-4xl">{app.emoji}</span>
+                </div>
+                
+                {/* Name */}
+                <h3 className="font-display text-white text-lg leading-tight drop-shadow-md">
+                  {app.name}
+                </h3>
+                
+                {/* Description */}
+                <p className="font-crayon text-xs text-white/90 mt-1">
+                  {app.description}
+                </p>
               </button>
-            ))}
-          </div>
-          
-          {/* Footer info */}
-          <div className="mt-8 text-center">
-            <p className="text-gray-500 font-crayon text-xs">
-              Made with 💜 for Finn and people like him
-            </p>
-            {isInstalled && (
-              <p className="text-green-600 font-crayon text-xs mt-1 flex items-center justify-center gap-1">
-                <Cloud size={12} />
-                App installed - works offline!
+            );
+          })}
+        </div>
+
+        {/* Section Header */}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="h-1 flex-1 bg-gradient-to-r from-transparent to-gray-200 rounded"></div>
+          <span className="font-crayon text-gray-400 text-sm">More Apps</span>
+          <div className="h-1 flex-1 bg-gradient-to-l from-transparent to-gray-200 rounded"></div>
+        </div>
+
+        {/* Other Apps Grid (Alphabetized) */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {appCategories.map((app, index) => (
+            <button
+              key={app.id}
+              onClick={() => navigate(app.path)}
+              className="relative p-4 rounded-2xl border-4 text-center transition-all duration-200 
+                       shadow-crayon hover:scale-105 hover:-rotate-1 active:scale-95"
+              style={{
+                backgroundColor: app.color + '20',
+                borderColor: app.color,
+                borderRadius: index % 2 === 0 ? '20px 8px 20px 8px' : '8px 20px 8px 20px',
+              }}
+            >
+              {/* Icon container */}
+              <div 
+                className="w-14 h-14 rounded-2xl bg-white/80 flex items-center justify-center mb-2 mx-auto"
+                style={{ border: `2px solid ${app.color}` }}
+              >
+                <span className="text-3xl">{app.emoji}</span>
+              </div>
+              
+              {/* Name */}
+              <h3 className="font-display text-gray-800 text-sm leading-tight">
+                {app.name}
+              </h3>
+              
+              {/* Description */}
+              <p className="font-crayon text-xs text-gray-500 mt-1">
+                {app.description}
               </p>
-            )}
-            {isGuest && (
-              <p className="text-orange-500 font-crayon text-xs mt-1">
-                Guest mode - data saved locally only
-              </p>
-            )}
-          </div>
+            </button>
+          ))}
+        </div>
+
+        {/* App Version */}
+        <div className="mt-8 text-center">
+          <p className="text-xs font-crayon text-gray-400">
+            ATLASassist v2.1 {isInstalled ? '📱' : '🌐'}
+          </p>
         </div>
       </main>
-      
-      {/* App Guide Modal */}
-      <AppGuide 
-        isOpen={showGuide} 
-        onClose={handleGuideClose}
-        isFirstTime={isFirstTimeUser}
-      />
     </div>
   );
 };

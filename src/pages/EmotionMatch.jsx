@@ -1,12 +1,13 @@
 // EmotionMatch.jsx - Match faces to emotions game
 // 
-// FEATURES:
-// - AI-generated realistic human faces from shared library (Supabase)
-// - Click "Start Game" to play with existing faces
-// - Click "Generate More Faces" to add 12 new AI faces to the library
-// - Personal photos stored LOCALLY on device only (HIPAA compliant)
-// - AI-generated faces ARE shared to community library
-// - Game stats integration for streak tracking
+// FLOW:
+// 1. On load, check for AI faces in database
+// 2. If AI faces exist → use them (default)
+// 3. If no AI faces → use drawn placeholders for first game
+// 4. After first game completes with placeholders → auto-generate 12 AI faces
+// 5. When AI faces run out during play → auto-generate more
+// 6. User can toggle between AI/Drawn faces (default: AI)
+// 7. "Upload Photos" is separate for personal photos only
 
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -17,20 +18,17 @@ import {
   Star, 
   Volume2, 
   Loader2,
-  ImageIcon,
   X,
-  AlertCircle,
   Upload,
-  Camera,
   Sparkles,
-  User,
-  Lock,
-  RefreshCw,
-  Wand2
+  ToggleLeft,
+  ToggleRight,
+  Camera
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../services/supabase';
 import { recordGameCompletion } from '../services/gameStatsService';
 import { useToast } from '../components/ThemedToast';
+import { useAuth } from '../App';
 
 // ============================================
 // EMOTIONS DATA
@@ -51,7 +49,7 @@ const EMOTIONS = [
   { id: 'disgusted', word: 'Disgusted', color: '#84CC16', description: 'feeling grossed out' },
 ];
 
-// Stylized face illustrations - human-like faces (NOT emojis!) as fallback
+// Stylized face illustrations - fallback when no AI faces available
 const PLACEHOLDER_FACES = {
   happy: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="#FFE4B5" stroke="#D4A574" stroke-width="2"/><ellipse cx="35" cy="40" rx="5" ry="6" fill="#4A3728"/><ellipse cx="65" cy="40" rx="5" ry="6" fill="#4A3728"/><path d="M 30 60 Q 50 80 70 60" stroke="#D4A574" stroke-width="3" fill="none"/><circle cx="28" cy="55" r="8" fill="#FFB6C1" opacity="0.5"/><circle cx="72" cy="55" r="8" fill="#FFB6C1" opacity="0.5"/></svg>`,
   sad: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="#FFE4B5" stroke="#D4A574" stroke-width="2"/><ellipse cx="35" cy="42" rx="5" ry="6" fill="#4A3728"/><ellipse cx="65" cy="42" rx="5" ry="6" fill="#4A3728"/><path d="M 30 70 Q 50 55 70 70" stroke="#D4A574" stroke-width="3" fill="none"/><path d="M 30 35 L 40 38" stroke="#4A3728" stroke-width="2"/><path d="M 70 35 L 60 38" stroke="#4A3728" stroke-width="2"/></svg>`,
@@ -89,6 +87,7 @@ const MODES = {
 const EmotionMatch = () => {
   const navigate = useNavigate();
   const toast = useToast();
+  const { user } = useAuth();
   
   // Game state
   const [mode, setMode] = useState('faceToWord');
@@ -104,31 +103,36 @@ const EmotionMatch = () => {
   const [questionsAnswered, setQuestionsAnswered] = useState([]);
   
   // Face library state
-  const [sharedFaces, setSharedFaces] = useState([]);
+  const [aiFaces, setAiFaces] = useState([]);
   const [usedFaceIds, setUsedFaceIds] = useState(new Set());
-  const [faceCounts, setFaceCounts] = useState({});
   const [isLoadingFaces, setIsLoadingFaces] = useState(true);
   const [isGeneratingFaces, setIsGeneratingFaces] = useState(false);
   const [generationProgress, setGenerationProgress] = useState('');
   
-  // Settings
-  const [usePersonalPhotos, setUsePersonalPhotos] = useState(false);
-  const [showLibrary, setShowLibrary] = useState(false);
+  // Settings - default to AI faces if available
+  const [useAiFaces, setUseAiFaces] = useState(true);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [personalPhotos, setPersonalPhotos] = useState([]);
+  
+  // Track if this is first game (no AI faces in DB)
+  const [isFirstGame, setIsFirstGame] = useState(false);
 
   // ============================================
-  // LOAD SHARED FACES FROM SUPABASE
+  // LOAD AI FACES FROM SUPABASE
   // ============================================
   
   useEffect(() => {
-    loadSharedFaces();
-    loadFaceCounts();
+    loadAiFaces();
+    loadPersonalPhotos();
   }, []);
 
-  const loadSharedFaces = async () => {
+  const loadAiFaces = async () => {
     setIsLoadingFaces(true);
     
     if (!isSupabaseConfigured()) {
       console.log('Supabase not configured, using placeholders only');
+      setIsFirstGame(true);
+      setUseAiFaces(false);
       setIsLoadingFaces(false);
       return;
     }
@@ -142,73 +146,87 @@ const EmotionMatch = () => {
 
       if (error) {
         console.error('Error loading faces:', error);
+        setIsFirstGame(true);
+        setUseAiFaces(false);
+      } else if (!data || data.length === 0) {
+        console.log('No AI faces in database yet - first game mode');
+        setIsFirstGame(true);
+        setUseAiFaces(false);
       } else {
-        setSharedFaces(data || []);
-        console.log(`Loaded ${data?.length || 0} shared faces`);
+        setAiFaces(data);
+        setIsFirstGame(false);
+        setUseAiFaces(true); // Default to AI faces when available
+        console.log(`Loaded ${data.length} AI faces`);
       }
     } catch (err) {
       console.error('Error loading faces:', err);
+      setIsFirstGame(true);
+      setUseAiFaces(false);
     } finally {
       setIsLoadingFaces(false);
     }
   };
 
-  const loadFaceCounts = async () => {
-    if (!isSupabaseConfigured()) return;
-
+  const loadPersonalPhotos = () => {
     try {
-      const { data, error } = await supabase.rpc('get_emotion_face_counts');
-      if (!error && data) {
-        const counts = {};
-        data.forEach(row => {
-          counts[row.emotion] = row.count;
-        });
-        setFaceCounts(counts);
+      const stored = localStorage.getItem('emotion_personal_photos');
+      if (stored) {
+        setPersonalPhotos(JSON.parse(stored));
       }
     } catch (err) {
-      console.error('Error loading face counts:', err);
+      console.error('Error loading personal photos:', err);
     }
   };
 
   // ============================================
-  // GENERATE AI FACES
+  // GENERATE AI FACES (Background)
   // ============================================
 
-  const generateMoreFaces = async () => {
-    if (!isSupabaseConfigured()) {
-      toast.error('Not Available', 'Cloud features require Supabase configuration');
-      return;
-    }
+  const generateAiFaces = async (count = 12) => {
+    if (!isSupabaseConfigured() || isGeneratingFaces) return false;
 
     setIsGeneratingFaces(true);
-    setGenerationProgress('Starting face generation...');
+    setGenerationProgress('Generating AI faces...');
 
     try {
+      console.log(`Requesting ${count} AI faces from Edge Function...`);
+      
       const { data, error } = await supabase.functions.invoke('generate-emotion-faces', {
         body: {
-          count: 12,
+          count,
           emotions: EMOTIONS.map(e => e.id),
         },
       });
 
-      if (error) throw error;
-
-      if (data.setup_required) {
-        toast.error('Setup Required', data.message || 'Please configure REPLICATE_API_KEY');
-        return;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw error;
       }
 
-      setGenerationProgress(`Generated ${data.generated} faces!`);
-      
-      // Reload faces
-      await loadSharedFaces();
-      await loadFaceCounts();
+      if (data?.setup_required) {
+        console.warn('API key not configured:', data.message);
+        toast.warning('Setup Required', 'AI face generation is not configured yet.');
+        return false;
+      }
 
-      toast.success('Faces Generated!', `Added ${data.generated} new faces to the library`);
+      if (data?.success && data?.generated > 0) {
+        console.log(`Successfully generated ${data.generated} faces`);
+        setGenerationProgress(`Generated ${data.generated} faces!`);
+        
+        // Reload faces from database
+        await loadAiFaces();
+        
+        toast.success('Faces Ready!', `${data.generated} new AI faces added to the library`);
+        return true;
+      } else {
+        console.warn('Generation returned no faces:', data);
+        return false;
+      }
 
     } catch (err) {
       console.error('Error generating faces:', err);
-      toast.error('Generation Failed', err.message || 'Failed to generate faces');
+      toast.error('Generation Failed', err.message || 'Failed to generate AI faces');
+      return false;
     } finally {
       setIsGeneratingFaces(false);
       setGenerationProgress('');
@@ -219,21 +237,51 @@ const EmotionMatch = () => {
   // GAME LOGIC
   // ============================================
 
-  // Get a face for an emotion (AI face or placeholder)
+  // Get a face for an emotion
   const getFaceForEmotion = (emotionId) => {
-    // Try to get an unused AI face
-    const availableFaces = sharedFaces.filter(
-      f => f.emotion === emotionId && !usedFaceIds.has(f.id)
-    );
+    // If using AI faces and we have them
+    if (useAiFaces && aiFaces.length > 0) {
+      const availableFaces = aiFaces.filter(
+        f => f.emotion === emotionId && !usedFaceIds.has(f.id)
+      );
 
-    if (availableFaces.length > 0) {
-      const face = availableFaces[Math.floor(Math.random() * availableFaces.length)];
-      setUsedFaceIds(prev => new Set([...prev, face.id]));
-      return { url: face.image_url, id: face.id, isAI: true };
+      if (availableFaces.length > 0) {
+        const face = availableFaces[Math.floor(Math.random() * availableFaces.length)];
+        setUsedFaceIds(prev => new Set([...prev, face.id]));
+        return { url: face.image_url, id: face.id, isAI: true };
+      }
+      
+      // If we've used all AI faces for this emotion, check if we should generate more
+      const allFacesForEmotion = aiFaces.filter(f => f.emotion === emotionId);
+      if (allFacesForEmotion.length > 0 && availableFaces.length === 0) {
+        // We have AI faces but used them all - will trigger generation after game
+        console.log(`Used all AI faces for ${emotionId}`);
+      }
     }
 
     // Fallback to placeholder
     return { url: getPlaceholderFace(emotionId), id: null, isAI: false };
+  };
+
+  // Check if we need more AI faces
+  const checkAndGenerateMoreFaces = async () => {
+    if (!isSupabaseConfigured() || isGeneratingFaces) return;
+    
+    // Count unused faces per emotion
+    const unusedCounts = {};
+    EMOTIONS.forEach(e => {
+      unusedCounts[e.id] = aiFaces.filter(
+        f => f.emotion === e.id && !usedFaceIds.has(f.id)
+      ).length;
+    });
+    
+    // If any emotion has less than 2 unused faces, generate more
+    const needsMore = Object.values(unusedCounts).some(count => count < 2);
+    
+    if (needsMore && aiFaces.length > 0) {
+      console.log('Running low on AI faces, generating more in background...');
+      generateAiFaces(12);
+    }
   };
 
   // Start the game
@@ -276,7 +324,7 @@ const EmotionMatch = () => {
 
   // Handle answer selection
   const handleAnswer = (selected) => {
-    if (feedback) return; // Already answered
+    if (feedback) return;
     
     setSelectedAnswer(selected.id);
     const isCorrect = selected.id === currentEmotion.id;
@@ -301,11 +349,24 @@ const EmotionMatch = () => {
   const endGame = async () => {
     setGameComplete(true);
     
-    // Record game completion for stats
+    // Record game completion
     try {
       await recordGameCompletion('emotion-match', score, EMOTIONS.length);
     } catch (err) {
       console.error('Error recording game:', err);
+    }
+
+    // If this was the first game (no AI faces), generate them now
+    if (isFirstGame && isSupabaseConfigured()) {
+      console.log('First game complete - generating initial AI faces...');
+      toast.info('Generating Faces', 'Creating AI faces for future games...');
+      const success = await generateAiFaces(12);
+      if (success) {
+        setIsFirstGame(false);
+      }
+    } else {
+      // Check if we need more faces
+      checkAndGenerateMoreFaces();
     }
   };
 
@@ -318,91 +379,130 @@ const EmotionMatch = () => {
     }
   };
 
+  // Toggle face type
+  const toggleFaceType = () => {
+    if (aiFaces.length === 0) {
+      toast.info('No AI Faces Yet', 'Complete a game to generate AI faces!');
+      return;
+    }
+    setUseAiFaces(!useAiFaces);
+  };
+
   // ============================================
-  // RENDER FUNCTIONS
+  // PERSONAL PHOTO UPLOAD
   // ============================================
 
-  // Library modal
-  const renderLibraryModal = () => {
-    if (!showLibrary) return null;
+  const handlePhotoUpload = async (emotion, file) => {
+    try {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const newPhoto = {
+          id: `personal_${Date.now()}`,
+          emotion,
+          dataUrl: e.target.result,
+          createdAt: new Date().toISOString(),
+        };
+        
+        const updated = [...personalPhotos, newPhoto];
+        setPersonalPhotos(updated);
+        localStorage.setItem('emotion_personal_photos', JSON.stringify(updated));
+        toast.success('Photo Added', `Personal photo added for ${emotion}`);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Error uploading photo:', err);
+      toast.error('Upload Failed', 'Could not save photo');
+    }
+  };
 
-    const totalFaces = sharedFaces.length;
+  const removePersonalPhoto = (photoId) => {
+    const updated = personalPhotos.filter(p => p.id !== photoId);
+    setPersonalPhotos(updated);
+    localStorage.setItem('emotion_personal_photos', JSON.stringify(updated));
+    toast.success('Removed', 'Personal photo removed');
+  };
+
+  // ============================================
+  // RENDER - Upload Modal
+  // ============================================
+
+  const renderUploadModal = () => {
+    if (!showUploadModal) return null;
 
     return (
       <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-        <div className="bg-[#FFFEF5] w-full max-w-md rounded-3xl overflow-hidden border-4 border-[#F5A623]">
-          <div className="bg-[#F5A623] text-white p-4 flex items-center justify-between">
+        <div className="bg-[#FFFEF5] w-full max-w-md max-h-[80vh] rounded-3xl overflow-hidden border-4 border-[#4A9FD4]">
+          <div className="bg-[#4A9FD4] text-white p-4 flex items-center justify-between">
             <h3 className="font-display text-xl flex items-center gap-2">
-              <ImageIcon size={24} />
-              Face Library
+              <Camera size={24} />
+              Upload Personal Photos
             </h3>
-            <button onClick={() => setShowLibrary(false)} className="p-1 hover:bg-white/20 rounded-full">
+            <button onClick={() => setShowUploadModal(false)} className="p-1 hover:bg-white/20 rounded-full">
               <X size={24} />
             </button>
           </div>
 
-          <div className="p-6">
-            {/* Stats */}
-            <div className="bg-gray-50 rounded-xl p-4 mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-crayon text-gray-600">Total AI Faces:</span>
-                <span className="font-display text-xl text-[#F5A623]">{totalFaces}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-xs font-crayon text-gray-500">
-                {EMOTIONS.slice(0, 6).map(emotion => (
-                  <div key={emotion.id} className="flex justify-between">
-                    <span>{emotion.word}:</span>
-                    <span className="font-bold">{faceCounts[emotion.id] || 0}</span>
+          <div className="p-4 overflow-y-auto max-h-[60vh]">
+            <p className="font-crayon text-sm text-gray-600 mb-4">
+              Add personal photos for each emotion. These stay on your device only.
+            </p>
+
+            <div className="space-y-3">
+              {EMOTIONS.slice(0, 8).map(emotion => {
+                const photos = personalPhotos.filter(p => p.emotion === emotion.id);
+                
+                return (
+                  <div key={emotion.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded-xl">
+                    <span 
+                      className="font-crayon text-sm w-20"
+                      style={{ color: emotion.color }}
+                    >
+                      {emotion.word}
+                    </span>
+                    
+                    {photos.length > 0 ? (
+                      <div className="flex gap-2 flex-1">
+                        {photos.map(photo => (
+                          <div key={photo.id} className="relative">
+                            <img 
+                              src={photo.dataUrl} 
+                              alt={emotion.word}
+                              className="w-12 h-12 rounded-lg object-cover"
+                            />
+                            <button
+                              onClick={() => removePersonalPhoto(photo.id)}
+                              className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400 flex-1">No photos</span>
+                    )}
+                    
+                    <label className="cursor-pointer p-2 bg-white rounded-lg border-2 border-dashed border-gray-300 hover:border-[#4A9FD4]">
+                      <Upload size={16} className="text-gray-400" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) {
+                            handlePhotoUpload(emotion.id, e.target.files[0]);
+                          }
+                        }}
+                      />
+                    </label>
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
 
-            {/* Generate button */}
-            <button
-              onClick={generateMoreFaces}
-              disabled={isGeneratingFaces}
-              className="w-full py-4 bg-gradient-to-r from-[#8E6BBF] to-[#E86B9A] text-white rounded-xl
-                       font-display text-lg hover:scale-[1.02] transition-transform disabled:opacity-70
-                       flex items-center justify-center gap-2"
-            >
-              {isGeneratingFaces ? (
-                <>
-                  <Loader2 size={24} className="animate-spin" />
-                  {generationProgress || 'Generating...'}
-                </>
-              ) : (
-                <>
-                  <Wand2 size={24} />
-                  Generate 12 New Faces
-                </>
-              )}
-            </button>
-
-            {totalFaces === 0 && (
-              <p className="text-center font-crayon text-gray-500 mt-4 text-sm">
-                No AI faces yet. Click above to generate some!
-                <br />
-                (Uses illustrated placeholders until then)
-              </p>
-            )}
-
-            {/* Preview grid */}
-            {totalFaces > 0 && (
-              <div className="mt-4">
-                <p className="font-crayon text-sm text-gray-600 mb-2">Recent faces:</p>
-                <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto">
-                  {sharedFaces.slice(0, 12).map(face => (
-                    <img
-                      key={face.id}
-                      src={face.image_url}
-                      alt={face.emotion}
-                      className="w-full aspect-square rounded-lg object-cover"
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
+            <p className="text-xs text-gray-400 mt-4 text-center">
+              🔒 Photos are stored locally on your device only
+            </p>
           </div>
         </div>
       </div>
@@ -410,12 +510,11 @@ const EmotionMatch = () => {
   };
 
   // ============================================
-  // MAIN RENDERS
+  // RENDER - Menu Screen
   // ============================================
 
-  // Menu screen
   if (!gameStarted) {
-    const totalAIFaces = sharedFaces.length;
+    const hasAiFaces = aiFaces.length > 0;
 
     return (
       <div className="min-h-screen bg-[#FFFEF5]">
@@ -466,35 +565,66 @@ const EmotionMatch = () => {
               </div>
             </div>
 
-            {/* Face library info */}
-            <div className="mb-6 p-3 bg-gray-50 rounded-xl">
+            {/* Face Type Toggle */}
+            <div className="mb-6 p-4 bg-gray-50 rounded-xl">
               <div className="flex items-center justify-between mb-2">
-                <span className="font-crayon text-sm text-gray-600">Face Library</span>
-                <button 
-                  onClick={() => setShowLibrary(true)} 
-                  className="text-[#F5A623] font-crayon text-sm underline"
+                <span className="font-crayon text-gray-700">Face Style:</span>
+                <button
+                  onClick={toggleFaceType}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full font-crayon text-sm transition-all ${
+                    useAiFaces 
+                      ? 'bg-[#8E6BBF] text-white' 
+                      : 'bg-gray-200 text-gray-600'
+                  }`}
                 >
-                  Manage
+                  {useAiFaces ? (
+                    <>
+                      <Sparkles size={14} />
+                      AI Real Faces
+                    </>
+                  ) : (
+                    <>
+                      <ToggleLeft size={14} />
+                      Drawn Faces
+                    </>
+                  )}
                 </button>
               </div>
-              <div className="flex gap-4 text-xs font-crayon text-gray-500">
-                {isLoadingFaces ? (
-                  <span className="flex items-center gap-1">
-                    <Loader2 size={12} className="animate-spin" /> Loading...
-                  </span>
-                ) : (
-                  <>
-                    <span>🤖 {totalAIFaces} AI faces</span>
-                    <span>📐 {Object.keys(PLACEHOLDER_FACES).length} placeholders</span>
-                  </>
-                )}
-              </div>
-              {totalAIFaces === 0 && !isLoadingFaces && (
-                <p className="text-xs font-crayon text-blue-600 mt-1">
-                  Click "Manage" to generate AI faces!
+              
+              {isLoadingFaces ? (
+                <p className="text-xs font-crayon text-gray-500 flex items-center gap-1">
+                  <Loader2 size={12} className="animate-spin" /> Loading faces...
+                </p>
+              ) : hasAiFaces ? (
+                <p className="text-xs font-crayon text-gray-500">
+                  🤖 {aiFaces.length} AI faces available
+                </p>
+              ) : (
+                <p className="text-xs font-crayon text-blue-600">
+                  ✨ AI faces will be generated after your first game!
                 </p>
               )}
             </div>
+
+            {/* Upload Photos Link */}
+            <div className="mb-6 text-center">
+              <button
+                onClick={() => setShowUploadModal(true)}
+                className="text-[#4A9FD4] font-crayon text-sm underline hover:no-underline"
+              >
+                📷 Upload Personal Photos
+              </button>
+            </div>
+
+            {/* Generation Progress */}
+            {isGeneratingFaces && (
+              <div className="mb-6 p-3 bg-purple-50 rounded-xl border-2 border-purple-200">
+                <div className="flex items-center gap-2">
+                  <Loader2 size={16} className="animate-spin text-purple-600" />
+                  <span className="font-crayon text-sm text-purple-700">{generationProgress}</span>
+                </div>
+              </div>
+            )}
 
             {/* Start button */}
             <button 
@@ -519,12 +649,15 @@ const EmotionMatch = () => {
           </div>
         </main>
 
-        {renderLibraryModal()}
+        {renderUploadModal()}
       </div>
     );
   }
 
-  // Game complete screen
+  // ============================================
+  // RENDER - Game Complete Screen
+  // ============================================
+
   if (gameComplete) {
     const stars = score >= 10 ? 3 : score >= 7 ? 2 : 1;
     
@@ -557,10 +690,21 @@ const EmotionMatch = () => {
               ))}
             </div>
 
+            {/* Show generation progress if happening */}
+            {isGeneratingFaces && (
+              <div className="mb-4 p-3 bg-purple-50 rounded-xl">
+                <div className="flex items-center justify-center gap-2">
+                  <Loader2 size={16} className="animate-spin text-purple-600" />
+                  <span className="font-crayon text-sm text-purple-700">{generationProgress}</span>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-3">
               <button 
                 onClick={startGame} 
-                className="w-full py-3 bg-[#5CB85C] text-white rounded-xl font-display text-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+                disabled={isGeneratingFaces}
+                className="w-full py-3 bg-[#5CB85C] text-white rounded-xl font-display text-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
               >
                 <RotateCcw size={20} />
                 Play Again
@@ -578,7 +722,10 @@ const EmotionMatch = () => {
     );
   }
 
-  // Game play screen
+  // ============================================
+  // RENDER - Game Play Screen
+  // ============================================
+
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#F5A623]">

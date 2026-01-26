@@ -1,11 +1,10 @@
-// Health.jsx - Health hub with multiple apps including Emotional Wellness
-// UPDATED: Removed "How Do I Feel?" (now only in Wellness hub)
-// NAVIGATION: Back button goes to /hub
+// Health.jsx - Health hub for ATLASassist
+// UPDATED: Apps sorted alphabetically by name
 
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 
-// Health app categories - Feelings Tracker REMOVED (only in Wellness hub now)
+// Health app definitions - SORTED ALPHABETICALLY
 const healthApps = [
   {
     id: 'emotional-wellness',
@@ -15,33 +14,14 @@ const healthApps = [
     emoji: '🧠',
     path: '/wellness',
     ready: true,
-    featured: true,
   },
   {
-    id: 'nutrition',
-    name: 'Nutrition & Recipes',
-    description: 'Visual recipes to make!',
-    color: '#5CB85C',
-    emoji: '🍳',
-    path: '/health/nutrition',
-    ready: true,
-  },
-  {
-    id: 'water',
-    name: 'Water Tracker',
-    description: 'Drink enough water!',
-    color: '#4A9FD4',
-    emoji: '💧',
-    path: '/health/water',
-    ready: true,
-  },
-  {
-    id: 'sleep',
-    name: 'Sleep Tracker',
-    description: 'Track your sleep',
-    color: '#6B5B95',
-    emoji: '😴',
-    path: '/health/sleep',
+    id: 'healthy-choices',
+    name: 'Healthy Choices',
+    description: 'Make good decisions',
+    color: '#20B2AA',
+    emoji: '✅',
+    path: '/health/healthy-choices',
     ready: true,
   },
   {
@@ -54,15 +34,42 @@ const healthApps = [
     ready: true,
   },
   {
-    id: 'healthy-choices',
-    name: 'Healthy Choices',
-    description: 'Make good decisions',
-    color: '#20B2AA',
-    emoji: '✅',
-    path: '/health/healthy-choices',
+    id: 'nutrition',
+    name: 'Nutrition & Recipes',
+    description: 'Visual recipes to make!',
+    color: '#5CB85C',
+    emoji: '🍳',
+    path: '/health/nutrition',
     ready: true,
   },
-];
+  {
+    id: 'ot-exercises',
+    name: 'OT Exercises',
+    description: 'Occupational therapy activities',
+    color: '#F5A623',
+    emoji: '🤸',
+    path: '/health/ot-exercises',
+    ready: true,
+  },
+  {
+    id: 'sleep',
+    name: 'Sleep Tracker',
+    description: 'Track your sleep',
+    color: '#6B5B95',
+    emoji: '😴',
+    path: '/health/sleep',
+    ready: true,
+  },
+  {
+    id: 'water',
+    name: 'Water Tracker',
+    description: 'Drink enough water!',
+    color: '#4A9FD4',
+    emoji: '💧',
+    path: '/health/water',
+    ready: true,
+  },
+].sort((a, b) => a.name.localeCompare(b.name));
 
 const Health = () => {
   const navigate = useNavigate();
@@ -102,33 +109,9 @@ const Health = () => {
           Track your body & health! Tap to explore.
         </p>
 
-        {/* Featured App - Emotional Wellness */}
-        {healthApps.filter(app => app.featured).map((app) => (
-          <button
-            key={app.id}
-            onClick={() => handleAppClick(app)}
-            className="w-full mb-4 p-4 rounded-2xl border-4 text-white text-left
-                     transition-all duration-200 shadow-crayon
-                     hover:scale-[1.02] active:scale-98"
-            style={{
-              backgroundColor: app.color,
-              borderColor: app.color,
-              background: `linear-gradient(135deg, ${app.color}, #E86B9A)`,
-            }}
-          >
-            <div className="flex items-center gap-4">
-              <span className="text-5xl">{app.emoji}</span>
-              <div>
-                <span className="font-display text-xl block">{app.name}</span>
-                <span className="font-crayon text-sm text-white/80">{app.description}</span>
-              </div>
-            </div>
-          </button>
-        ))}
-
-        {/* Apps Grid */}
+        {/* Health Apps Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {healthApps.filter(app => !app.featured).map((app, index) => (
+          {healthApps.map((app, index) => (
             <button
               key={app.id}
               onClick={() => handleAppClick(app)}
@@ -147,7 +130,7 @@ const Health = () => {
                 borderRadius: index % 2 === 0 ? '20px 8px 20px 8px' : '8px 20px 8px 20px',
               }}
             >
-              {/* Icon container with white background */}
+              {/* Icon container */}
               <div 
                 className="w-14 h-14 rounded-2xl bg-white/80 flex items-center justify-center mb-2 mx-auto"
                 style={{ border: `2px solid ${app.color}` }}
@@ -155,7 +138,7 @@ const Health = () => {
                 <span className="text-3xl">{app.emoji}</span>
               </div>
               
-              {/* Name - dark text */}
+              {/* Name */}
               <h3 className="font-display text-gray-800 text-sm leading-tight">
                 {app.name}
               </h3>
