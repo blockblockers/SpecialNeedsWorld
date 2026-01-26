@@ -1,9 +1,12 @@
 // PushNotificationPrompt.jsx
 // Prompts users to enable push notifications for reminders
+// FIXED: Now properly subscribes to push notifications when enabled
 // Only shows for logged-in users who haven't enabled notifications yet
 
 import { useState, useEffect } from 'react';
-import { X, Bell, BellRing, CheckCircle, Clock, Calendar, Sparkles } from 'lucide-react';
+import { X, Bell, BellRing, CheckCircle, Clock, Calendar, Sparkles, Loader2 } from 'lucide-react';
+// ✅ FIX: Import push subscription function
+import { subscribeToPush } from '../services/pushSubscription';
 
 // Check if notifications are supported
 const isNotificationSupported = () => {
@@ -21,6 +24,8 @@ const PushNotificationPrompt = ({ user }) => {
   const [status, setStatus] = useState(getNotificationStatus());
   const [justEnabled, setJustEnabled] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  // ✅ FIX: Add loading state
+  const [isSubscribing, setIsSubscribing] = useState(false);
 
   useEffect(() => {
     // Don't show for guests or if not logged in
@@ -56,23 +61,34 @@ const PushNotificationPrompt = ({ user }) => {
     return () => clearTimeout(timer);
   }, [user]);
 
-  // Handle enable notifications
+  // ✅ FIX: Handle enable notifications - now properly subscribes to push
   const handleEnableNotifications = async () => {
+    setIsSubscribing(true);
+    
     try {
       const permission = await Notification.requestPermission();
       setStatus(permission);
 
       if (permission === 'granted') {
+        // ✅ FIX: Actually subscribe to push notifications!
+        try {
+          if (user?.id) {
+            console.log('Subscribing to push with user ID:', user.id);
+            await subscribeToPush(user.id);
+            console.log('✅ Push subscription saved to database!');
+          } else {
+            // No user ID yet - save locally, will sync when user logs in
+            console.warn('No user ID - saving subscription locally only');
+            await subscribeToPush(null);
+          }
+        } catch (subError) {
+          console.error('Failed to subscribe to push:', subError);
+          // Don't block success - permission was granted, subscription may have failed
+        }
+
         setJustEnabled(true);
         setShowPrompt(false);
         localStorage.removeItem('snw_notification_prompt_dismissed');
-
-        // Register with service worker if available
-        if ('serviceWorker' in navigator) {
-          const registration = await navigator.serviceWorker.ready;
-          // Service worker is ready for push notifications
-          console.log('Push notifications enabled');
-        }
 
         // Show success message briefly
         setTimeout(() => {
@@ -81,6 +97,8 @@ const PushNotificationPrompt = ({ user }) => {
       }
     } catch (error) {
       console.error('Error requesting notification permission:', error);
+    } finally {
+      setIsSubscribing(false);
     }
   };
 
@@ -137,57 +155,43 @@ const PushNotificationPrompt = ({ user }) => {
             </button>
           </div>
           
-          {/* Benefits */}
-          <div className="p-6">
-            <p className="font-crayon text-gray-600 mb-6 text-center">
-              Push notifications help you stay organized and never miss important moments!
+          {/* Content */}
+          <div className="p-6 space-y-4">
+            <p className="font-crayon text-gray-700">
+              Get gentle reminders throughout the day to help with:
             </p>
             
-            <div className="space-y-4">
-              {/* Benefit 1 */}
-              <div className="flex items-start gap-4 p-3 bg-[#F5A623]/10 rounded-xl">
-                <div className="w-10 h-10 rounded-full bg-[#F5A623] text-white flex items-center justify-center flex-shrink-0">
-                  <Clock size={20} />
-                </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3 bg-[#E63B2E]/10 rounded-xl">
+                <Calendar className="text-[#E63B2E] flex-shrink-0" size={24} />
                 <div>
-                  <p className="font-display text-gray-800 text-sm">Medication & Care Reminders</p>
-                  <p className="font-crayon text-xs text-gray-500 mt-1">
-                    Never miss important medication times or care routines
-                  </p>
+                  <p className="font-display text-sm text-[#E63B2E]">Visual Schedule</p>
+                  <p className="font-crayon text-xs text-gray-600">Activity reminders</p>
                 </div>
               </div>
               
-              {/* Benefit 2 */}
-              <div className="flex items-start gap-4 p-3 bg-[#F5A623]/10 rounded-xl">
-                <div className="w-10 h-10 rounded-full bg-[#F5A623] text-white flex items-center justify-center flex-shrink-0">
-                  <Calendar size={20} />
-                </div>
+              <div className="flex items-center gap-3 p-3 bg-[#5CB85C]/10 rounded-xl">
+                <Clock className="text-[#5CB85C] flex-shrink-0" size={24} />
                 <div>
-                  <p className="font-display text-gray-800 text-sm">Appointment Alerts</p>
-                  <p className="font-crayon text-xs text-gray-500 mt-1">
-                    Get reminded before therapy, doctor visits, and IEP meetings
-                  </p>
+                  <p className="font-display text-sm text-[#5CB85C]">Medication & Meals</p>
+                  <p className="font-crayon text-xs text-gray-600">Health reminders</p>
                 </div>
               </div>
               
-              {/* Benefit 3 */}
-              <div className="flex items-start gap-4 p-3 bg-[#F5A623]/10 rounded-xl">
-                <div className="w-10 h-10 rounded-full bg-[#F5A623] text-white flex items-center justify-center flex-shrink-0">
-                  <Sparkles size={20} />
-                </div>
+              <div className="flex items-center gap-3 p-3 bg-[#8E6BBF]/10 rounded-xl">
+                <Sparkles className="text-[#8E6BBF] flex-shrink-0" size={24} />
                 <div>
-                  <p className="font-display text-gray-800 text-sm">Daily Routine Support</p>
-                  <p className="font-crayon text-xs text-gray-500 mt-1">
-                    Gentle reminders for water, sleep tracking, and daily goals
-                  </p>
+                  <p className="font-display text-sm text-[#8E6BBF]">Celebrations</p>
+                  <p className="font-crayon text-xs text-gray-600">Task completion alerts</p>
                 </div>
               </div>
             </div>
             
-            {/* Privacy note */}
-            <div className="mt-6 p-3 bg-gray-100 rounded-xl">
-              <p className="font-crayon text-xs text-gray-500 text-center">
-                🔒 Your notifications stay on your device. We never share your schedule.
+            <div className="p-3 bg-gray-100 rounded-xl">
+              <p className="font-crayon text-xs text-gray-500 flex items-start gap-2">
+                <span className="text-lg">🔒</span>
+                <span>Your notifications are private and only appear on this device. 
+                We never share your schedule.</span>
               </p>
             </div>
           </div>
@@ -196,15 +200,28 @@ const PushNotificationPrompt = ({ user }) => {
           <div className="px-6 pb-6 space-y-3">
             <button
               onClick={handleEnableNotifications}
+              disabled={isSubscribing}
               className="w-full py-3 bg-[#5CB85C] text-white rounded-xl font-display text-lg
-                       hover:bg-green-600 transition-all flex items-center justify-center gap-2 shadow-md"
+                       hover:bg-green-600 transition-all flex items-center justify-center gap-2 shadow-md
+                       disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              <Bell size={20} />
-              Enable Notifications
+              {isSubscribing ? (
+                <>
+                  <Loader2 size={20} className="animate-spin" />
+                  Setting up...
+                </>
+              ) : (
+                <>
+                  <Bell size={20} />
+                  Enable Notifications
+                </>
+              )}
             </button>
             <button
               onClick={handleDismiss}
-              className="w-full py-3 bg-gray-200 rounded-xl font-crayon text-gray-600 hover:bg-gray-300 transition-colors"
+              disabled={isSubscribing}
+              className="w-full py-3 bg-gray-200 rounded-xl font-crayon text-gray-600 hover:bg-gray-300 transition-colors
+                       disabled:opacity-50"
             >
               Maybe Later
             </button>

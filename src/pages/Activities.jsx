@@ -1,10 +1,10 @@
 // Activities.jsx - Activities hub for ATLASassist
-// UPDATED: Added Emotion Match game
+// UPDATED: Removed Emotion Match (now only in Games hub)
 
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 
-// Activity apps - Added Emotion Match
+// Activity apps - Emotion Match removed (now only in Games)
 const activityApps = [
   {
     id: 'sensory-breaks',
@@ -61,15 +61,6 @@ const activityApps = [
     ready: true,
   },
   {
-    id: 'emotion-match',
-    name: 'Emotion Match',
-    description: 'Match faces to feelings',
-    color: '#E86B9A',
-    emoji: '😊',
-    path: '/activities/emotion-match',
-    ready: true,
-  },
-  {
     id: 'photo-journal',
     name: 'Photo Journal',
     description: 'Capture special moments',
@@ -101,71 +92,66 @@ const Activities = () => {
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#4A9FD4]">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#E86B9A]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
-            onClick={() => navigate('/hub')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#4A9FD4] 
-                       rounded-xl font-display font-bold text-[#4A9FD4] hover:bg-[#4A9FD4] 
-                       hover:text-white transition-all shadow-md"
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2 px-3 py-2 bg-white border-3 border-[#E86B9A] 
+                       rounded-xl font-display text-[#E86B9A] hover:bg-[#E86B9A] 
+                       hover:text-white transition-all text-sm"
           >
             <ArrowLeft size={16} />
-            Back
+            Home
           </button>
-          <img src="/logo.jpeg" alt="ATLASassist" className="w-10 h-10 rounded-lg shadow-sm" />
-          <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-display text-[#4A9FD4] crayon-text">
-              🎨 Activities & Learning
-            </h1>
-          </div>
-          <Sparkles className="text-[#F8D14A] w-6 h-6 animate-pulse" />
+          <h1 className="text-lg font-display text-[#E86B9A] flex items-center gap-2">
+            <Sparkles size={24} />
+            Activities
+          </h1>
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="max-w-2xl mx-auto px-4 py-6">
-        <p className="text-center text-gray-600 font-crayon mb-6">
-          Fun activities to create, learn & explore! 🌟
-        </p>
-
-        {/* Activities Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {activityApps.map((app, index) => (
+        {/* App Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {activityApps.map((app) => (
             <button
               key={app.id}
               onClick={() => handleAppClick(app)}
               disabled={!app.ready}
-              className={`
-                relative p-4 rounded-2xl border-4 text-center
-                transition-all duration-200 shadow-crayon
+              className={`relative p-4 rounded-2xl border-4 transition-all hover:scale-105 
                 ${app.ready 
-                  ? 'hover:scale-105 hover:-rotate-1 active:scale-95 cursor-pointer' 
-                  : 'opacity-60 cursor-not-allowed'
-                }
-              `}
-              style={{
-                backgroundColor: app.color + '20',
-                borderColor: app.color,
-                borderRadius: index % 2 === 0 ? '20px 8px 20px 8px' : '8px 20px 8px 20px',
-              }}
+                  ? 'bg-white shadow-crayon hover:shadow-lg cursor-pointer' 
+                  : 'bg-gray-100 opacity-60 cursor-not-allowed'
+                }`}
+              style={{ borderColor: app.color }}
             >
-              {/* Icon container with white background */}
+              {/* Emoji Icon */}
               <div 
-                className="w-14 h-14 rounded-2xl bg-white/80 flex items-center justify-center mb-2 mx-auto"
-                style={{ border: `2px solid ${app.color}` }}
+                className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center text-4xl"
+                style={{ backgroundColor: `${app.color}20` }}
               >
-                <span className="text-3xl">{app.emoji}</span>
+                {app.emoji}
               </div>
               
-              {/* Name - dark text */}
-              <h3 className="font-display text-gray-800 text-sm leading-tight">
+              {/* Name */}
+              <p 
+                className="font-display text-sm text-center mb-1"
+                style={{ color: app.color }}
+              >
                 {app.name}
-              </h3>
+              </p>
               
               {/* Description */}
-              <p className="font-crayon text-xs text-gray-500 mt-1">
+              <p className="font-crayon text-xs text-gray-500 text-center">
                 {app.description}
               </p>
+              
+              {/* Coming Soon Badge */}
+              {!app.ready && (
+                <div className="absolute top-2 right-2 px-2 py-1 bg-gray-500 text-white text-xs rounded-full font-crayon">
+                  Soon
+                </div>
+              )}
             </button>
           ))}
         </div>
