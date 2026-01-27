@@ -57,6 +57,14 @@ const appCategories = [
     emoji: '🎨',
   },
   {
+    id: 'communities',
+    name: 'Communities',
+    description: 'Connect with others!',
+    color: '#6366F1',
+    path: '/community',
+    emoji: '🤝',
+  },
+  {
     id: 'tools',
     name: 'Daily Tools',
     description: 'Helpful everyday tools!',
@@ -219,46 +227,69 @@ const AppHub = () => {
     
     // Refresh every minute
     const interval = setInterval(loadUpcomingActivities, 60000);
-    return () => clearInterval(interval);
+    
+    // Refresh when tab becomes visible (user returns to this page)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadUpcomingActivities();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Also listen for storage changes (when schedule updates in another tab)
+    const handleStorageChange = (e) => {
+      if (e.key === 'snw_calendar_schedules' || e.key === 'snw_visual_schedule_data') {
+        loadUpcomingActivities();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   const loadUpcomingActivities = () => {
     try {
-      // Get today's date
+      // Get today's date in YYYY-MM-DD format
       const today = new Date();
       const dateKey = today.toISOString().split('T')[0];
       
-      // Try to load from various storage keys
-      const storageKeys = [
-        `snw_schedule_${dateKey}`,
-        'snw_visual_schedule',
-        'snw_schedule_today',
-      ];
-      
       let activities = [];
       
-      for (const key of storageKeys) {
-        const saved = localStorage.getItem(key);
-        if (saved) {
+      // PRIMARY: Check snw_calendar_schedules (used by calendarSync.js)
+      // Format: { "2026-01-27": { activities: [...], name: "..." } }
+      const calendarSchedules = localStorage.getItem('snw_calendar_schedules');
+      if (calendarSchedules) {
+        try {
+          const parsed = JSON.parse(calendarSchedules);
+          if (parsed[dateKey] && Array.isArray(parsed[dateKey].activities)) {
+            activities = parsed[dateKey].activities;
+          }
+        } catch (e) {
+          console.warn('Error parsing snw_calendar_schedules:', e);
+        }
+      }
+      
+      // FALLBACK: Check snw_visual_schedule_data (used by scheduleHelper.js)
+      // Format: { "2026-01-27": { items: [...], activities: [...] } }
+      if (activities.length === 0) {
+        const visualScheduleData = localStorage.getItem('snw_visual_schedule_data');
+        if (visualScheduleData) {
           try {
-            const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed)) {
-              activities = parsed;
-              break;
-            } else if (parsed.activities) {
-              activities = parsed.activities;
-              break;
-            } else if (parsed.items) {
-              activities = parsed.items;
-              break;
+            const parsed = JSON.parse(visualScheduleData);
+            if (parsed[dateKey]) {
+              activities = parsed[dateKey].activities || parsed[dateKey].items || [];
             }
           } catch (e) {
-            continue;
+            console.warn('Error parsing snw_visual_schedule_data:', e);
           }
         }
       }
 
-      // Filter to upcoming activities (next 3 hours)
+      // Filter to upcoming activities (next 3 hours, not completed)
       const now = new Date();
       const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
       const threeHoursLater = new Date(now.getTime() + 3 * 60 * 60 * 1000);

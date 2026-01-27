@@ -44,6 +44,7 @@ const CopingSkillsChart = lazy(() => import('./pages/CopingSkillsChart'));
 const CirclesOfControl = lazy(() => import('./pages/CirclesOfControl'));
 const GrowthMindset = lazy(() => import('./pages/GrowthMindset'));
 const BodyCheckIn = lazy(() => import('./pages/BodyCheckIn'));
+const WorryJar = lazy(() => import('./pages/WorryJar'));
 
 // Care Team / Services Hub
 const Services = lazy(() => import('./pages/Services'));
@@ -531,6 +532,7 @@ function App() {
             <Route path="/wellness/circles-control" element={<ProtectedRoute><CirclesOfControl /></ProtectedRoute>} />
             <Route path="/wellness/growth-mindset" element={<ProtectedRoute><GrowthMindset /></ProtectedRoute>} />
             <Route path="/wellness/body-check-in" element={<ProtectedRoute><BodyCheckIn /></ProtectedRoute>} />
+            <Route path="/wellness/worry-jar" element={<ProtectedRoute><WorryJar /></ProtectedRoute>} />
             
             {/* Legacy routes redirect */}
             <Route path="/emotional-wellness" element={<Navigate to="/wellness" replace />} />

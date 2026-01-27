@@ -1,248 +1,250 @@
-// coloringBook.js - Coloring Book service
-// Manages coloring pages and user colorings
+// coloringBook.js - Coloring Book service with FIXED auth for Edge Functions
+// FIXED: Explicit session check and token refresh before Edge Function calls
 
 import { supabase, isSupabaseConfigured } from './supabase';
 
 // ============================================
-// LOCAL STORAGE
-// ============================================
-
-const LOCAL_COLORINGS_KEY = 'snw_colorings';
-
-const getLocalColorings = () => {
-  try {
-    return JSON.parse(localStorage.getItem(LOCAL_COLORINGS_KEY) || '{}');
-  } catch {
-    return {};
-  }
-};
-
-const saveLocalColoring = (pageId, coloredSvg) => {
-  const colorings = getLocalColorings();
-  colorings[pageId] = {
-    colored_svg: coloredSvg,
-    updated_at: new Date().toISOString(),
-  };
-  localStorage.setItem(LOCAL_COLORINGS_KEY, JSON.stringify(colorings));
-};
-
-// ============================================
-// CATEGORIES
+// CONSTANTS
 // ============================================
 
 export const CATEGORIES = [
-  { id: 'all', name: 'All', emoji: '🎨', color: '#8E6BBF' },
-  { id: 'animals', name: 'Animals', emoji: '🐾', color: '#5CB85C' },
-  { id: 'nature', name: 'Nature', emoji: '🌸', color: '#E86B9A' },
+  { id: 'animals', name: 'Animals', emoji: '🐾', color: '#F5A623' },
+  { id: 'nature', name: 'Nature', emoji: '🌸', color: '#5CB85C' },
   { id: 'vehicles', name: 'Vehicles', emoji: '🚗', color: '#4A9FD4' },
   { id: 'food', name: 'Food', emoji: '🍎', color: '#E63B2E' },
-  { id: 'fantasy', name: 'Fantasy', emoji: '🦄', color: '#8E6BBF' },
-  { id: 'shapes', name: 'Shapes', emoji: '⭐', color: '#F5A623' },
-  { id: 'holidays', name: 'Holidays', emoji: '🎄', color: '#5CB85C' },
-  { id: 'people', name: 'People', emoji: '👨‍👩‍👧', color: '#F5A623' },
+  { id: 'shapes', name: 'Shapes', emoji: '⭐', color: '#8E6BBF' },
+  { id: 'characters', name: 'Characters', emoji: '🤖', color: '#E86B9A' },
+  { id: 'seasons', name: 'Seasons', emoji: '🌈', color: '#20B2AA' },
+  { id: 'general', name: 'General', emoji: '🎨', color: '#F8D14A' },
 ];
-
-// ============================================
-// COLOR PALETTE
-// ============================================
 
 export const COLOR_PALETTE = [
-  // Row 1: Basics
-  { name: 'White', hex: '#FFFFFF' },
-  { name: 'Black', hex: '#000000' },
-  { name: 'Gray', hex: '#9E9E9E' },
-  
-  // Row 2: Reds & Pinks
-  { name: 'Red', hex: '#F44336' },
-  { name: 'Pink', hex: '#E91E63' },
-  { name: 'Light Pink', hex: '#FCE4EC' },
-  
-  // Row 3: Oranges & Yellows
-  { name: 'Orange', hex: '#FF9800' },
-  { name: 'Yellow', hex: '#FFEB3B' },
-  { name: 'Light Yellow', hex: '#FFFDE7' },
-  
-  // Row 4: Greens
-  { name: 'Green', hex: '#4CAF50' },
-  { name: 'Light Green', hex: '#8BC34A' },
-  { name: 'Mint', hex: '#E8F5E9' },
-  
-  // Row 5: Blues
-  { name: 'Blue', hex: '#2196F3' },
-  { name: 'Light Blue', hex: '#03A9F4' },
-  { name: 'Sky Blue', hex: '#E3F2FD' },
-  
-  // Row 6: Purples
-  { name: 'Purple', hex: '#9C27B0' },
-  { name: 'Lavender', hex: '#E1BEE7' },
-  { name: 'Indigo', hex: '#3F51B5' },
-  
-  // Row 7: Browns & Skin tones
-  { name: 'Brown', hex: '#795548' },
-  { name: 'Tan', hex: '#D7CCC8' },
-  { name: 'Peach', hex: '#FFCCBC' },
+  '#E63B2E', // Red
+  '#F5A623', // Orange
+  '#F8D14A', // Yellow
+  '#5CB85C', // Green
+  '#4A9FD4', // Blue
+  '#8E6BBF', // Purple
+  '#E86B9A', // Pink
+  '#20B2AA', // Teal
+  '#6B4423', // Brown
+  '#2C3E50', // Dark Blue
+  '#FFFFFF', // White
+  '#000000', // Black
 ];
 
 // ============================================
-// GET COLORING PAGES
+// HELPER: Get valid session for Edge Function calls
 // ============================================
+const getValidSession = async () => {
+  if (!isSupabaseConfigured()) {
+    return null;
+  }
 
-/**
- * Get all coloring pages, optionally filtered by category
- */
-export const getColoringPages = async (category = 'all', limit = 20) => {
-  if (isSupabaseConfigured()) {
-    try {
-      let query = supabase
-        .from('coloring_pages')
-        .select('*')
-        .eq('is_public', true)
-        .order('use_count', { ascending: false })
-        .limit(limit);
+  try {
+    // First try to get existing session
+    const { data: { session }, error } = await supabase.auth.getSession();
+    
+    if (error) {
+      console.error('Error getting session:', error);
+      return null;
+    }
+
+    if (!session) {
+      console.warn('No active session found - user may be logged out or in guest mode');
+      return null;
+    }
+
+    // Check if token is close to expiring (within 60 seconds)
+    const expiresAt = session.expires_at;
+    const now = Math.floor(Date.now() / 1000);
+    
+    if (expiresAt && (expiresAt - now) < 60) {
+      console.log('Session token expiring soon, refreshing...');
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
       
-      if (category && category !== 'all') {
-        query = query.eq('category', category);
+      if (refreshError) {
+        console.error('Error refreshing session:', refreshError);
+        return session; // Return old session anyway, might still work
       }
       
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('Error fetching coloring pages:', error);
+      return refreshData.session;
     }
+
+    return session;
+  } catch (error) {
+    console.error('Error in getValidSession:', error);
+    return null;
   }
-  
-  // Return empty array if no Supabase
-  return [];
 };
 
-/**
- * Get a single coloring page by ID
- */
+// ============================================
+// FETCH COLORING PAGES
+// ============================================
+
+export const getColoringPages = async (category = null, limit = 20) => {
+  if (!isSupabaseConfigured()) {
+    return [];
+  }
+
+  try {
+    let query = supabase
+      .from('coloring_pages')
+      .select('*')
+      .eq('is_public', true)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (category && category !== 'all') {
+      query = query.eq('category', category);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching coloring pages:', error);
+    return [];
+  }
+};
+
 export const getColoringPageById = async (pageId) => {
-  if (isSupabaseConfigured()) {
-    try {
-      const { data, error } = await supabase
-        .from('coloring_pages')
-        .select('*')
-        .eq('id', pageId)
-        .single();
-      
-      if (error) throw error;
-      
-      // Increment use count
-      await supabase.rpc('increment_coloring_page_use', { p_page_id: pageId });
-      
-      return data;
-    } catch (error) {
-      console.error('Error fetching coloring page:', error);
-    }
+  if (!isSupabaseConfigured()) {
+    return null;
   }
-  return null;
+
+  try {
+    const { data, error } = await supabase
+      .from('coloring_pages')
+      .select('*')
+      .eq('id', pageId)
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error fetching coloring page:', error);
+    return null;
+  }
 };
 
-/**
- * Search coloring pages
- */
-export const searchColoringPages = async (query, limit = 20) => {
-  if (isSupabaseConfigured()) {
-    try {
-      const { data, error } = await supabase
-        .rpc('search_coloring_pages', { p_query: query, p_limit: limit });
-      
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('Error searching coloring pages:', error);
-    }
+export const searchColoringPages = async (query, limit = 10) => {
+  if (!isSupabaseConfigured()) {
+    return [];
   }
-  return [];
+
+  try {
+    const { data, error } = await supabase
+      .from('coloring_pages')
+      .select('*')
+      .eq('is_public', true)
+      .ilike('title', `%${query}%`)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error searching coloring pages:', error);
+    return [];
+  }
 };
 
 // ============================================
-// USER COLORINGS
+// SAVE/LOAD USER COLORING
 // ============================================
 
-/**
- * Save user's coloring progress
- */
-export const saveUserColoring = async (userId, pageId, coloredSvg, isComplete = false) => {
-  // Save locally first
-  saveLocalColoring(pageId, coloredSvg);
-  
-  if (isSupabaseConfigured() && userId) {
-    try {
-      const { error } = await supabase
-        .from('user_colorings')
-        .upsert({
-          user_id: userId,
-          page_id: pageId,
-          colored_svg: coloredSvg,
-          is_complete: isComplete,
-        }, {
-          onConflict: 'user_id,page_id'
-        });
-      
-      if (error) throw error;
-      return true;
-    } catch (error) {
-      console.error('Error saving coloring:', error);
-    }
+export const saveUserColoring = async (pageId, userId, colorData) => {
+  if (!isSupabaseConfigured()) {
+    // Save locally
+    const key = `coloring_${userId}_${pageId}`;
+    localStorage.setItem(key, JSON.stringify({
+      pageId,
+      colorData,
+      updatedAt: new Date().toISOString(),
+    }));
+    return { success: true };
   }
-  return true; // Local save succeeded
+
+  try {
+    const { data, error } = await supabase
+      .from('user_colorings')
+      .upsert({
+        user_id: userId,
+        page_id: pageId,
+        color_data: colorData,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'user_id,page_id',
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error saving coloring:', error);
+    return { success: false, error };
+  }
 };
 
-/**
- * Get user's coloring for a page
- */
-export const getUserColoring = async (userId, pageId) => {
-  // Check cloud first
-  if (isSupabaseConfigured() && userId) {
-    try {
-      const { data, error } = await supabase
-        .from('user_colorings')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('page_id', pageId)
-        .single();
-      
-      if (data) return data;
-    } catch (error) {
-      // Not found or error, check local
-    }
+export const getUserColoring = async (pageId, userId) => {
+  if (!isSupabaseConfigured()) {
+    const key = `coloring_${userId}_${pageId}`;
+    const saved = localStorage.getItem(key);
+    return saved ? JSON.parse(saved) : null;
   }
-  
-  // Check local
-  const localColorings = getLocalColorings();
-  return localColorings[pageId] || null;
+
+  try {
+    const { data, error } = await supabase
+      .from('user_colorings')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('page_id', pageId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+  } catch (error) {
+    console.error('Error fetching user coloring:', error);
+    return null;
+  }
 };
 
-/**
- * Get all user's colorings
- */
 export const getUserColorings = async (userId) => {
-  if (isSupabaseConfigured() && userId) {
-    try {
-      const { data, error } = await supabase
-        .from('user_colorings')
-        .select(`
-          *,
-          coloring_pages (*)
-        `)
-        .eq('user_id', userId)
-        .order('updated_at', { ascending: false });
-      
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('Error fetching user colorings:', error);
+  if (!isSupabaseConfigured()) {
+    // Get all local colorings for this user
+    const colorings = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(`coloring_${userId}_`)) {
+        const data = JSON.parse(localStorage.getItem(key) || '{}');
+        colorings.push(data);
+      }
     }
+    return colorings;
   }
-  return [];
+
+  try {
+    const { data, error } = await supabase
+      .from('user_colorings')
+      .select(`
+        *,
+        coloring_pages (*)
+      `)
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false });
+    
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching user colorings:', error);
+    return [];
+  }
 };
 
 // ============================================
-// AI GENERATION
+// AI GENERATION - FIXED WITH AUTH CHECK
 // ============================================
 
 /**
@@ -251,47 +253,89 @@ export const getUserColorings = async (userId) => {
 export const generateColoringPage = async (prompt, options = {}) => {
   const { userId = null, category = 'general' } = options;
   
-  if (isSupabaseConfigured()) {
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-coloring-page', {
-        body: {
-          prompt,
-          category,
-        },
-      });
+  if (!isSupabaseConfigured()) {
+    throw new Error('Database not configured. Cannot generate coloring pages offline.');
+  }
+
+  // FIXED: Ensure we have a valid session before calling Edge Function
+  const session = await getValidSession();
+  
+  if (!session) {
+    throw new Error('Authentication required. Please sign in to generate coloring pages.');
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke('generate-coloring-page', {
+      body: {
+        prompt,
+        category,
+      },
+    });
+    
+    if (error) {
+      console.error('Edge Function error:', error);
       
-      if (error) throw error;
-      
-      // Save to database
-      if (data?.svg_content) {
-        const { data: savedPage, error: saveError } = await supabase
-          .from('coloring_pages')
-          .insert({
-            title: prompt,
-            title_normalized: prompt.toLowerCase().trim(),
-            description: `AI generated: ${prompt}`,
-            category,
-            svg_content: data.svg_content,
-            is_ai_generated: true,
-            generation_prompt: prompt,
-            created_by: userId,
-            is_public: true,
-          })
-          .select()
-          .single();
-        
-        if (saveError) throw saveError;
-        return savedPage;
+      // Check for specific auth errors
+      if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+        throw new Error('Session expired. Please refresh the page and try again.');
       }
       
-      return data;
-    } catch (error) {
-      console.error('Error generating coloring page:', error);
       throw error;
     }
+    
+    // Save to database
+    if (data?.svg_content) {
+      const { data: savedPage, error: saveError } = await supabase
+        .from('coloring_pages')
+        .insert({
+          title: prompt,
+          title_normalized: prompt.toLowerCase().trim(),
+          description: `AI generated: ${prompt}`,
+          category,
+          svg_content: data.svg_content,
+          is_ai_generated: true,
+          generation_prompt: prompt,
+          created_by: userId || session.user.id,
+          is_public: true,
+        })
+        .select()
+        .single();
+      
+      if (saveError) {
+        console.error('Error saving coloring page:', saveError);
+        // Return the generated page even if save fails
+        return {
+          id: `temp_${Date.now()}`,
+          title: prompt,
+          svg_content: data.svg_content,
+          category,
+          is_ai_generated: true,
+          created_at: new Date().toISOString(),
+        };
+      }
+      
+      return savedPage;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error generating coloring page:', error);
+    throw error;
   }
-  
-  throw new Error('Supabase not configured');
+};
+
+// ============================================
+// INCREMENT VIEW/USE COUNT
+// ============================================
+
+export const incrementPageViewCount = async (pageId) => {
+  if (!isSupabaseConfigured()) return;
+
+  try {
+    await supabase.rpc('increment_coloring_page_view', { page_id: pageId });
+  } catch (error) {
+    console.error('Error incrementing view count:', error);
+  }
 };
 
 export default {
@@ -304,4 +348,5 @@ export default {
   getUserColoring,
   getUserColorings,
   generateColoringPage,
+  incrementPageViewCount,
 };

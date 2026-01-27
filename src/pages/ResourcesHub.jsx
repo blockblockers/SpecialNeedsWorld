@@ -1,102 +1,73 @@
 // ResourcesHub.jsx - Resources & Research hub for ATLASassist
-// FIXED: Corrected path for US & State Resources (was /knowledge, now /resources/knowledge)
+// FIXED: Button styling matches main hub (transparent bg + colored border)
+// FIXED: Animated background added
 
 import { useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  Library,
-  Scale,
-  BookOpen,
-  Printer,
-  ShoppingBag,
-  ExternalLink,
-  Star,
-  Info,
-  Stethoscope,
-  BookMarked,
-  HelpCircle
-} from 'lucide-react';
+import { ArrowLeft, Library, ExternalLink } from 'lucide-react';
+import AnimatedBackground from '../components/AnimatedBackground';
 
-// Resource sections
-const resourceSections = [
-  {
-    id: 'laws',
-    name: 'US & State Resources',
-    description: 'Laws, rights & advocacy info',
-    icon: Scale,
-    color: 'bg-[#4A9FD4]',
-    borderColor: 'border-blue-500',
-    path: '/resources/knowledge', // FIXED: was '/knowledge'
-    emoji: '⚖️',
-    ready: true,
-  },
-  {
-    id: 'research',
-    name: 'Evidence-Based Research',
-    description: 'Studies & best practices',
-    icon: BookOpen,
-    color: 'bg-[#5CB85C]',
-    borderColor: 'border-green-500',
-    path: '/resources/research',
-    emoji: '🔬',
-    ready: true,
-  },
-  {
-    id: 'therapy-types',
-    name: 'Therapy Types',
-    description: 'Learn about different therapies',
-    icon: Stethoscope,
-    color: 'bg-[#E86B9A]',
-    borderColor: 'border-pink-500',
-    path: '/resources/therapy-types',
-    emoji: '🩺',
-    ready: true,
-  },
+// Theme color for this hub
+const THEME_COLOR = '#8E6BBF';
+
+// Resource apps - Alphabetized
+const resourceApps = [
   {
     id: 'definitions',
     name: 'Definitions',
     description: 'Common terms explained',
-    icon: BookMarked,
-    color: 'bg-[#20B2AA]',
-    borderColor: 'border-teal-500',
-    path: '/resources/definitions',
+    color: '#20B2AA',
     emoji: '📖',
-    ready: true,
+    path: '/resources/definitions',
   },
   {
     id: 'faq',
     name: 'FAQ',
     description: 'Frequently asked questions',
-    icon: HelpCircle,
-    color: 'bg-[#F8D14A]',
-    borderColor: 'border-yellow-500',
-    path: '/resources/faq',
+    color: '#DAA520',
     emoji: '❓',
-    ready: true,
+    path: '/resources/faq',
   },
   {
     id: 'printables',
     name: 'Printables Library',
     description: 'Charts, cards & worksheets',
-    icon: Printer,
-    color: 'bg-[#F5A623]',
-    borderColor: 'border-orange-500',
-    path: '/resources/printables',
+    color: '#F5A623',
     emoji: '🖨️',
-    ready: true,
+    path: '/resources/printables',
   },
   {
     id: 'products',
     name: 'Recommended Products',
     description: 'Helpful tools & resources',
-    icon: ShoppingBag,
-    color: 'bg-[#8E6BBF]',
-    borderColor: 'border-purple-500',
-    path: '/resources/products',
+    color: '#8E6BBF',
     emoji: '🛍️',
-    ready: true,
+    path: '/resources/products',
   },
-];
+  {
+    id: 'research',
+    name: 'Research Hub',
+    description: 'Evidence-based studies',
+    color: '#5CB85C',
+    emoji: '🔬',
+    path: '/resources/research',
+  },
+  {
+    id: 'therapy-types',
+    name: 'Therapy Types',
+    description: 'Learn about different therapies',
+    color: '#E86B9A',
+    emoji: '🩺',
+    path: '/resources/therapy-types',
+  },
+  {
+    id: 'laws',
+    name: 'US & State Resources',
+    description: 'Laws, rights & advocacy info',
+    color: '#4A9FD4',
+    emoji: '⚖️',
+    path: '/resources/knowledge',
+  },
+].sort((a, b) => a.name.localeCompare(b.name));
 
 // Featured external resources
 const FEATURED_RESOURCES = [
@@ -107,14 +78,8 @@ const FEATURED_RESOURCES = [
     emoji: '⚖️',
   },
   {
-    name: 'IDEA - U.S. Department of Education',
-    description: 'Individuals with Disabilities Education Act',
-    url: 'https://www.ed.gov/laws-and-policy/individuals-disabilities/idea/',
-    emoji: '🏛️',
-  },
-  {
     name: 'Understood.org',
-    description: 'Free resources for learning and thinking differences',
+    description: 'Free resources for learning differences',
     url: 'https://www.understood.org',
     emoji: '📖',
   },
@@ -126,7 +91,7 @@ const FEATURED_RESOURCES = [
   },
   {
     name: 'Wrightslaw',
-    description: 'Special education law and advocacy',
+    description: 'Special education law & advocacy',
     url: 'https://www.wrightslaw.com',
     emoji: '📚',
   },
@@ -135,131 +100,98 @@ const FEATURED_RESOURCES = [
 const ResourcesHub = () => {
   const navigate = useNavigate();
 
-  const handleSectionClick = (section) => {
-    if (section.ready) {
-      navigate(section.path);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-[#FFFEF5]">
+    <div className="min-h-screen bg-[#FFFEF5] relative">
+      {/* Animated Background */}
+      <AnimatedBackground intensity="light" />
+
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#8E6BBF]">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4" style={{ borderColor: THEME_COLOR }}>
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/hub')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#8E6BBF] 
-                       rounded-xl font-display font-bold text-[#8E6BBF] hover:bg-[#8E6BBF] 
-                       hover:text-white transition-all shadow-md"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 rounded-xl font-display font-bold transition-all shadow-md hover:scale-105"
+            style={{ borderColor: THEME_COLOR, color: THEME_COLOR }}
           >
             <ArrowLeft size={16} />
             Back
           </button>
-          <img 
-            src="/logo.jpeg" 
-            alt="ATLASassist" 
-            className="w-10 h-10 rounded-lg shadow-sm"
-          />
-          <h1 className="text-lg sm:text-xl font-display text-[#8E6BBF] crayon-text flex items-center gap-2">
-            <Library size={22} />
-            Resources & Research
-          </h1>
+          <img src="/logo.jpeg" alt="ATLASassist" className="w-10 h-10 rounded-lg shadow-sm" />
+          <div className="flex-1">
+            <h1 className="text-lg sm:text-xl font-display crayon-text flex items-center gap-2" style={{ color: THEME_COLOR }}>
+              <Library size={24} />
+              Resources & Research
+            </h1>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-4">
-        {/* Intro */}
-        <p className="text-center text-gray-600 font-crayon mb-4">
-          Helpful information, guides, and tools
+      {/* Main Content */}
+      <main className="max-w-2xl mx-auto px-4 py-6 relative z-10">
+        <p className="text-center text-gray-600 font-crayon mb-6">
+          Helpful information, guides, and tools 📚
         </p>
 
-        {/* Resource Sections Grid */}
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          {resourceSections.map((section, index) => {
-            const IconComponent = section.icon;
-            return (
-              <button
-                key={section.id}
-                onClick={() => handleSectionClick(section)}
-                disabled={!section.ready}
-                className={`
-                  relative p-3 rounded-2xl border-4 text-left
-                  ${section.color} ${section.borderColor}
-                  transition-all duration-200 shadow-crayon
-                  ${section.ready 
-                    ? 'hover:scale-105 hover:-rotate-1 active:scale-95 cursor-pointer' 
-                    : 'opacity-60 cursor-not-allowed'
-                  }
-                `}
-                style={{
-                  borderRadius: index % 2 === 0 
-                    ? '1.5rem 1rem 1.5rem 1rem' 
-                    : '1rem 1.5rem 1rem 1.5rem'
-                }}
+        {/* Apps Grid - Matching main hub styling */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
+          {resourceApps.map((app, index) => (
+            <button
+              key={app.id}
+              onClick={() => navigate(app.path)}
+              className="relative p-4 rounded-2xl border-4 text-center transition-all duration-200 
+                       shadow-crayon hover:scale-105 hover:-rotate-1 active:scale-95"
+              style={{
+                backgroundColor: app.color + '20',
+                borderColor: app.color,
+                borderRadius: index % 2 === 0 ? '20px 8px 20px 8px' : '8px 20px 8px 20px',
+              }}
+            >
+              {/* Icon container with white background */}
+              <div 
+                className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center mb-2 mx-auto"
+                style={{ border: `2px solid ${app.color}` }}
               >
-                <div className="flex items-start gap-2">
-                  <span className="text-2xl">{section.emoji}</span>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-display text-white text-sm leading-tight mb-0.5">
-                      {section.name}
-                    </h3>
-                    <p className="font-crayon text-white/80 text-xs leading-tight">
-                      {section.description}
-                    </p>
-                  </div>
-                </div>
-                {!section.ready && (
-                  <span className="absolute top-1 right-1 px-1.5 py-0.5 bg-white/90 text-xs font-crayon rounded-full text-gray-600">
-                    Soon
-                  </span>
-                )}
-              </button>
-            );
-          })}
+                <span className="text-3xl">{app.emoji}</span>
+              </div>
+              
+              {/* Name */}
+              <h3 className="font-display text-gray-800 text-sm leading-tight">
+                {app.name}
+              </h3>
+              
+              {/* Description */}
+              <p className="font-crayon text-xs text-gray-500 mt-1">
+                {app.description}
+              </p>
+            </button>
+          ))}
         </div>
 
-        {/* Featured External Resources */}
-        <div className="bg-white rounded-2xl border-4 border-[#8E6BBF] p-4 shadow-crayon mb-4">
-          <h2 className="font-display text-[#8E6BBF] text-lg mb-3 flex items-center gap-2">
-            <Star size={20} className="text-yellow-500" />
-            Featured Resources
+        {/* External Resources Section */}
+        <div className="mb-4">
+          <h2 className="font-display text-lg text-gray-700 mb-3 flex items-center gap-2">
+            <ExternalLink size={20} style={{ color: THEME_COLOR }} />
+            Helpful Websites
           </h2>
+          
           <div className="space-y-2">
-            {FEATURED_RESOURCES.map((resource, index) => (
+            {FEATURED_RESOURCES.map((resource) => (
               <a
-                key={index}
+                key={resource.name}
                 href={resource.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 p-2 rounded-xl hover:bg-purple-50 transition-colors group"
+                className="flex items-center gap-3 p-3 bg-white rounded-xl border-2 border-gray-200 
+                         hover:border-purple-300 hover:bg-purple-50 transition-all"
               >
-                <span className="text-xl">{resource.emoji}</span>
+                <span className="text-2xl">{resource.emoji}</span>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-display text-gray-800 text-sm group-hover:text-[#8E6BBF] transition-colors">
-                    {resource.name}
-                  </h4>
-                  <p className="font-crayon text-gray-500 text-xs truncate">
-                    {resource.description}
-                  </p>
+                  <h3 className="font-display text-sm text-gray-800">{resource.name}</h3>
+                  <p className="font-crayon text-xs text-gray-500 truncate">{resource.description}</p>
                 </div>
-                <ExternalLink size={16} className="text-gray-400 group-hover:text-[#8E6BBF] flex-shrink-0" />
+                <ExternalLink size={16} className="text-gray-400 flex-shrink-0" />
               </a>
             ))}
-          </div>
-        </div>
-
-        {/* Info Box */}
-        <div className="bg-purple-50 rounded-2xl border-3 border-purple-200 p-4">
-          <div className="flex items-start gap-3">
-            <Info size={20} className="text-[#8E6BBF] flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-display text-[#8E6BBF] text-sm mb-1">
-                Know a great resource?
-              </h3>
-              <p className="font-crayon text-purple-700 text-sm">
-                We're always looking to add helpful resources. Use the feedback button to share your suggestions!
-              </p>
-            </div>
           </div>
         </div>
       </main>
