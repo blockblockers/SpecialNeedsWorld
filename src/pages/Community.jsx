@@ -1,5 +1,6 @@
 // Community.jsx - Community forum hub
-// FIXED: Changed .single() to .maybeSingle() to prevent 406 errors when profile doesn't exist
+// UPDATED: Changed theme color from pink (#E86B9A) to indigo (#6366F1)
+// UPDATED: Added animated background
 // Browse threads, search, create discussions
 
 import { useState, useEffect, useCallback } from 'react';
@@ -23,6 +24,10 @@ import {
 import { supabase, isSupabaseConfigured } from '../services/supabase';
 import { useAuth } from '../App';
 import { CATEGORIES, getAvatar } from '../data/communityAvatars';
+import AnimatedBackground from '../components/AnimatedBackground';
+
+// Theme color - INDIGO
+const THEME_COLOR = '#6366F1';
 
 const Community = () => {
   const navigate = useNavigate();
@@ -35,7 +40,6 @@ const Community = () => {
   const [profileLoading, setProfileLoading] = useState(true);
 
   // Check if user has a community profile
-  // FIXED: Using .maybeSingle() instead of .single() to avoid 406 errors
   const checkProfile = useCallback(async () => {
     if (!user || isGuest) {
       setProfileLoading(false);
@@ -47,18 +51,15 @@ const Community = () => {
         .from('community_profiles')
         .select('id')
         .eq('user_id', user.id)
-        .maybeSingle(); // FIXED: Changed from .single() to .maybeSingle()
+        .maybeSingle();
 
       if (error) {
         console.error('Error checking profile:', error);
+      } else {
+        setHasProfile(!!data);
       }
-      
-      if (data) {
-        setHasProfile(true);
-      }
-    } catch (error) {
-      console.error('Error in checkProfile:', error);
-      // No profile yet - that's okay
+    } catch (err) {
+      console.error('Error checking profile:', err);
     } finally {
       setProfileLoading(false);
     }
@@ -67,17 +68,11 @@ const Community = () => {
   // Load threads
   const loadThreads = useCallback(async () => {
     setLoading(true);
-
-    if (!isSupabaseConfigured()) {
-      setLoading(false);
-      return;
-    }
-
+    
     try {
       let query = supabase
         .from('community_threads')
         .select('*')
-        .eq('is_hidden', false)
         .order('is_pinned', { ascending: false })
         .order('last_activity_at', { ascending: false })
         .limit(50);
@@ -86,19 +81,18 @@ const Community = () => {
         query = query.eq('category', selectedCategory);
       }
 
-      if (searchQuery.trim()) {
+      if (searchQuery) {
         query = query.or(`title.ilike.%${searchQuery}%,content.ilike.%${searchQuery}%`);
       }
 
-      const { data: threadsData, error } = await query;
+      const { data: threadsData, error: threadsError } = await query;
 
-      if (error) throw error;
-      
-      // Get unique user IDs from threads
-      const userIds = [...new Set(threadsData?.map(t => t.user_id).filter(Boolean) || [])];
-      
-      // Fetch profiles for those users
+      if (threadsError) throw threadsError;
+
+      // Get user profiles for threads
+      const userIds = [...new Set(threadsData?.map(t => t.user_id) || [])];
       let profilesMap = {};
+      
       if (userIds.length > 0) {
         const { data: profilesData } = await supabase
           .from('community_profiles')
@@ -154,15 +148,28 @@ const Community = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFFEF5]">
+    <div className="min-h-screen bg-[#FFFEF5] relative">
+      {/* Animated Background */}
+      <AnimatedBackground intensity="light" />
+
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#E86B9A]">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4" style={{ borderColor: THEME_COLOR }}>
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/hub')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#E86B9A] 
-                       rounded-xl font-display font-bold text-[#E86B9A] hover:bg-[#E86B9A] 
-                       hover:text-white transition-all shadow-md"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 rounded-xl font-display font-bold transition-all shadow-md hover:text-white"
+            style={{ 
+              borderColor: THEME_COLOR, 
+              color: THEME_COLOR,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = THEME_COLOR;
+              e.currentTarget.style.color = 'white';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'white';
+              e.currentTarget.style.color = THEME_COLOR;
+            }}
           >
             <ArrowLeft size={16} />
             Back
@@ -173,15 +180,16 @@ const Community = () => {
             className="w-10 h-10 rounded-lg shadow-sm"
           />
           <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-display text-[#E86B9A] crayon-text flex items-center gap-2">
+            <h1 className="text-lg sm:text-xl font-display crayon-text flex items-center gap-2" style={{ color: THEME_COLOR }}>
               <Users size={24} />
-              Community
+              Communities
             </h1>
           </div>
           {user && !isGuest && hasProfile && (
             <button
               onClick={() => navigate('/community/new')}
-              className="p-2 bg-[#E86B9A] text-white rounded-full hover:bg-pink-600 transition-colors"
+              className="p-2 text-white rounded-full transition-colors"
+              style={{ backgroundColor: THEME_COLOR }}
             >
               <Plus size={20} />
             </button>
@@ -190,13 +198,13 @@ const Community = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-2xl mx-auto px-4 py-6">
+      <main className="max-w-2xl mx-auto px-4 py-6 relative z-10">
         {/* Welcome Banner */}
-        <div className="mb-6 p-4 bg-gradient-to-r from-pink-50 to-purple-50 rounded-2xl border-3 border-[#E86B9A]/30">
+        <div className="mb-6 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl border-3" style={{ borderColor: `${THEME_COLOR}30` }}>
           <div className="flex items-start gap-3">
-            <Heart size={24} className="text-[#E86B9A] flex-shrink-0 mt-1" />
+            <Heart size={24} style={{ color: THEME_COLOR }} className="flex-shrink-0 mt-1" />
             <div>
-              <h2 className="font-display text-lg text-[#E86B9A]">Welcome to Our Community!</h2>
+              <h2 className="font-display text-lg" style={{ color: THEME_COLOR }}>Welcome to Our Community!</h2>
               <p className="font-crayon text-sm text-gray-600 mt-1">
                 Share experiences, ask questions, and find encouragement.
               </p>
@@ -225,46 +233,49 @@ const Community = () => {
 
         {/* Profile Setup Prompt */}
         {user && !isGuest && !hasProfile && !profileLoading && (
-          <div className="bg-purple-50 rounded-xl border-2 border-purple-200 p-4 mb-4 flex items-center gap-3">
-            <Sparkles size={24} className="text-purple-600" />
+          <div className="bg-indigo-50 rounded-xl border-2 border-indigo-200 p-4 mb-4 flex items-center gap-3">
+            <Sparkles size={24} style={{ color: THEME_COLOR }} />
             <div className="flex-1">
-              <p className="font-crayon text-purple-800 text-sm">
+              <p className="font-crayon text-indigo-800 text-sm">
                 Set up your community profile to start participating!
               </p>
             </div>
             <button
-              onClick={() => navigate('/community/profile/setup')}
-              className="px-3 py-1.5 bg-purple-500 text-white rounded-lg font-crayon text-sm
-                       hover:bg-purple-600 transition-colors"
+              onClick={() => navigate('/community/profile-setup')}
+              className="px-3 py-1.5 text-white rounded-lg font-crayon text-sm transition-colors"
+              style={{ backgroundColor: THEME_COLOR }}
             >
-              Set Up Profile
+              Set Up
             </button>
           </div>
         )}
 
-        {/* Search */}
-        <div className="mb-4 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search discussions..."
-            className="w-full pl-10 pr-4 py-3 bg-white border-3 border-gray-300 rounded-xl font-crayon
-                     focus:border-[#E86B9A] focus:outline-none"
-          />
+        {/* Search Bar */}
+        <div className="mb-4">
+          <div className="relative">
+            <Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search discussions..."
+              className="w-full pl-10 pr-4 py-3 bg-white rounded-xl border-3 border-gray-200 
+                       font-crayon focus:outline-none focus:border-indigo-400"
+            />
+          </div>
         </div>
 
         {/* Category Filter */}
-        <div className="mb-6 overflow-x-auto -mx-4 px-4">
-          <div className="flex gap-2 pb-2">
+        <div className="mb-6">
+          <div className="flex gap-2 overflow-x-auto pb-2">
             <button
               onClick={() => setSelectedCategory('all')}
-              className={`flex-shrink-0 px-4 py-2 rounded-full font-crayon text-sm border-2 transition-all
-                ${selectedCategory === 'all'
-                  ? 'bg-[#E86B9A] border-[#E86B9A] text-white'
-                  : 'bg-white border-gray-300 text-gray-600 hover:border-[#E86B9A]'
+              className={`px-3 py-1.5 rounded-full font-crayon text-sm whitespace-nowrap border-2 transition-all
+                ${selectedCategory === 'all' 
+                  ? 'text-white' 
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
                 }`}
+              style={selectedCategory === 'all' ? { backgroundColor: THEME_COLOR, borderColor: THEME_COLOR } : {}}
             >
               All Topics
             </button>
@@ -272,19 +283,17 @@ const Community = () => {
               <button
                 key={cat.id}
                 onClick={() => setSelectedCategory(cat.id)}
-                className={`flex-shrink-0 px-4 py-2 rounded-full font-crayon text-sm border-2 transition-all
-                  flex items-center gap-1
-                  ${selectedCategory === cat.id
-                    ? 'text-white'
-                    : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
+                className={`px-3 py-1.5 rounded-full font-crayon text-sm whitespace-nowrap border-2 transition-all
+                  ${selectedCategory === cat.id 
+                    ? 'text-white' 
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
                   }`}
                 style={selectedCategory === cat.id ? { 
                   backgroundColor: cat.color, 
                   borderColor: cat.color 
                 } : {}}
               >
-                <span>{cat.emoji}</span>
-                {cat.name}
+                <span>{cat.emoji}</span> {cat.name}
               </button>
             ))}
           </div>
@@ -303,8 +312,8 @@ const Community = () => {
             {user && !isGuest && hasProfile && (
               <button
                 onClick={() => navigate('/community/new')}
-                className="px-4 py-2 bg-[#E86B9A] text-white rounded-lg font-crayon text-sm
-                         hover:bg-pink-600 transition-colors"
+                className="px-4 py-2 text-white rounded-lg font-crayon text-sm transition-colors"
+                style={{ backgroundColor: THEME_COLOR }}
               >
                 Start the First Discussion
               </button>
@@ -322,13 +331,16 @@ const Community = () => {
                   key={thread.id}
                   onClick={() => navigate(`/community/thread/${thread.id}`)}
                   className="w-full bg-white rounded-xl border-3 border-gray-200 p-4 text-left
-                           hover:border-[#E86B9A] hover:shadow-md transition-all"
+                           hover:shadow-md transition-all"
+                  style={{ '--hover-border': THEME_COLOR }}
+                  onMouseEnter={(e) => e.currentTarget.style.borderColor = THEME_COLOR}
+                  onMouseLeave={(e) => e.currentTarget.style.borderColor = '#E5E7EB'}
                 >
                   <div className="flex gap-3">
                     {/* Avatar */}
                     <div 
                       className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: avatar?.color || '#E86B9A' }}
+                      style={{ backgroundColor: avatar?.color || THEME_COLOR }}
                     >
                       <span className="text-lg">{avatar?.emoji || '👤'}</span>
                     </div>
@@ -338,7 +350,7 @@ const Community = () => {
                       {/* Title & Category */}
                       <div className="flex items-start gap-2 mb-1">
                         <h3 className="font-display text-sm text-gray-800 flex-1 line-clamp-2">
-                          {thread.is_pinned && <span className="text-[#F5A623]">📌 </span>}
+                          {thread.is_pinned && <span style={{ color: THEME_COLOR }}>📌 </span>}
                           {thread.title}
                         </h3>
                         <span 

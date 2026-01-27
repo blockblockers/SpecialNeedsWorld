@@ -1,4 +1,5 @@
 // CommunityNewThread.jsx - Create a new discussion thread
+// UPDATED: Changed theme color from pink (#E86B9A) to indigo (#6366F1)
 // Text and links only - no images
 
 import { useState } from 'react';
@@ -12,6 +13,9 @@ import {
 import { supabase } from '../services/supabase';
 import { useAuth } from '../App';
 import { CATEGORIES } from '../data/communityAvatars';
+
+// Theme color - INDIGO
+const THEME_COLOR = '#6366F1';
 
 const CommunityNewThread = () => {
   const navigate = useNavigate();
@@ -63,7 +67,7 @@ const CommunityNewThread = () => {
       try {
         await supabase
           .from('community_profiles')
-          .update({ thread_count: 1 }) // Will be incremented by trigger if exists
+          .update({ thread_count: 1 })
           .eq('user_id', user.id);
       } catch (e) {
         // Ignore errors updating thread count
@@ -81,19 +85,26 @@ const CommunityNewThread = () => {
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#E86B9A]">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4" style={{ borderColor: THEME_COLOR }}>
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/community')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#E86B9A] 
-                       rounded-xl font-display font-bold text-[#E86B9A] hover:bg-[#E86B9A] 
-                       hover:text-white transition-all shadow-md"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 rounded-xl font-display font-bold transition-all shadow-md"
+            style={{ borderColor: THEME_COLOR, color: THEME_COLOR }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = THEME_COLOR;
+              e.currentTarget.style.color = 'white';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'white';
+              e.currentTarget.style.color = THEME_COLOR;
+            }}
           >
             <ArrowLeft size={16} />
             Back
           </button>
           <div className="flex-1">
-            <h1 className="text-xl font-display text-[#E86B9A] crayon-text">
+            <h1 className="text-xl font-display crayon-text" style={{ color: THEME_COLOR }}>
               New Discussion
             </h1>
           </div>
@@ -132,11 +143,11 @@ const CommunityNewThread = () => {
             onChange={(e) => setTitle(e.target.value)}
             placeholder="What would you like to discuss?"
             maxLength={150}
-            className="w-full p-4 border-3 border-gray-300 rounded-xl font-crayon text-lg
-                     focus:border-[#E86B9A] focus:outline-none"
+            className="w-full px-4 py-3 bg-white rounded-xl border-3 border-gray-200 
+                     font-crayon focus:outline-none focus:border-indigo-400"
           />
-          <p className="font-crayon text-xs text-gray-400 mt-1">
-            {title.length}/150 characters
+          <p className="mt-1 text-xs font-crayon text-gray-400 text-right">
+            {title.length}/150
           </p>
         </div>
 
@@ -148,39 +159,32 @@ const CommunityNewThread = () => {
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="Share your thoughts, question, or experience..."
-            rows={8}
+            placeholder="Share your thoughts, questions, or experiences..."
             maxLength={5000}
-            className="w-full p-4 border-3 border-gray-300 rounded-xl font-crayon
-                     focus:border-[#E86B9A] focus:outline-none resize-none"
+            rows={8}
+            className="w-full px-4 py-3 bg-white rounded-xl border-3 border-gray-200 
+                     font-crayon resize-none focus:outline-none focus:border-indigo-400"
           />
-          <div className="flex justify-between mt-1">
-            <p className="font-crayon text-xs text-gray-400 flex items-center gap-1">
-              <LinkIcon size={12} />
-              Links are allowed
-            </p>
-            <p className="font-crayon text-xs text-gray-400">
-              {content.length}/5000 characters
+          <p className="mt-1 text-xs font-crayon text-gray-400 text-right">
+            {content.length}/5000
+          </p>
+        </div>
+
+        {/* Link Tip */}
+        <div className="mb-6 p-3 bg-indigo-50 rounded-xl border-2 border-indigo-200">
+          <div className="flex items-start gap-2">
+            <LinkIcon size={16} className="text-indigo-500 flex-shrink-0 mt-0.5" />
+            <p className="font-crayon text-xs text-indigo-700">
+              You can include links in your message. Just paste the full URL (https://example.com).
             </p>
           </div>
         </div>
 
-        {/* Tips */}
-        <div className="mb-6 p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
-          <h3 className="font-display text-blue-700 mb-2 text-sm">💡 Tips for Great Discussions</h3>
-          <ul className="font-crayon text-xs text-blue-600 space-y-1">
-            <li>• Be specific in your title so others can find it</li>
-            <li>• Share enough context for others to understand</li>
-            <li>• Ask open-ended questions to encourage responses</li>
-            <li>• Be kind and supportive in your language</li>
-          </ul>
-        </div>
-
         {/* Error Message */}
         {error && (
-          <div className="mb-4 p-3 bg-red-50 rounded-xl border-2 border-red-200 flex items-start gap-2">
-            <AlertCircle size={18} className="text-red-500 flex-shrink-0 mt-0.5" />
-            <p className="font-crayon text-red-600 text-sm">{error}</p>
+          <div className="mb-4 p-3 bg-red-50 rounded-xl border-2 border-red-200 flex items-center gap-2">
+            <AlertCircle size={18} className="text-red-500 flex-shrink-0" />
+            <p className="font-crayon text-sm text-red-700">{error}</p>
           </div>
         )}
 
@@ -188,9 +192,10 @@ const CommunityNewThread = () => {
         <button
           onClick={handleSubmit}
           disabled={saving || !title.trim() || !content.trim()}
-          className="w-full py-4 bg-[#5CB85C] text-white rounded-xl border-3 border-green-600
-                   font-display text-lg hover:scale-[1.02] transition-transform
-                   flex items-center justify-center gap-2 disabled:opacity-50"
+          className="w-full py-4 text-white rounded-xl font-display text-lg
+                   flex items-center justify-center gap-2 shadow-md
+                   disabled:opacity-50 transition-colors"
+          style={{ backgroundColor: THEME_COLOR }}
         >
           {saving ? (
             <span className="animate-pulse">Posting...</span>

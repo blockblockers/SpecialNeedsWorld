@@ -2,6 +2,7 @@
 // UPDATED: Visual Schedule & Point to Talk featured at top
 // UPDATED: Other apps alphabetized
 // UPDATED: Upcoming activities widget from Visual Schedule
+// UPDATED: Animated background
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -17,6 +18,7 @@ import {
 import { useIsAppInstalled } from '../components/PWAInstallPrompt';
 import PushNotificationPrompt from '../components/PushNotificationPrompt';
 import { useAuth } from '../App';
+import AnimatedBackground from '../components/AnimatedBackground';
 
 // ============================================
 // FEATURED APPS (Visual Schedule & Point to Talk)
@@ -284,7 +286,10 @@ const AppHub = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFFEF5]">
+    <div className="min-h-screen bg-[#FFFEF5] relative">
+      {/* Animated Background */}
+      <AnimatedBackground intensity="normal" />
+
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#4A9FD4]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
@@ -298,7 +303,13 @@ const AppHub = () => {
               ATLASassist
             </h1>
             <p className="text-xs font-crayon text-gray-500">
-              {user?.email ? `Hi there! 👋` : 'Welcome!'}
+              {user?.user_metadata?.full_name 
+                ? `Hi ${user.user_metadata.full_name.split(' ')[0]}! 👋`
+                : user?.user_metadata?.name
+                  ? `Hi ${user.user_metadata.name.split(' ')[0]}! 👋`
+                  : user?.email 
+                    ? `Hi ${user.email.split('@')[0]}! 👋` 
+                    : 'Welcome!'}
             </p>
           </div>
           <Sparkles className="text-[#F8D14A] w-6 h-6 animate-pulse" />
@@ -325,7 +336,7 @@ const AppHub = () => {
       <PushNotificationPrompt />
 
       {/* Main Content */}
-      <main className="max-w-2xl mx-auto px-4 py-6">
+      <main className="max-w-2xl mx-auto px-4 py-6 relative z-10">
         
         {/* Upcoming Activities Widget */}
         <UpcomingActivities 
@@ -415,8 +426,11 @@ const AppHub = () => {
           ))}
         </div>
 
-        {/* App Version */}
-        <div className="mt-8 text-center">
+        {/* Dedication & Version */}
+        <div className="mt-8 text-center space-y-2">
+          <p className="text-sm font-crayon text-gray-500">
+            For Finn 💜 and for people like him.
+          </p>
           <p className="text-xs font-crayon text-gray-400">
             ATLASassist v2.1 {isInstalled ? '📱' : '🌐'}
           </p>

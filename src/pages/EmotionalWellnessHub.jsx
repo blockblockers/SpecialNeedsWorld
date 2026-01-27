@@ -1,8 +1,10 @@
 // EmotionalWellnessHub.jsx - Emotional Wellness hub for ATLASassist
 // UPDATED: Apps sorted alphabetically by name
+// UPDATED: Animated background
 
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Brain } from 'lucide-react';
+import AnimatedBackground from '../components/AnimatedBackground';
 
 // Wellness app definitions - SORTED ALPHABETICALLY
 const wellnessApps = [
@@ -99,7 +101,10 @@ const EmotionalWellnessHub = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFFEF5]">
+    <div className="min-h-screen bg-[#FFFEF5] relative">
+      {/* Animated Background */}
+      <AnimatedBackground intensity="light" />
+
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#8E6BBF]">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
@@ -120,7 +125,7 @@ const EmotionalWellnessHub = () => {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-6">
+      <main className="max-w-4xl mx-auto px-4 py-6 relative z-10">
         <p className="text-center text-gray-600 font-crayon mb-6">
           Tools to understand and manage your feelings
         </p>

@@ -8,6 +8,9 @@
 // 5. When AI faces run out during play → auto-generate more
 // 6. User can toggle between AI/Drawn faces (default: AI)
 // 7. "Upload Photos" is separate for personal photos only
+//
+// FIXED: "Change Settings" button renamed to "Game Options"
+// FIXED: Better navigation flow
 
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -23,7 +26,9 @@ import {
   Sparkles,
   ToggleLeft,
   ToggleRight,
-  Camera
+  Camera,
+  Settings,
+  Home
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../services/supabase';
 import { recordGameCompletion } from '../services/gameStatsService';
@@ -525,7 +530,7 @@ const EmotionMatch = () => {
               className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F5A623] rounded-xl font-display font-bold text-[#F5A623] hover:bg-[#F5A623] hover:text-white transition-all shadow-md"
             >
               <ArrowLeft size={16} />
-              Back
+              Games
             </button>
             <h1 className="text-lg font-display text-[#F5A623]">Emotion Match</h1>
           </div>
@@ -666,11 +671,11 @@ const EmotionMatch = () => {
         <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#5CB85C]">
           <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
             <button 
-              onClick={() => { setGameStarted(false); setGameComplete(false); }}
+              onClick={() => navigate('/games')}
               className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#5CB85C] rounded-xl font-display font-bold text-[#5CB85C] hover:bg-[#5CB85C] hover:text-white transition-all shadow-md"
             >
-              <ArrowLeft size={16} />
-              Menu
+              <Home size={16} />
+              Games
             </button>
             <h1 className="text-lg font-display text-[#F5A623]">Emotion Match</h1>
           </div>
@@ -711,9 +716,10 @@ const EmotionMatch = () => {
               </button>
               <button 
                 onClick={() => { setGameStarted(false); setGameComplete(false); }}
-                className="w-full py-3 border-3 border-gray-300 rounded-xl font-crayon text-gray-600 hover:border-gray-400 transition-colors"
+                className="w-full py-3 border-3 border-gray-300 rounded-xl font-crayon text-gray-600 hover:border-gray-400 transition-colors flex items-center justify-center gap-2"
               >
-                Change Settings
+                <Settings size={18} />
+                Game Options
               </button>
             </div>
           </div>

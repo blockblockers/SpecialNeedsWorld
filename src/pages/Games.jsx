@@ -1,8 +1,10 @@
 // Games.jsx - Games hub for ATLASassist
 // UPDATED: Apps sorted alphabetically by name
+// UPDATED: Animated background
 
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Sparkles } from 'lucide-react';
+import AnimatedBackground from '../components/AnimatedBackground';
 
 // Game definitions - SORTED ALPHABETICALLY
 const games = [
@@ -81,7 +83,10 @@ const Games = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFFEF5]">
+    <div className="min-h-screen bg-[#FFFEF5] relative">
+      {/* Animated Background */}
+      <AnimatedBackground intensity="light" />
+
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#5CB85C]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
@@ -105,7 +110,7 @@ const Games = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-2xl mx-auto px-4 py-6">
+      <main className="max-w-2xl mx-auto px-4 py-6 relative z-10">
         <p className="text-center text-gray-600 font-crayon mb-6">
           Fun games to play! Tap a game to start.
         </p>
