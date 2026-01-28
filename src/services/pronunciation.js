@@ -248,6 +248,26 @@ const saveCustomWords = (words) => {
   }
 };
 
+const CUSTOM_CATEGORIES_KEY = 'snw_custom_categories';
+
+const getCustomCategories = () => {
+  try {
+    const saved = localStorage.getItem(CUSTOM_CATEGORIES_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch (error) {
+    console.error('Error reading custom categories:', error);
+    return [];
+  }
+};
+
+const saveCustomCategories = (categories) => {
+  try {
+    localStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(categories));
+  } catch (error) {
+    console.error('Error saving custom categories:', error);
+  }
+};
+
 // ============================================
 // CATEGORY OPERATIONS
 // ============================================
@@ -256,18 +276,28 @@ const saveCustomWords = (words) => {
  * Get all categories including custom ones
  */
 export const getCategories = () => {
-  return [...DEFAULT_CATEGORIES];
+  const customCategories = getCustomCategories();
+  return [...DEFAULT_CATEGORIES, ...customCategories];
 };
 
 /**
  * Get words for a specific category
  */
 export const getCategoryWords = (categoryId) => {
-  const category = DEFAULT_CATEGORIES.find(c => c.id === categoryId);
-  if (!category) return [];
+  // Check default categories first
+  const defaultCategory = DEFAULT_CATEGORIES.find(c => c.id === categoryId);
+  if (defaultCategory) {
+    const customWords = getCustomWords().filter(w => w.categoryId === categoryId);
+    return [...defaultCategory.words, ...customWords];
+  }
   
-  const customWords = getCustomWords().filter(w => w.categoryId === categoryId);
-  return [...category.words, ...customWords];
+  // Check custom categories
+  const customCategory = getCustomCategories().find(c => c.id === categoryId);
+  if (customCategory) {
+    return customCategory.words || [];
+  }
+  
+  return [];
 };
 
 /**
@@ -367,6 +397,69 @@ export const getCategoryProgress = (categoryId) => {
 // ============================================
 // AI WORD GENERATION
 // ============================================
+
+/**
+ * Request a new category with AI-generated words
+ * FIXED: Proper session validation before Edge Function call
+ */
+export const requestNewCategory = async (categoryName, description = '') => {
+  // Validate session first
+  const { session, error: sessionError } = await getValidSession();
+  
+  if (sessionError || !session) {
+    return { 
+      data: null, 
+      error: sessionError || 'Please sign in to create custom categories. AI features require authentication.' 
+    };
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke('generate-pronunciation-words', {
+      body: {
+        category: categoryName,
+        description,
+        existingWords: [],
+        count: 10,
+        createNewCategory: true,
+      },
+    });
+
+    if (error) {
+      console.error('Edge function error:', error);
+      return { 
+        data: null, 
+        error: error.message || 'Failed to create category. Please try again.' 
+      };
+    }
+
+    // Create a new custom category object
+    if (data?.words) {
+      const newCategory = {
+        id: `custom_${Date.now()}`,
+        name: categoryName,
+        emoji: data.emoji || '📝',
+        color: data.color || '#6366F1',
+        words: data.words,
+        isCustom: true,
+        createdAt: new Date().toISOString(),
+      };
+      
+      // Save to local storage
+      const customCategories = getCustomCategories();
+      saveCustomCategories([...customCategories, newCategory]);
+      
+      return { data: newCategory, error: null };
+    }
+
+    return { data, error: null };
+  } catch (error) {
+    console.error('requestNewCategory error:', error);
+    return { 
+      data: null, 
+      error: error.message || 'Failed to create category. Please check your connection.' 
+    };
+  }
+};
 
 /**
  * Request more words for a category using AI
@@ -484,6 +577,7 @@ export default {
   recordAttempt,
   getWordProgress,
   getCategoryProgress,
+  requestNewCategory,
   requestMoreWords,
   incrementCategoryUseCount,
   getCategoryUseCount,
