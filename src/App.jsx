@@ -1,8 +1,6 @@
-// App.jsx - ATLASassist v2.3 - WITH ENHANCED SPEECH THERAPY APPS
-// UPGRADED: ArticulationStation now uses v2 (Little Bee Speech inspired - 7 practice levels, voice recording, data tracking)
-// UPGRADED: MinimalPairs now uses v2 (SCIP inspired - 4 phonological approaches, multiple game modes)
-// UPGRADED: ConversationCards now uses v2 (Tactus Therapy inspired - 11 topic categories, communication strategies)
-// ADDED: WordVault (Home Speech Home inspired - comprehensive word database with games)
+// App.jsx - ATLASassist v2.2 - WITH SPEECH THERAPY HUB
+// ADDED: Speech Therapy Hub and all speech therapy apps
+// ADDED: Therapy Materials Library
 // FIXED: All missing routes that were causing apps to redirect to hub
 // FIXED: Full auth implementation for EntryAuthScreen compatibility
 
@@ -116,11 +114,11 @@ const CommunityThread = lazy(() => import('./pages/CommunityThread'));
 // NEW: SPEECH THERAPY HUB - ALL APPS
 // ============================================
 const SpeechTherapyHub = lazy(() => import('./pages/SpeechTherapyHub'));
-const ArticulationStation = lazy(() => import('./pages/ArticulationStation-v2'));
+const ArticulationStation = lazy(() => import('./pages/ArticulationStation'));
 const SoundSorter = lazy(() => import('./pages/SoundSorter'));
-const MinimalPairs = lazy(() => import('./pages/MinimalPairs-v2'));
+const MinimalPairs = lazy(() => import('./pages/MinimalPairs'));
 const LanguageBuilder = lazy(() => import('./pages/LanguageBuilder'));
-const ConversationCards = lazy(() => import('./pages/ConversationCards-v2'));
+const ConversationCards = lazy(() => import('./pages/ConversationCards'));
 const ListeningGames = lazy(() => import('./pages/ListeningGames'));
 const StorySequencing = lazy(() => import('./pages/StorySequencing'));
 const RhythmSpeech = lazy(() => import('./pages/RhythmSpeech'));
@@ -527,7 +525,7 @@ function App() {
             <Route path="/activities/rewards" element={<ProtectedRoute><RewardChart /></ProtectedRoute>} />
 
             {/* ============================================ */}
-            {/* SPEECH THERAPY HUB - Enhanced Apps */}
+            {/* NEW: SPEECH THERAPY HUB */}
             {/* ============================================ */}
             <Route path="/speech-therapy" element={<ProtectedRoute><SpeechTherapyHub /></ProtectedRoute>} />
             <Route path="/speech-therapy/articulation" element={<ProtectedRoute><ArticulationStation /></ProtectedRoute>} />

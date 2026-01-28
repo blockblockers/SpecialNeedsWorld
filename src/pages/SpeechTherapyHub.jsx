@@ -1,98 +1,86 @@
 // SpeechTherapyHub.jsx - Speech Therapy apps hub
-// UPDATED: Added WordVault app (Home Speech Home inspired)
-// UPDATED: Uses enhanced v2 apps for articulation, minimal pairs, conversation
+// FIXED: Button styling now matches AppHub exactly
+// FIXED: All routes verified and working
 // Based on recommendations from SLP Now blog and premier SLP apps
 
 import { useNavigate } from 'react-router-dom';
 import { 
-  ArrowLeft, Mic, Volume2, BookOpen, MessageCircle,
-  Target, Puzzle, Brain, Ear, Music, Sparkles,
-  ExternalLink, Library
+  ArrowLeft, Mic, Sparkles, ExternalLink
 } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
-import { getPictogramUrl } from '../services/arasaac';
 
-// Speech therapy apps - ALPHABETICALLY ORDERED
+// Speech therapy apps - ALPHABETICALLY ORDERED with emoji icons to match AppHub
 const speechApps = [
   {
     id: 'articulation-station',
     name: 'Articulation Station',
-    description: '7-level practice with voice recording & data tracking',
-    icon: Target,
+    description: '7-level practice with voice recording',
+    emoji: '🎯',
     color: '#E63B2E',
-    arasaacId: 6009, // speak
     path: '/speech-therapy/articulation',
   },
   {
     id: 'conversation-cards',
     name: 'Conversation Therapy',
-    description: '11 topic categories with communication strategies',
-    icon: MessageCircle,
+    description: '11 topic categories for communication',
+    emoji: '💬',
     color: '#E86B9A',
-    arasaacId: 6044, // conversation
     path: '/speech-therapy/conversation',
   },
   {
     id: 'language-builder',
     name: 'Language Builder',
     description: 'Build sentences and vocabulary',
-    icon: BookOpen,
+    emoji: '📖',
     color: '#5CB85C',
-    arasaacId: 27342, // sentence
     path: '/speech-therapy/language-builder',
   },
   {
     id: 'listening-games',
     name: 'Listening Games',
     description: 'Auditory processing activities',
-    icon: Ear,
+    emoji: '👂',
     color: '#0891B2',
-    arasaacId: 6024, // hear
     path: '/speech-therapy/listening',
   },
   {
     id: 'rhythm-speech',
     name: 'Rhythm & Speech',
     description: 'Use music for fluency practice',
-    icon: Music,
+    emoji: '🎵',
     color: '#EC4899',
-    arasaacId: 2593, // music
     path: '/speech-therapy/rhythm',
   },
   {
     id: 'minimal-pairs',
     name: 'Sound Contrasts',
-    description: '4 phonological approaches with multiple game modes',
-    icon: Ear,
+    description: '4 phonological approaches',
+    emoji: '🔊',
     color: '#F5A623',
-    arasaacId: 2401, // ear/listen
     path: '/speech-therapy/minimal-pairs',
   },
   {
     id: 'sound-sorter',
     name: 'Sound Sorter',
     description: 'Sort words by beginning sounds',
-    icon: Puzzle,
+    emoji: '🧩',
     color: '#8E6BBF',
-    arasaacId: 7447, // sort/categorize
     path: '/speech-therapy/sound-sorter',
   },
   {
     id: 'story-sequencing',
     name: 'Story Sequencing',
     description: 'Order events and retell stories',
-    icon: Brain,
+    emoji: '📚',
     color: '#6366F1',
-    arasaacId: 7098, // story
     path: '/speech-therapy/sequencing',
   },
   {
     id: 'word-vault',
     name: 'Word Vault',
-    description: 'Comprehensive word database with games & homework lists',
-    icon: Library,
+    description: 'Word database with games & homework',
+    emoji: '📦',
     color: '#10B981',
-    arasaacId: 27342, // words/vocabulary
     path: '/speech-therapy/word-vault',
   },
 ];
@@ -130,7 +118,7 @@ const SpeechTherapyHub = () => {
 
   return (
     <div className="min-h-screen bg-[#FFFEF5] relative overflow-hidden">
-      <AnimatedBackground variant="speech" />
+      <AnimatedBackground intensity="normal" />
       
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#10B981]">
@@ -163,58 +151,49 @@ const SpeechTherapyHub = () => {
           </div>
           <p className="text-white/90 font-crayon text-sm">
             Interactive apps designed to support articulation, language development, 
-            and communication skills with evidence-based approaches inspired by 
-            premier SLP apps like Articulation Station, SCIP, and Word Vault.
+            and communication skills with evidence-based approaches.
           </p>
         </div>
 
-        {/* Apps Grid - Consistent AppHub-style */}
-        <h3 className="font-display text-gray-700 mb-3">Practice Apps</h3>
+        {/* Apps Grid - MATCHING APPHUB STYLE EXACTLY */}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="h-1 flex-1 bg-gradient-to-r from-transparent to-gray-200 rounded"></div>
+          <span className="font-crayon text-gray-400 text-sm">Practice Apps</span>
+          <div className="h-1 flex-1 bg-gradient-to-l from-transparent to-gray-200 rounded"></div>
+        </div>
+
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
-          {speechApps.map((app) => {
-            const Icon = app.icon;
-            return (
-              <button
-                key={app.id}
-                onClick={() => navigate(app.path)}
-                className="bg-white rounded-2xl border-4 p-4 shadow-lg hover:scale-105 
-                           transition-all duration-200 text-left group"
-                style={{ borderColor: app.color }}
+          {speechApps.map((app, index) => (
+            <button
+              key={app.id}
+              onClick={() => navigate(app.path)}
+              className="relative p-4 rounded-2xl border-4 text-center transition-all duration-200 
+                       shadow-crayon hover:scale-105 hover:-rotate-1 active:scale-95"
+              style={{
+                backgroundColor: app.color + '20',
+                borderColor: app.color,
+                borderRadius: index % 2 === 0 ? '20px 8px 20px 8px' : '8px 20px 8px 20px',
+              }}
+            >
+              {/* Icon container - matches AppHub exactly */}
+              <div 
+                className="w-14 h-14 rounded-2xl bg-white/80 flex items-center justify-center mb-2 mx-auto"
+                style={{ border: `2px solid ${app.color}` }}
               >
-                
-                <div 
-                  className="w-12 h-12 rounded-xl flex items-center justify-center mb-3 
-                             group-hover:scale-110 transition-transform"
-                  style={{ backgroundColor: `${app.color}20` }}
-                >
-                  {app.arasaacId ? (
-                    <img 
-                      src={getPictogramUrl(app.arasaacId)}
-                      alt={app.name}
-                      className="w-8 h-8 object-contain"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.nextSibling && (e.target.nextSibling.style.display = 'block');
-                      }}
-                    />
-                  ) : null}
-                  <Icon 
-                    size={24} 
-                    style={{ color: app.color, display: app.arasaacId ? 'none' : 'block' }} 
-                  />
-                </div>
-                <h3 
-                  className="font-display text-sm mb-1"
-                  style={{ color: app.color }}
-                >
-                  {app.name}
-                </h3>
-                <p className="text-xs text-gray-500 font-crayon line-clamp-2">
-                  {app.description}
-                </p>
-              </button>
-            );
-          })}
+                <span className="text-3xl">{app.emoji}</span>
+              </div>
+              
+              {/* Name */}
+              <h3 className="font-display text-gray-800 text-sm leading-tight">
+                {app.name}
+              </h3>
+              
+              {/* Description */}
+              <p className="font-crayon text-xs text-gray-500 mt-1">
+                {app.description}
+              </p>
+            </button>
+          ))}
         </div>
 
         {/* External App Recommendations */}
@@ -252,13 +231,13 @@ const SpeechTherapyHub = () => {
 
         {/* Tips Section */}
         <div className="mt-6 bg-green-50 rounded-2xl border-2 border-green-200 p-4">
-          <h3 className="font-display text-green-700 mb-2">💡 Speech Therapy Tips</h3>
+          <h3 className="font-display text-green-700 mb-2">Speech Therapy Tips</h3>
           <ul className="text-sm text-green-700 font-crayon space-y-1">
             <li>• Practice sounds in short, frequent sessions (5-10 minutes)</li>
             <li>• Use a mirror to help see mouth movements</li>
             <li>• Celebrate effort, not just accuracy</li>
             <li>• Make it fun with games and rewards</li>
-            <li>• Use the Word Vault to create homework lists</li>
+            <li>• Use Word Vault to create homework lists</li>
           </ul>
         </div>
       </main>
