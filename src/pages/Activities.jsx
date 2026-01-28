@@ -1,147 +1,154 @@
-// Activities.jsx - Activities & Learning hub for ATLASassist
-// FIXED: Button styling matches main hub (transparent bg + colored border)
-// FIXED: Animated background added
+// Activities.jsx - Activities hub for ATLASassist
+// FIXED: Consistent AppHub-style buttons
+// FIXED: Choice Board uses darker color (#D97706)
+// FIXED: Say It Right description updated to "Practice articulating words"
 
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Palette } from 'lucide-react';
+import { ArrowLeft, Sparkles } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
+import { getPictogramUrl } from '../services/arasaac';
 
-// Theme color for this hub
-const THEME_COLOR = '#4A9FD4';
-
-// Activity definitions - Alphabetized
-const activities = [
+// Activity apps with consistent styling
+const activityApps = [
+  {
+    id: 'sensory-breaks',
+    name: 'Sensory Breaks',
+    description: 'Calming activities with timers',
+    color: '#8E6BBF',
+    arasaacId: 7098, // meditation/calm
+    path: '/activities/sensory-breaks',
+  },
   {
     id: 'choice-board',
     name: 'Choice Board',
-    description: 'Make choices visually!',
-    color: '#8E6BBF',
-    emoji: '🎯',
+    description: 'Make choices with pictures',
+    color: '#D97706', // FIXED: Darker amber color
+    arasaacId: 27561, // choose
     path: '/activities/choice-board',
+  },
+  {
+    id: 'social-stories',
+    name: 'Social Stories',
+    description: 'Visual stories for situations',
+    color: '#5CB85C',
+    arasaacId: 7098, // book/story
+    path: '/activities/social-stories',
+  },
+  {
+    id: 'pronunciation',
+    name: 'Say It Right',
+    description: 'Practice articulating words', // FIXED: Updated description
+    color: '#4A9FD4',
+    arasaacId: 6009, // speak
+    path: '/activities/pronunciation',
   },
   {
     id: 'coloring',
     name: 'Coloring Book',
-    description: 'Color fun pictures!',
-    color: '#E86B9A',
-    emoji: '🖍️',
+    description: 'Fun coloring pages',
+    color: '#E63B2E',
+    arasaacId: 5501, // color/paint
     path: '/activities/coloring',
   },
   {
     id: 'music',
     name: 'Music & Sounds',
-    description: 'Play instruments!',
-    color: '#F5A623',
-    emoji: '🎵',
+    description: 'Calming music and sounds',
+    color: '#87CEEB',
+    arasaacId: 2593, // music
     path: '/activities/music',
+  },
+  {
+    id: 'emotion-match',
+    name: 'Emotion Match',
+    description: 'Match faces to feelings',
+    color: '#E86B9A',
+    arasaacId: 26684, // happy face
+    path: '/activities/emotion-match',
   },
   {
     id: 'photo-journal',
     name: 'Photo Journal',
-    description: 'Capture memories!',
+    description: 'Capture special moments',
     color: '#20B2AA',
-    emoji: '📸',
+    arasaacId: 36314, // camera
     path: '/activities/photo-journal',
-  },
-  {
-    id: 'pronunciation',
-    name: 'Pronunciation Practice',
-    description: 'Learn to say words!',
-    color: '#5CB85C',
-    emoji: '🗣️',
-    path: '/activities/pronunciation',
   },
   {
     id: 'rewards',
     name: 'Reward Chart',
-    description: 'Earn stars & rewards!',
-    color: '#F8D14A',
-    emoji: '⭐',
+    description: 'Earn stars for achievements',
+    color: '#DAA520',
+    arasaacId: 5465, // trophy
     path: '/activities/rewards',
   },
-  {
-    id: 'sensory-breaks',
-    name: 'Sensory Breaks',
-    description: 'Movement activities!',
-    color: '#8E6BBF',
-    emoji: '✨',
-    path: '/activities/sensory-breaks',
-  },
-  {
-    id: 'social-stories',
-    name: 'Social Stories',
-    description: 'Stories to help learn!',
-    color: '#E63B2E',
-    emoji: '📚',
-    path: '/activities/social-stories',
-  },
-].sort((a, b) => a.name.localeCompare(b.name));
+];
 
 const Activities = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-[#FFFEF5] relative">
-      {/* Animated Background */}
-      <AnimatedBackground intensity="light" />
-
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4" style={{ borderColor: THEME_COLOR }}>
+    <div className="min-h-screen bg-[#FFFEF5] relative overflow-hidden">
+      <AnimatedBackground variant="activities" />
+      
+      {/* Header - Consistent with other hubs */}
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#F5A623]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
-            onClick={() => navigate('/hub')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 rounded-xl font-display font-bold transition-all shadow-md hover:scale-105"
-            style={{ borderColor: THEME_COLOR, color: THEME_COLOR }}
+            onClick={() => navigate('/app')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#F5A623] 
+                       rounded-xl font-display font-bold text-[#F5A623] hover:bg-[#F5A623] 
+                       hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
-            Back
+            Home
           </button>
-          <img src="/logo.jpeg" alt="ATLASassist" className="w-10 h-10 rounded-lg shadow-sm" />
           <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-display crayon-text flex items-center gap-2" style={{ color: THEME_COLOR }}>
-              <Palette size={24} />
-              Activities & Learning
+            <h1 className="text-xl font-display text-[#F5A623] flex items-center gap-2">
+              <Sparkles size={24} />
+              Activities
             </h1>
+            <p className="text-sm text-gray-500 font-crayon">Games & learning fun</p>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-2xl mx-auto px-4 py-6 relative z-10">
-        <p className="text-center text-gray-600 font-crayon mb-6">
-          Create, learn & explore! Tap to start. 🎨
-        </p>
-
-        {/* Activities Grid - Matching main hub styling */}
+      <main className="relative z-10 max-w-2xl mx-auto px-4 py-6">
+        {/* Apps Grid - FIXED: Consistent AppHub-style buttons */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {activities.map((activity, index) => (
+          {activityApps.map((app) => (
             <button
-              key={activity.id}
-              onClick={() => navigate(activity.path)}
-              className="relative p-4 rounded-2xl border-4 text-center transition-all duration-200 
-                       shadow-crayon hover:scale-105 hover:-rotate-1 active:scale-95"
-              style={{
-                backgroundColor: activity.color + '20',
-                borderColor: activity.color,
-                borderRadius: index % 2 === 0 ? '20px 8px 20px 8px' : '8px 20px 8px 20px',
-              }}
+              key={app.id}
+              onClick={() => navigate(app.path)}
+              className="bg-white rounded-2xl border-4 p-4 shadow-lg hover:scale-105 
+                         transition-all duration-200 text-left group"
+              style={{ borderColor: app.color }}
             >
-              {/* Icon container with white background */}
+              {/* Icon container */}
               <div 
-                className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center mb-2 mx-auto"
-                style={{ border: `2px solid ${activity.color}` }}
+                className="w-14 h-14 rounded-xl flex items-center justify-center mb-3 
+                           group-hover:scale-110 transition-transform mx-auto"
+                style={{ backgroundColor: `${app.color}20` }}
               >
-                <span className="text-3xl">{activity.emoji}</span>
+                <img 
+                  src={getPictogramUrl(app.arasaacId)}
+                  alt={app.name}
+                  className="w-10 h-10 object-contain"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                  }}
+                />
               </div>
               
-              {/* Name */}
-              <h3 className="font-display text-gray-800 text-sm leading-tight">
-                {activity.name}
+              {/* Text */}
+              <h3 
+                className="font-display text-base mb-1 text-center"
+                style={{ color: app.color }}
+              >
+                {app.name}
               </h3>
-              
-              {/* Description */}
-              <p className="font-crayon text-xs text-gray-500 mt-1">
-                {activity.description}
+              <p className="text-xs text-gray-500 font-crayon text-center line-clamp-2">
+                {app.description}
               </p>
             </button>
           ))}

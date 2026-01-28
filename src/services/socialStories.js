@@ -1,480 +1,339 @@
-// socialStories.js - Social Stories service with FIXED auth for Edge Functions
-// FIXED: Explicit session check and token refresh before Edge Function calls
+// socialStories.js - Social Stories service with AI generation
+// FIXED: Proper session validation and token refresh before Edge Function calls
 
 import { supabase, isSupabaseConfigured } from './supabase';
 
-// ============================================
-// CONSTANTS
-// ============================================
-export const STORY_PAGES = 6;
-export const GENERATE_IMAGES = true;
-
-export const GENERATION_STATUS = {
-  IDLE: 'idle',
-  GENERATING_TEXT: 'generating_text',
-  GENERATING_IMAGES: 'generating_images',
-  SAVING: 'saving',
-  COMPLETE: 'complete',
-  ERROR: 'error',
-};
+const STORAGE_KEY = 'snw_social_stories';
 
 // ============================================
-// HELPER: Get valid session for Edge Function calls
+// SESSION VALIDATION HELPER
 // ============================================
+
+/**
+ * Get a valid session, refreshing if needed
+ * This fixes 401 errors by ensuring the token is fresh
+ */
 const getValidSession = async () => {
   if (!isSupabaseConfigured()) {
-    return null;
+    return { session: null, error: 'Supabase not configured' };
   }
 
   try {
-    // First try to get existing session
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
-    if (error) {
-      console.error('Error getting session:', error);
-      return null;
+    if (sessionError) {
+      console.error('Session error:', sessionError);
+      return { session: null, error: sessionError.message };
     }
 
     if (!session) {
-      console.warn('No active session found - user may be logged out or in guest mode');
-      return null;
+      return { session: null, error: 'No active session. Please sign in.' };
     }
 
-    // Check if token is close to expiring (within 60 seconds)
+    // Check if token is about to expire (within 60 seconds)
     const expiresAt = session.expires_at;
     const now = Math.floor(Date.now() / 1000);
-    
-    if (expiresAt && (expiresAt - now) < 60) {
-      console.log('Session token expiring soon, refreshing...');
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+    const timeUntilExpiry = expiresAt - now;
+
+    if (timeUntilExpiry < 60) {
+      console.log('Token expiring soon, refreshing...');
+      const { data: { session: newSession }, error: refreshError } = await supabase.auth.refreshSession();
       
       if (refreshError) {
-        console.error('Error refreshing session:', refreshError);
-        return session; // Return old session anyway, might still work
+        console.error('Token refresh error:', refreshError);
+        return { session: null, error: 'Session expired. Please sign in again.' };
       }
       
-      return refreshData.session;
+      return { session: newSession, error: null };
     }
 
-    return session;
+    return { session, error: null };
   } catch (error) {
-    console.error('Error in getValidSession:', error);
-    return null;
+    console.error('getValidSession error:', error);
+    return { session: null, error: error.message };
   }
 };
 
 // ============================================
 // LOCAL STORAGE HELPERS
 // ============================================
-const LOCAL_STORIES_KEY = 'snw_local_stories';
-const LOCAL_FAVORITES_KEY = 'snw_story_favorites';
 
 const getLocalStories = () => {
   try {
-    return JSON.parse(localStorage.getItem(LOCAL_STORIES_KEY) || '{}');
-  } catch {
-    return {};
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch (error) {
+    console.error('Error reading local stories:', error);
+    return [];
   }
 };
 
-const saveLocalStory = (story) => {
-  const stories = getLocalStories();
-  stories[story.id] = story;
-  localStorage.setItem(LOCAL_STORIES_KEY, JSON.stringify(stories));
+const saveLocalStories = (stories) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stories));
+  } catch (error) {
+    console.error('Error saving local stories:', error);
+  }
 };
 
 // ============================================
-// FIND EXISTING STORY
+// DATABASE OPERATIONS
 // ============================================
-export const findExistingStory = async (topic) => {
-  const normalizedTopic = topic.toLowerCase().trim();
-  
-  // Check database first
-  if (isSupabaseConfigured()) {
-    try {
-      const { data, error } = await supabase
-        .from('social_stories')
-        .select('*')
-        .eq('topic_normalized', normalizedTopic)
-        .eq('is_public', true)
-        .limit(1)
-        .single();
-      
-      if (!error && data) {
-        return data;
-      }
-    } catch (error) {
-      console.error('Error searching stories:', error);
+
+export const fetchStories = async () => {
+  if (!isSupabaseConfigured()) {
+    return { data: getLocalStories(), error: null };
+  }
+
+  try {
+    const { session, error: sessionError } = await getValidSession();
+    
+    if (sessionError || !session) {
+      return { data: getLocalStories(), error: null };
     }
-  }
-  
-  // Check local storage
-  const localStories = getLocalStories();
-  for (const story of Object.values(localStories)) {
-    if (story.topic_normalized === normalizedTopic) {
-      return story;
+
+    const { data, error } = await supabase
+      .from('social_stories')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching stories:', error);
+      return { data: getLocalStories(), error: error.message };
     }
+
+    return { data: data || [], error: null };
+  } catch (error) {
+    console.error('fetchStories error:', error);
+    return { data: getLocalStories(), error: error.message };
   }
-  
-  return null;
+};
+
+export const createStory = async (story) => {
+  if (!isSupabaseConfigured()) {
+    const stories = getLocalStories();
+    const newStory = {
+      id: `local_${Date.now()}`,
+      ...story,
+      created_at: new Date().toISOString(),
+    };
+    saveLocalStories([newStory, ...stories]);
+    return { data: newStory, error: null };
+  }
+
+  try {
+    const { session, error: sessionError } = await getValidSession();
+    
+    if (sessionError || !session) {
+      const stories = getLocalStories();
+      const newStory = {
+        id: `local_${Date.now()}`,
+        ...story,
+        created_at: new Date().toISOString(),
+      };
+      saveLocalStories([newStory, ...stories]);
+      return { data: newStory, error: null };
+    }
+
+    const { data, error } = await supabase
+      .from('social_stories')
+      .insert({ ...story, user_id: session.user.id })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating story:', error);
+      return { data: null, error: error.message };
+    }
+
+    return { data, error: null };
+  } catch (error) {
+    console.error('createStory error:', error);
+    return { data: null, error: error.message };
+  }
+};
+
+export const updateStory = async (id, updates) => {
+  if (!isSupabaseConfigured() || id.startsWith('local_')) {
+    const stories = getLocalStories();
+    const index = stories.findIndex(s => s.id === id);
+    if (index !== -1) {
+      stories[index] = { ...stories[index], ...updates };
+      saveLocalStories(stories);
+      return { data: stories[index], error: null };
+    }
+    return { data: null, error: 'Story not found' };
+  }
+
+  try {
+    const { session, error: sessionError } = await getValidSession();
+    
+    if (sessionError || !session) {
+      return { data: null, error: 'Please sign in to update stories' };
+    }
+
+    const { data, error } = await supabase
+      .from('social_stories')
+      .update(updates)
+      .eq('id', id)
+      .eq('user_id', session.user.id)
+      .select()
+      .single();
+
+    if (error) {
+      return { data: null, error: error.message };
+    }
+
+    return { data, error: null };
+  } catch (error) {
+    return { data: null, error: error.message };
+  }
+};
+
+export const deleteStory = async (id) => {
+  if (!isSupabaseConfigured() || id.startsWith('local_')) {
+    const stories = getLocalStories();
+    saveLocalStories(stories.filter(s => s.id !== id));
+    return { error: null };
+  }
+
+  try {
+    const { session, error: sessionError } = await getValidSession();
+    
+    if (sessionError || !session) {
+      return { error: 'Please sign in to delete stories' };
+    }
+
+    const { error } = await supabase
+      .from('social_stories')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', session.user.id);
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    return { error: null };
+  } catch (error) {
+    return { error: error.message };
+  }
 };
 
 // ============================================
-// GENERATE NEW STORY - FIXED WITH AUTH CHECK
+// AI GENERATION - WITH SESSION VALIDATION
 // ============================================
-export const generateStory = async (topic, options = {}) => {
-  const {
-    onStatusChange = () => {},
-    generateImages = GENERATE_IMAGES,
-    userId = null,
-  } = options;
+
+export const generateStoryImages = async (storyData) => {
+  const { session, error: sessionError } = await getValidSession();
   
-  onStatusChange(GENERATION_STATUS.GENERATING_TEXT, 'Checking for existing stories...');
-  
-  // First check if a similar story exists
-  const existing = await findExistingStory(topic);
-  if (existing) {
-    onStatusChange(GENERATION_STATUS.COMPLETE, 'Found existing story!');
-    return {
-      story: existing,
-      fromCache: true,
+  if (sessionError || !session) {
+    return { 
+      data: null, 
+      error: sessionError || 'Please sign in to generate images. AI features require authentication.' 
     };
   }
-  
-  // Generate new story
-  if (isSupabaseConfigured()) {
-    // FIXED: Ensure we have a valid session before calling Edge Function
-    const session = await getValidSession();
-    
-    if (!session) {
-      onStatusChange(GENERATION_STATUS.ERROR, 'Please sign in to create stories');
-      throw new Error('Authentication required. Please sign in to create AI-generated stories.');
+
+  try {
+    const { data, error } = await supabase.functions.invoke('generate-social-story-images', {
+      body: {
+        title: storyData.title,
+        steps: storyData.steps,
+        style: storyData.style || 'cartoon',
+      },
+    });
+
+    if (error) {
+      console.error('Edge function error:', error);
+      return { data: null, error: error.message || 'Failed to generate images.' };
     }
 
-    try {
-      onStatusChange(GENERATION_STATUS.GENERATING_TEXT, 'Writing your story...');
-      
-      // Call Edge Function to generate story with images
-      // The supabase client will automatically include the Authorization header
-      const { data, error } = await supabase.functions.invoke('generate-social-story', {
-        body: {
-          topic,
-          pageCount: STORY_PAGES,
-          generateImages,
-        },
-      });
-      
-      if (error) {
-        console.error('Edge Function error:', error);
-        
-        // Check for specific auth errors
-        if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
-          throw new Error('Session expired. Please refresh the page and try again.');
-        }
-        
-        throw error;
-      }
-      
-      // Check for insufficient credits warning
-      if (data.insufficientCredits) {
-        console.warn('Insufficient credits for image generation');
-      }
-      
-      if (generateImages && data.imagesGenerated > 0) {
-        onStatusChange(GENERATION_STATUS.GENERATING_IMAGES, `Generated ${data.imagesGenerated} illustrations!`);
-      }
-      
-      onStatusChange(GENERATION_STATUS.SAVING, 'Saving to library...');
-      
-      // Determine emoji based on category
-      const categoryEmojis = {
-        daily: '🌅',
-        social: '👋',
-        emotions: '💜',
-        safety: '🛡️',
-        school: '🎒',
-        health: '🏥',
-        general: '📖',
-      };
-      const category = data.category || 'general';
-      const emoji = categoryEmojis[category] || '📖';
-      
-      // Save to database so other users can find it
-      const { data: savedStory, error: saveError } = await supabase
-        .from('social_stories')
-        .insert({
-          topic,
-          topic_normalized: topic.toLowerCase().trim(),
-          pages: data.pages,
-          created_by: userId || session.user.id,
-          is_public: true,
-          has_images: data.imagesGenerated > 0,
-          category: category,
-          emoji: emoji,
-        })
-        .select()
-        .single();
-      
-      if (saveError) {
-        console.error('Error saving story:', saveError);
-        // Return the generated story even if save fails
-        onStatusChange(GENERATION_STATUS.COMPLETE, 'Story created!');
-        
-        const tempStory = {
-          id: `temp_${Date.now()}`,
-          topic,
-          topic_normalized: topic.toLowerCase().trim(),
-          pages: data.pages,
-          is_public: false,
-          has_images: data.imagesGenerated > 0,
-          category: category,
-          emoji: emoji,
-          created_at: new Date().toISOString(),
-        };
-        
-        // Save locally as fallback
-        saveLocalStory(tempStory);
-        
-        return {
-          story: tempStory,
-          fromCache: false,
-          savedToCloud: false,
-          insufficientCredits: data.insufficientCredits,
-          creditMessage: data.message,
-        };
-      }
-      
-      onStatusChange(GENERATION_STATUS.COMPLETE, data.insufficientCredits 
-        ? 'Story created (some images missing - credits exhausted)' 
-        : 'Story added to library!');
-      
-      return {
-        story: savedStory,
-        fromCache: false,
-        savedToCloud: true,
-        insufficientCredits: data.insufficientCredits,
-        creditMessage: data.message,
-      };
-      
-    } catch (error) {
-      console.error('Error generating story:', error);
-      onStatusChange(GENERATION_STATUS.ERROR, error.message || 'Failed to create story');
-      throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('generateStoryImages error:', error);
+    return { data: null, error: error.message };
+  }
+};
+
+export const generateCompleteStory = async (prompt, options = {}) => {
+  const { session, error: sessionError } = await getValidSession();
+  
+  if (sessionError || !session) {
+    return { 
+      data: null, 
+      error: sessionError || 'Please sign in to generate stories. AI features require authentication.' 
+    };
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke('generate-social-story', {
+      body: {
+        prompt,
+        childName: options.childName || 'the child',
+        style: options.style || 'supportive',
+        includeImages: options.includeImages !== false,
+      },
+    });
+
+    if (error) {
+      return { data: null, error: error.message || 'Failed to generate story.' };
     }
-  }
-  
-  // Fallback: Generate simple local story without AI
-  onStatusChange(GENERATION_STATUS.GENERATING_TEXT, 'Creating story locally...');
-  
-  const localStory = generateLocalStory(topic);
-  saveLocalStory(localStory);
-  
-  onStatusChange(GENERATION_STATUS.COMPLETE, 'Story created locally!');
-  
-  return {
-    story: localStory,
-    fromCache: false,
-    savedToCloud: false,
-    isLocal: true,
-  };
-};
 
-// ============================================
-// LOCAL STORY GENERATION (Offline fallback)
-// ============================================
-const generateLocalStory = (topic) => {
-  const pages = [
-    { pageNumber: 1, text: `Sometimes I need to learn about ${topic}.`, imageDescription: 'Child looking curious' },
-    { pageNumber: 2, text: `${topic} is something that happens in my life.`, imageDescription: 'Scene related to topic' },
-    { pageNumber: 3, text: 'I can take my time to understand new things.', imageDescription: 'Child thinking' },
-    { pageNumber: 4, text: 'It\'s okay to feel different emotions about this.', imageDescription: 'Child with various emotions' },
-    { pageNumber: 5, text: 'I can ask for help if I need it.', imageDescription: 'Child asking adult for help' },
-    { pageNumber: 6, text: 'I am doing a great job learning!', imageDescription: 'Happy child with thumbs up' },
-  ];
-  
-  return {
-    id: `local_${Date.now()}`,
-    topic,
-    topic_normalized: topic.toLowerCase().trim(),
-    pages,
-    is_public: false,
-    has_images: false,
-    category: 'general',
-    emoji: '📖',
-    created_at: new Date().toISOString(),
-  };
-};
-
-// ============================================
-// GET POPULAR STORIES
-// ============================================
-export const getPopularStories = async (limit = 10) => {
-  if (!isSupabaseConfigured()) {
-    return Object.values(getLocalStories()).slice(0, limit);
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from('social_stories')
-      .select('*')
-      .eq('is_public', true)
-      .order('use_count', { ascending: false })
-      .limit(limit);
-    
-    if (error) throw error;
-    return data || [];
+    return { data, error: null };
   } catch (error) {
-    console.error('Error fetching popular stories:', error);
-    return [];
+    return { data: null, error: error.message };
   }
 };
 
 // ============================================
-// SEARCH STORIES
+// TEMPLATE STORIES
 // ============================================
-export const searchStories = async (query, limit = 10) => {
-  if (!isSupabaseConfigured()) {
-    const local = Object.values(getLocalStories());
-    return local.filter(s => 
-      s.topic.toLowerCase().includes(query.toLowerCase())
-    ).slice(0, limit);
-  }
 
-  try {
-    const { data, error } = await supabase
-      .from('social_stories')
-      .select('*')
-      .eq('is_public', true)
-      .ilike('topic', `%${query}%`)
-      .order('use_count', { ascending: false })
-      .limit(limit);
-    
-    if (error) throw error;
-    return data || [];
-  } catch (error) {
-    console.error('Error searching stories:', error);
-    return [];
-  }
-};
-
-// ============================================
-// INCREMENT USE COUNT
-// ============================================
-export const incrementUseCount = async (storyId) => {
-  if (!isSupabaseConfigured() || storyId.startsWith('local_') || storyId.startsWith('temp_')) {
-    return;
-  }
-
-  try {
-    await supabase.rpc('increment_story_use_count', { story_id: storyId });
-  } catch (error) {
-    console.error('Error incrementing use count:', error);
-  }
-};
-
-// ============================================
-// SAVE/UNSAVE STORY (Favorites)
-// ============================================
-export const saveStoryToFavorites = async (storyId, userId) => {
-  if (!isSupabaseConfigured()) {
-    const favorites = JSON.parse(localStorage.getItem(LOCAL_FAVORITES_KEY) || '[]');
-    if (!favorites.includes(storyId)) {
-      favorites.push(storyId);
-      localStorage.setItem(LOCAL_FAVORITES_KEY, JSON.stringify(favorites));
-    }
-    return true;
-  }
-
-  try {
-    const { error } = await supabase
-      .from('user_saved_stories')
-      .insert({ user_id: userId, story_id: storyId });
-    
-    if (error && error.code !== '23505') throw error; // Ignore duplicate
-    return true;
-  } catch (error) {
-    console.error('Error saving to favorites:', error);
-    return false;
-  }
-};
-
-export const removeStoryFromFavorites = async (storyId, userId) => {
-  if (!isSupabaseConfigured()) {
-    const favorites = JSON.parse(localStorage.getItem(LOCAL_FAVORITES_KEY) || '[]');
-    const updated = favorites.filter(id => id !== storyId);
-    localStorage.setItem(LOCAL_FAVORITES_KEY, JSON.stringify(updated));
-    return true;
-  }
-
-  try {
-    const { error } = await supabase
-      .from('user_saved_stories')
-      .delete()
-      .eq('user_id', userId)
-      .eq('story_id', storyId);
-    
-    if (error) throw error;
-    return true;
-  } catch (error) {
-    console.error('Error removing from favorites:', error);
-    return false;
-  }
-};
-
-export const isStoryFavorited = async (storyId, userId) => {
-  if (!isSupabaseConfigured()) {
-    const favorites = JSON.parse(localStorage.getItem(LOCAL_FAVORITES_KEY) || '[]');
-    return favorites.includes(storyId);
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from('user_saved_stories')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('story_id', storyId)
-      .single();
-    
-    return !error && !!data;
-  } catch {
-    return false;
-  }
-};
-
-export const getUserFavorites = async (userId) => {
-  if (!isSupabaseConfigured()) {
-    const favoriteIds = JSON.parse(localStorage.getItem(LOCAL_FAVORITES_KEY) || '[]');
-    const localStories = getLocalStories();
-    return favoriteIds
-      .map(id => localStories[id])
-      .filter(Boolean);
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from('user_saved_stories')
-      .select('story_id, social_stories(*)')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data?.map(d => d.social_stories).filter(Boolean) || [];
-  } catch (error) {
-    console.error('Error fetching favorites:', error);
-    return [];
-  }
-};
+export const STORY_TEMPLATES = [
+  {
+    id: 'going-to-doctor',
+    title: 'Going to the Doctor',
+    category: 'health',
+    steps: [
+      { text: 'Sometimes I need to visit the doctor to stay healthy.', image: null },
+      { text: 'The waiting room might have toys or books.', image: null },
+      { text: 'A nurse might check my height and weight.', image: null },
+      { text: 'The doctor will look at my ears, eyes, and throat.', image: null },
+      { text: 'I might get a sticker when I\'m done!', image: null },
+    ],
+  },
+  {
+    id: 'first-day-school',
+    title: 'First Day of School',
+    category: 'school',
+    steps: [
+      { text: 'Today is my first day at a new school.', image: null },
+      { text: 'I will meet my new teacher.', image: null },
+      { text: 'I will see my new classroom.', image: null },
+      { text: 'I might make new friends.', image: null },
+      { text: 'I can do this!', image: null },
+    ],
+  },
+  {
+    id: 'waiting-my-turn',
+    title: 'Waiting My Turn',
+    category: 'social',
+    steps: [
+      { text: 'Sometimes I have to wait for my turn.', image: null },
+      { text: 'Waiting can be hard, but I can do it.', image: null },
+      { text: 'I can take deep breaths while I wait.', image: null },
+      { text: 'When it\'s my turn, I will be ready!', image: null },
+    ],
+  },
+];
 
 export default {
-  GENERATION_STATUS,
-  STORY_PAGES,
-  findExistingStory,
-  generateStory,
-  getPopularStories,
-  searchStories,
-  incrementUseCount,
-  saveStoryToFavorites,
-  removeStoryFromFavorites,
-  isStoryFavorited,
-  getUserFavorites,
+  fetchStories,
+  createStory,
+  updateStory,
+  deleteStory,
+  generateStoryImages,
+  generateCompleteStory,
+  STORY_TEMPLATES,
 };

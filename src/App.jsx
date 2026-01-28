@@ -1,4 +1,8 @@
-// App.jsx - ATLASassist v2.1 - COMPREHENSIVE ROUTE FIX
+// App.jsx - ATLASassist v2.3 - WITH ENHANCED SPEECH THERAPY APPS
+// UPGRADED: ArticulationStation now uses v2 (Little Bee Speech inspired - 7 practice levels, voice recording, data tracking)
+// UPGRADED: MinimalPairs now uses v2 (SCIP inspired - 4 phonological approaches, multiple game modes)
+// UPGRADED: ConversationCards now uses v2 (Tactus Therapy inspired - 11 topic categories, communication strategies)
+// ADDED: WordVault (Home Speech Home inspired - comprehensive word database with games)
 // FIXED: All missing routes that were causing apps to redirect to hub
 // FIXED: Full auth implementation for EntryAuthScreen compatibility
 
@@ -100,12 +104,27 @@ const Knowledge = lazy(() => import('./pages/Knowledge'));
 const TherapyTypes = lazy(() => import('./pages/TherapyTypes'));
 const Definitions = lazy(() => import('./pages/Definitions'));
 const FAQ = lazy(() => import('./pages/FAQ'));
+const TherapyMaterialsLibrary = lazy(() => import('./pages/TherapyMaterialsLibrary'));
 
 // Community
 const Community = lazy(() => import('./pages/Community'));
 const CommunityProfileSetup = lazy(() => import('./pages/CommunityProfileSetup'));
 const CommunityNewThread = lazy(() => import('./pages/CommunityNewThread'));
 const CommunityThread = lazy(() => import('./pages/CommunityThread'));
+
+// ============================================
+// NEW: SPEECH THERAPY HUB - ALL APPS
+// ============================================
+const SpeechTherapyHub = lazy(() => import('./pages/SpeechTherapyHub'));
+const ArticulationStation = lazy(() => import('./pages/ArticulationStation-v2'));
+const SoundSorter = lazy(() => import('./pages/SoundSorter'));
+const MinimalPairs = lazy(() => import('./pages/MinimalPairs-v2'));
+const LanguageBuilder = lazy(() => import('./pages/LanguageBuilder'));
+const ConversationCards = lazy(() => import('./pages/ConversationCards-v2'));
+const ListeningGames = lazy(() => import('./pages/ListeningGames'));
+const StorySequencing = lazy(() => import('./pages/StorySequencing'));
+const RhythmSpeech = lazy(() => import('./pages/RhythmSpeech'));
+const WordVault = lazy(() => import('./pages/WordVault'));
 
 // ============================================
 // LOADING FALLBACK COMPONENT
@@ -213,156 +232,130 @@ const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
-  // Sign in with email/password
   const signIn = async (email, password) => {
     if (!isSupabaseConfigured()) {
       return { error: { message: 'Supabase not configured. Use guest mode.' } };
     }
-
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       return { data, error: null };
     } catch (error) {
-      console.error('Sign-in error:', error);
       return { error: { message: error.message || 'Failed to sign in' } };
     }
   };
 
-  // Sign up with email/password
   const signUp = async (email, password, displayName) => {
     if (!isSupabaseConfigured()) {
       return { error: { message: 'Supabase not configured. Use guest mode.' } };
     }
-
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: {
-            full_name: displayName,
-            name: displayName,
-          },
-        },
+        options: { data: { full_name: displayName, name: displayName } },
       });
-
       if (error) throw error;
-
-      if (data?.user && !data?.session) {
-        return {
-          data,
-          error: null,
-          requiresConfirmation: true,
-        };
-      }
-
       return { data, error: null };
     } catch (error) {
-      console.error('Sign-up error:', error);
-      let message = error.message;
-      if (message.includes('already registered')) {
-        message = 'This email is already registered. Try signing in instead.';
-      }
-      return { error: { message } };
+      return { error: { message: error.message || 'Failed to sign up' } };
     }
   };
 
-  // Sign in with Google
-  const signInWithGoogle = async () => {
+  const signInWithProvider = async (provider) => {
     if (!isSupabaseConfigured()) {
-      return { error: { message: 'Supabase not configured.' } };
+      return { error: { message: 'Supabase not configured. Use guest mode.' } };
     }
-
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/hub`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-        },
+        provider,
+        options: { redirectTo: `${window.location.origin}/hub` },
       });
-
       if (error) throw error;
       return { data, error: null };
     } catch (error) {
-      console.error('Google sign-in error:', error);
-      return { error: { message: error.message || 'Failed to sign in with Google' } };
+      return { error: { message: error.message || 'Failed to sign in with provider' } };
     }
   };
 
-  // Reset password
-  const resetPassword = async (email) => {
-    if (!isSupabaseConfigured()) {
-      return { error: { message: 'Supabase not configured.' } };
-    }
-
-    try {
-      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-
-      if (error) throw error;
-      return { data, error: null };
-    } catch (error) {
-      console.error('Password reset error:', error);
-      return { error: { message: error.message } };
-    }
-  };
-
-  // Sign in as guest
-  const signInAsGuest = (name = 'Friend') => {
+  const continueAsGuest = (guestName = 'Friend') => {
     const guestUser = {
       id: `guest_${Date.now()}`,
       email: null,
-      displayName: name,
+      displayName: guestName,
       photoURL: null,
       provider: 'guest',
       isGuest: true,
     };
-    localStorage.setItem('snw_guest_user', JSON.stringify(guestUser));
     setUser(guestUser);
+    localStorage.setItem('snw_guest_user', JSON.stringify(guestUser));
     return { data: guestUser, error: null };
   };
 
-  // Sign out
   const signOut = async () => {
-    if (authMode === 'supabase' && isSupabaseConfigured()) {
+    if (isSupabaseConfigured() && user && !user.isGuest) {
       try {
         await supabase.auth.signOut();
       } catch (error) {
-        console.error('Sign out error:', error);
+        console.error('Sign-out error:', error);
       }
     }
-    localStorage.removeItem('snw_guest_user');
     setUser(null);
+    localStorage.removeItem('snw_guest_user');
+  };
+
+  const resetPassword = async (email) => {
+    if (!isSupabaseConfigured()) {
+      return { error: { message: 'Supabase not configured' } };
+    }
+    try {
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      return { error: { message: error.message || 'Failed to send reset email' } };
+    }
+  };
+
+  const updatePassword = async (newPassword) => {
+    if (!isSupabaseConfigured()) {
+      return { error: { message: 'Supabase not configured' } };
+    }
+    try {
+      const { data, error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      return { error: { message: error.message || 'Failed to update password' } };
+    }
   };
 
   const value = {
     user,
     loading,
     authMode,
+    isAuthenticated: !!user,
+    isGuest: user?.isGuest || false,
     signIn,
     signUp,
-    signInWithGoogle,
-    signInAsGuest,
+    signInWithProvider,
+    continueAsGuest,
     signOut,
     resetPassword,
-    isAuthenticated: !!user,
-    isGuest: user?.isGuest || user?.provider === 'guest',
-    isSupabaseConfigured: isSupabaseConfigured(),
+    updatePassword,
   };
+
+  if (loading) {
+    return <PageLoader />;
+  }
 
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      <Suspense fallback={<PageLoader />}>
+        {children}
+      </Suspense>
     </AuthContext.Provider>
   );
 };
@@ -372,16 +365,9 @@ const AuthProvider = ({ children }) => {
 // ============================================
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
-
-  if (loading) {
-    return <PageLoader />;
-  }
-
-  if (!user) {
-    return <Navigate to="/" replace />;
-  }
-
-  return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
+  if (loading) return <PageLoader />;
+  if (!user) return <Navigate to="/" replace />;
+  return children;
 };
 
 // ============================================
@@ -390,94 +376,55 @@ const ProtectedRoute = ({ children }) => {
 const ResetPassword = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const { updatePassword } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
+    setMessage('');
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
-
     if (password.length < 6) {
       setError('Password must be at least 6 characters');
       return;
     }
-
     setLoading(true);
-
-    try {
-      const { error } = await supabase.auth.updateUser({ password });
-      if (error) throw error;
-      setSuccess(true);
-    } catch (err) {
-      setError(err.message || 'Failed to reset password');
-    } finally {
-      setLoading(false);
+    const { error: updateError } = await updatePassword(password);
+    setLoading(false);
+    if (updateError) {
+      setError(updateError.message);
+    } else {
+      setMessage('Password updated successfully! Redirecting...');
+      setTimeout(() => { window.location.href = '/hub'; }, 2000);
     }
   };
 
-  if (success) {
-    return (
-      <div className="min-h-screen bg-[#FFFEF5] flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-8 shadow-lg max-w-md w-full text-center">
-          <div className="text-5xl mb-4">✅</div>
-          <h1 className="font-display text-2xl text-[#5CB85C] mb-4">Password Updated!</h1>
-          <p className="font-crayon text-gray-600 mb-6">
-            Your password has been successfully reset.
-          </p>
-          <a
-            href="/"
-            className="inline-block px-6 py-3 bg-[#8E6BBF] text-white rounded-xl font-crayon hover:bg-[#7B5AA6] transition-colors"
-          >
-            Go to Login
-          </a>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-[#FFFEF5] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl p-8 shadow-lg max-w-md w-full">
-        <h1 className="font-display text-2xl text-[#8E6BBF] mb-6 text-center">
-          Set New Password
-        </h1>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded-lg text-red-700 font-crayon text-sm">
-            {error}
-          </div>
-        )}
-
+      <div className="bg-white rounded-2xl border-4 border-[#4A9FD4] p-6 w-full max-w-md shadow-lg">
+        <h1 className="text-2xl font-display text-[#4A9FD4] mb-4 text-center">Reset Password</h1>
+        {message && <div className="mb-4 p-3 bg-green-100 border-2 border-green-400 rounded-xl text-green-700 text-sm">{message}</div>}
+        {error && <div className="mb-4 p-3 bg-red-100 border-2 border-red-400 rounded-xl text-red-700 text-sm">{error}</div>}
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="password"
-            placeholder="New Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl font-crayon focus:border-[#8E6BBF] focus:outline-none"
-            required
-            minLength={6}
-          />
-          <input
-            type="password"
-            placeholder="Confirm Password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl font-crayon focus:border-[#8E6BBF] focus:outline-none"
-            required
-            minLength={6}
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-[#8E6BBF] text-white rounded-xl font-crayon hover:bg-[#7B5AA6] disabled:opacity-50 transition-colors"
-          >
+          <div>
+            <label className="block text-sm font-crayon text-gray-600 mb-1">New Password</label>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 border-3 border-gray-200 rounded-xl font-crayon focus:border-[#4A9FD4] focus:outline-none"
+              required minLength={6} />
+          </div>
+          <div>
+            <label className="block text-sm font-crayon text-gray-600 mb-1">Confirm Password</label>
+            <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full px-4 py-3 border-3 border-gray-200 rounded-xl font-crayon focus:border-[#4A9FD4] focus:outline-none"
+              required minLength={6} />
+          </div>
+          <button type="submit" disabled={loading}
+            className="w-full py-3 bg-[#4A9FD4] text-white font-display rounded-xl hover:bg-blue-600 transition-colors disabled:opacity-50">
             {loading ? 'Updating...' : 'Update Password'}
           </button>
         </form>
@@ -501,17 +448,13 @@ function App() {
 
             {/* Main Hub */}
             <Route path="/hub" element={<ProtectedRoute><AppHub /></ProtectedRoute>} />
-
-            {/* Settings */}
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
             {/* Core Features */}
             <Route path="/visual-schedule" element={<ProtectedRoute><VisualSchedule /></ProtectedRoute>} />
             <Route path="/point-to-talk" element={<ProtectedRoute><PointToTalk /></ProtectedRoute>} />
 
-            {/* ============================================ */}
             {/* TOOLS HUB */}
-            {/* ============================================ */}
             <Route path="/tools" element={<ProtectedRoute><Tools /></ProtectedRoute>} />
             <Route path="/tools/timer" element={<ProtectedRoute><VisualTimer /></ProtectedRoute>} />
             <Route path="/tools/first-then" element={<ProtectedRoute><FirstThen /></ProtectedRoute>} />
@@ -520,9 +463,7 @@ function App() {
             <Route path="/tools/daily-routines" element={<ProtectedRoute><DailyRoutines /></ProtectedRoute>} />
             <Route path="/tools/milestones" element={<ProtectedRoute><MilestoneGuide /></ProtectedRoute>} />
 
-            {/* ============================================ */}
             {/* EMOTIONAL WELLNESS HUB */}
-            {/* ============================================ */}
             <Route path="/wellness" element={<ProtectedRoute><EmotionalWellnessHub /></ProtectedRoute>} />
             <Route path="/wellness/calm-down" element={<ProtectedRoute><CalmDown /></ProtectedRoute>} />
             <Route path="/wellness/feelings" element={<ProtectedRoute><FeelingsTracker /></ProtectedRoute>} />
@@ -533,14 +474,10 @@ function App() {
             <Route path="/wellness/growth-mindset" element={<ProtectedRoute><GrowthMindset /></ProtectedRoute>} />
             <Route path="/wellness/body-check-in" element={<ProtectedRoute><BodyCheckIn /></ProtectedRoute>} />
             <Route path="/wellness/worry-jar" element={<ProtectedRoute><WorryJar /></ProtectedRoute>} />
-            
-            {/* Legacy routes redirect */}
             <Route path="/emotional-wellness" element={<Navigate to="/wellness" replace />} />
             <Route path="/emotional-wellness/*" element={<Navigate to="/wellness" replace />} />
 
-            {/* ============================================ */}
             {/* CARE TEAM / SERVICES HUB */}
-            {/* ============================================ */}
             <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
             <Route path="/services/appointments" element={<ProtectedRoute><AppointmentTracker /></ProtectedRoute>} />
             <Route path="/services/goals" element={<ProtectedRoute><GoalTracker /></ProtectedRoute>} />
@@ -548,13 +485,9 @@ function App() {
             <Route path="/services/notes" element={<ProtectedRoute><QuickNotes /></ProtectedRoute>} />
             <Route path="/services/reminders" element={<ProtectedRoute><Reminders /></ProtectedRoute>} />
             <Route path="/services/routines" element={<ProtectedRoute><DailyRoutines /></ProtectedRoute>} />
-            
-            {/* Legacy care-team redirect */}
             <Route path="/care-team" element={<Navigate to="/services" replace />} />
 
-            {/* ============================================ */}
             {/* HEALTH HUB */}
-            {/* ============================================ */}
             <Route path="/health" element={<ProtectedRoute><Health /></ProtectedRoute>} />
             <Route path="/health/nutrition" element={<ProtectedRoute><Nutrition /></ProtectedRoute>} />
             <Route path="/health/feelings" element={<ProtectedRoute><FeelingsTracker /></ProtectedRoute>} />
@@ -564,9 +497,7 @@ function App() {
             <Route path="/health/ot-exercises" element={<ProtectedRoute><OTExercises /></ProtectedRoute>} />
             <Route path="/health/healthy-choices" element={<ProtectedRoute><HealthyChoices /></ProtectedRoute>} />
 
-            {/* ============================================ */}
-            {/* GAMES HUB - ALL ROUTES FIXED */}
-            {/* ============================================ */}
+            {/* GAMES HUB */}
             <Route path="/games" element={<ProtectedRoute><Games /></ProtectedRoute>} />
             <Route path="/games/matching" element={<ProtectedRoute><MatchingGame /></ProtectedRoute>} />
             <Route path="/games/memory" element={<ProtectedRoute><MatchingGame /></ProtectedRoute>} />
@@ -584,9 +515,7 @@ function App() {
             <Route path="/games/pattern" element={<ProtectedRoute><PatternSequence /></ProtectedRoute>} />
             <Route path="/games/sound-match" element={<ProtectedRoute><SoundMatch /></ProtectedRoute>} />
 
-            {/* ============================================ */}
             {/* ACTIVITIES HUB */}
-            {/* ============================================ */}
             <Route path="/activities" element={<ProtectedRoute><Activities /></ProtectedRoute>} />
             <Route path="/activities/social-stories" element={<ProtectedRoute><SocialStories /></ProtectedRoute>} />
             <Route path="/activities/coloring" element={<ProtectedRoute><ColoringBook /></ProtectedRoute>} />
@@ -598,17 +527,27 @@ function App() {
             <Route path="/activities/rewards" element={<ProtectedRoute><RewardChart /></ProtectedRoute>} />
 
             {/* ============================================ */}
-            {/* PLANNING HUB */}
+            {/* SPEECH THERAPY HUB - Enhanced Apps */}
             {/* ============================================ */}
+            <Route path="/speech-therapy" element={<ProtectedRoute><SpeechTherapyHub /></ProtectedRoute>} />
+            <Route path="/speech-therapy/articulation" element={<ProtectedRoute><ArticulationStation /></ProtectedRoute>} />
+            <Route path="/speech-therapy/sound-sorter" element={<ProtectedRoute><SoundSorter /></ProtectedRoute>} />
+            <Route path="/speech-therapy/minimal-pairs" element={<ProtectedRoute><MinimalPairs /></ProtectedRoute>} />
+            <Route path="/speech-therapy/language-builder" element={<ProtectedRoute><LanguageBuilder /></ProtectedRoute>} />
+            <Route path="/speech-therapy/conversation" element={<ProtectedRoute><ConversationCards /></ProtectedRoute>} />
+            <Route path="/speech-therapy/listening" element={<ProtectedRoute><ListeningGames /></ProtectedRoute>} />
+            <Route path="/speech-therapy/sequencing" element={<ProtectedRoute><StorySequencing /></ProtectedRoute>} />
+            <Route path="/speech-therapy/rhythm" element={<ProtectedRoute><RhythmSpeech /></ProtectedRoute>} />
+            <Route path="/speech-therapy/word-vault" element={<ProtectedRoute><WordVault /></ProtectedRoute>} />
+
+            {/* PLANNING HUB */}
             <Route path="/planning" element={<ProtectedRoute><PlanningHub /></ProtectedRoute>} />
             <Route path="/planning/student-profile" element={<ProtectedRoute><StudentProfile /></ProtectedRoute>} />
             <Route path="/planning/file-of-life" element={<ProtectedRoute><FileOfLife /></ProtectedRoute>} />
             <Route path="/planning/person-centered" element={<ProtectedRoute><PersonCenteredPlan /></ProtectedRoute>} />
             <Route path="/planning/memorandum" element={<ProtectedRoute><MemorandumOfIntent /></ProtectedRoute>} />
 
-            {/* ============================================ */}
             {/* RESOURCES HUB */}
-            {/* ============================================ */}
             <Route path="/resources" element={<ProtectedRoute><ResourcesHub /></ProtectedRoute>} />
             <Route path="/resources/knowledge" element={<ProtectedRoute><Knowledge /></ProtectedRoute>} />
             <Route path="/resources/knowledge/:regionId" element={<ProtectedRoute><Knowledge /></ProtectedRoute>} />
@@ -619,10 +558,9 @@ function App() {
             <Route path="/resources/therapy-types" element={<ProtectedRoute><TherapyTypes /></ProtectedRoute>} />
             <Route path="/resources/definitions" element={<ProtectedRoute><Definitions /></ProtectedRoute>} />
             <Route path="/resources/faq" element={<ProtectedRoute><FAQ /></ProtectedRoute>} />
+            <Route path="/resources/therapy-materials" element={<ProtectedRoute><TherapyMaterialsLibrary /></ProtectedRoute>} />
 
-            {/* ============================================ */}
             {/* COMMUNITY */}
-            {/* ============================================ */}
             <Route path="/community" element={<ProtectedRoute><Community /></ProtectedRoute>} />
             <Route path="/community/setup" element={<ProtectedRoute><CommunityProfileSetup /></ProtectedRoute>} />
             <Route path="/community/new" element={<ProtectedRoute><CommunityNewThread /></ProtectedRoute>} />

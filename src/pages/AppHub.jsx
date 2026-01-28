@@ -1,470 +1,271 @@
-// AppHub.jsx - Main navigation hub for ATLASassist
-// UPDATED: Visual Schedule & Point to Talk featured at top
-// UPDATED: Other apps alphabetized
-// UPDATED: Upcoming activities widget from Visual Schedule
-// UPDATED: Animated background
+// AppHub.jsx - Main application dashboard
+// FIXED: Correct localStorage key for Visual Schedule integration
+// Uses 'visual_schedule_items' to fetch upcoming activities
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  LogOut,
-  Sparkles,
-  Settings,
-  Clock,
-  ChevronRight,
-  Calendar,
-  MessageSquare,
+  Calendar, Heart, Gamepad2, BookOpen, Wrench, 
+  Users, Clock, ChevronRight, Sparkles, Sun, Moon, Cloud,
+  MessageSquare, Mic
 } from 'lucide-react';
-import { useIsAppInstalled } from '../components/PWAInstallPrompt';
-import PushNotificationPrompt from '../components/PushNotificationPrompt';
-import { useAuth } from '../App';
 import AnimatedBackground from '../components/AnimatedBackground';
 
-// ============================================
-// FEATURED APPS (Visual Schedule & Point to Talk)
-// ============================================
-const featuredApps = [
+// Hub categories with consistent colors
+const hubs = [
   {
-    id: 'visual-schedule',
+    id: 'schedule',
     name: 'Visual Schedule',
-    description: 'Plan your day with pictures!',
-    color: '#E63B2E',
-    path: '/visual-schedule',
-    emoji: '📅',
+    description: 'Daily routines & tasks',
     icon: Calendar,
-  },
-  {
-    id: 'point-to-talk',
-    name: 'Point to Talk',
-    description: 'Say what you need!',
-    color: '#F5A623',
-    path: '/point-to-talk',
-    emoji: '💬',
-    icon: MessageSquare,
-  },
-];
-
-// ============================================
-// OTHER APP CATEGORIES (Alphabetized by name)
-// ============================================
-const appCategories = [
-  {
-    id: 'activities',
-    name: 'Activities & Learning',
-    description: 'Create, learn & explore!',
-    color: '#4A9FD4',
-    path: '/activities',
-    emoji: '🎨',
-  },
-  {
-    id: 'communities',
-    name: 'Communities',
-    description: 'Connect with others!',
-    color: '#6366F1',
-    path: '/community',
-    emoji: '🤝',
-  },
-  {
-    id: 'tools',
-    name: 'Daily Tools',
-    description: 'Helpful everyday tools!',
-    color: '#B8860B',
-    path: '/tools',
-    emoji: '🔧',
+    color: '#E63B2E',
+    path: '/schedule',
   },
   {
     id: 'wellness',
     name: 'Emotional Wellness',
-    description: 'Tools to understand feelings',
-    color: '#20B2AA',
+    description: 'Feelings & coping tools',
+    icon: Heart,
+    color: '#E86B9A',
     path: '/wellness',
-    emoji: '💚',
   },
   {
-    id: 'games',
-    name: 'Games',
-    description: 'Fun games to play!',
-    color: '#5CB85C',
-    path: '/games',
-    emoji: '🎮',
+    id: 'activities',
+    name: 'Activities',
+    description: 'Games & learning fun',
+    icon: Gamepad2,
+    color: '#F5A623',
+    path: '/activities',
+  },
+  {
+    id: 'communication',
+    name: 'Communication',
+    description: 'AAC & expression tools',
+    icon: MessageSquare,
+    color: '#4A9FD4',
+    path: '/communication',
+  },
+  {
+    id: 'speech',
+    name: 'Speech Therapy',
+    description: 'Articulation & language',
+    icon: Mic,
+    color: '#10B981',
+    path: '/speech-therapy',
   },
   {
     id: 'health',
-    name: 'Health & Wellness',
-    description: 'Track your body & health!',
-    color: '#E86B9A',
+    name: 'Health',
+    description: 'Track wellness habits',
+    icon: Heart,
+    color: '#5CB85C',
     path: '/health',
-    emoji: '❤️',
   },
   {
-    id: 'care-team',
-    name: 'My Care Team',
-    description: 'Your support network!',
-    color: '#008B8B',
-    path: '/care-team',
-    emoji: '👥',
+    id: 'tools',
+    name: 'Tools',
+    description: 'Helpful utilities',
+    icon: Wrench,
+    color: '#8E6BBF',
+    path: '/tools',
   },
   {
-    id: 'planning',
-    name: 'Planning & Documents',
-    description: 'Important documents & planning',
-    color: '#CD853F',
-    path: '/planning',
-    emoji: '📋',
+    id: 'community',
+    name: 'Community',
+    description: 'Connect & share',
+    icon: Users,
+    color: '#6366F1',
+    path: '/community',
   },
   {
     id: 'resources',
-    name: 'Resources & Research',
-    description: 'Laws, research & printables!',
-    color: '#8E6BBF',
+    name: 'Resources',
+    description: 'Guides & information',
+    icon: BookOpen,
+    color: '#0891B2',
     path: '/resources',
-    emoji: '📚',
   },
-].sort((a, b) => a.name.localeCompare(b.name));
+];
 
-// ============================================
-// UPCOMING ACTIVITIES WIDGET
-// ============================================
-const UpcomingActivities = ({ activities, onViewAll }) => {
-  if (!activities || activities.length === 0) {
-    return (
-      <div className="bg-white rounded-2xl border-4 border-[#E63B2E] p-4 mb-6 shadow-crayon">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-display text-[#E63B2E] flex items-center gap-2">
-            <Clock size={20} />
-            Upcoming Activities
-          </h2>
-          <button 
-            onClick={onViewAll}
-            className="text-sm font-crayon text-[#E63B2E] hover:underline flex items-center gap-1"
-          >
-            View Schedule <ChevronRight size={16} />
-          </button>
-        </div>
-        <p className="text-gray-500 font-crayon text-sm text-center py-4">
-          No activities scheduled. Tap to add some! 📅
-        </p>
-      </div>
-    );
+// Get greeting based on time of day
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return { text: 'Good Morning', icon: Sun, color: '#F5A623' };
+  if (hour < 17) return { text: 'Good Afternoon', icon: Cloud, color: '#4A9FD4' };
+  return { text: 'Good Evening', icon: Moon, color: '#8E6BBF' };
+};
+
+// Get upcoming activities from Visual Schedule
+// FIXED: Uses correct localStorage key 'visual_schedule_items'
+const getUpcomingActivities = () => {
+  try {
+    // Try the correct key first
+    let items = JSON.parse(localStorage.getItem('visual_schedule_items') || '[]');
+    
+    // Fallback to alternate keys if empty
+    if (items.length === 0) {
+      items = JSON.parse(localStorage.getItem('snw_schedule_items') || '[]');
+    }
+    if (items.length === 0) {
+      items = JSON.parse(localStorage.getItem('schedule_items') || '[]');
+    }
+    
+    const now = new Date();
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+    
+    // Filter to items that have a time and are upcoming today
+    const upcoming = items
+      .filter(item => {
+        if (!item.time) return false;
+        const [hours, minutes] = item.time.split(':').map(Number);
+        const itemTime = hours * 60 + minutes;
+        return itemTime > currentTime && !item.completed;
+      })
+      .sort((a, b) => {
+        const [aH, aM] = a.time.split(':').map(Number);
+        const [bH, bM] = b.time.split(':').map(Number);
+        return (aH * 60 + aM) - (bH * 60 + bM);
+      })
+      .slice(0, 3);
+    
+    return upcoming;
+  } catch (error) {
+    console.error('Error loading schedule:', error);
+    return [];
   }
-
-  return (
-    <div className="bg-white rounded-2xl border-4 border-[#E63B2E] p-4 mb-6 shadow-crayon">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="font-display text-[#E63B2E] flex items-center gap-2">
-          <Clock size={20} />
-          Coming Up
-        </h2>
-        <button 
-          onClick={onViewAll}
-          className="text-sm font-crayon text-[#E63B2E] hover:underline flex items-center gap-1"
-        >
-          View All <ChevronRight size={16} />
-        </button>
-      </div>
-      
-      <div className="space-y-2">
-        {activities.map((activity, index) => {
-          const isNext = index === 0;
-          return (
-            <div 
-              key={activity.id || index}
-              className={`flex items-center gap-3 p-3 rounded-xl transition-all ${
-                isNext 
-                  ? 'bg-[#E63B2E]/10 border-2 border-[#E63B2E]/30' 
-                  : 'bg-gray-50'
-              }`}
-            >
-              <div 
-                className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl ${
-                  isNext ? 'bg-[#E63B2E] text-white' : 'bg-white border-2'
-                }`}
-                style={{ borderColor: isNext ? undefined : activity.color }}
-              >
-                {activity.emoji || '📌'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={`font-crayon truncate ${isNext ? 'text-[#E63B2E] font-bold' : 'text-gray-700'}`}>
-                  {activity.name}
-                </p>
-                <p className={`text-xs font-crayon ${isNext ? 'text-[#E63B2E]/70' : 'text-gray-500'}`}>
-                  {formatTime(activity.time)}
-                  {isNext && ' — Up Next!'}
-                </p>
-              </div>
-              {activity.completed && (
-                <span className="text-green-500 text-lg">✓</span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
 };
 
-// Format time from 24h to 12h
-const formatTime = (time24) => {
-  if (!time24) return '';
-  const [hours, minutes] = time24.split(':').map(Number);
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  const hour12 = hours % 12 || 12;
-  return `${hour12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
-};
-
-// ============================================
-// MAIN COMPONENT
-// ============================================
 const AppHub = () => {
   const navigate = useNavigate();
-  const { signOut, user } = useAuth();
-  const isInstalled = useIsAppInstalled();
+  const [greeting, setGreeting] = useState(getGreeting());
   const [upcomingActivities, setUpcomingActivities] = useState([]);
+  const [userName, setUserName] = useState('');
 
-  // Load upcoming activities from localStorage
   useEffect(() => {
-    loadUpcomingActivities();
+    // Update greeting
+    setGreeting(getGreeting());
     
-    // Refresh every minute
-    const interval = setInterval(loadUpcomingActivities, 60000);
+    // Load upcoming activities
+    setUpcomingActivities(getUpcomingActivities());
     
-    // Refresh when tab becomes visible (user returns to this page)
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        loadUpcomingActivities();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    // Load user name if saved
+    const savedName = localStorage.getItem('snw_user_name') || localStorage.getItem('atlas_user_name');
+    if (savedName) setUserName(savedName);
     
-    // Also listen for storage changes (when schedule updates in another tab)
-    const handleStorageChange = (e) => {
-      if (e.key === 'snw_calendar_schedules' || e.key === 'snw_visual_schedule_data') {
-        loadUpcomingActivities();
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
+    // Refresh activities periodically
+    const interval = setInterval(() => {
+      setUpcomingActivities(getUpcomingActivities());
+      setGreeting(getGreeting());
+    }, 60000); // Every minute
     
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('storage', handleStorageChange);
-    };
+    return () => clearInterval(interval);
   }, []);
 
-  const loadUpcomingActivities = () => {
-    try {
-      // Get today's date in YYYY-MM-DD format
-      const today = new Date();
-      const dateKey = today.toISOString().split('T')[0];
-      
-      let activities = [];
-      
-      // PRIMARY: Check snw_calendar_schedules (used by calendarSync.js)
-      // Format: { "2026-01-27": { activities: [...], name: "..." } }
-      const calendarSchedules = localStorage.getItem('snw_calendar_schedules');
-      if (calendarSchedules) {
-        try {
-          const parsed = JSON.parse(calendarSchedules);
-          if (parsed[dateKey] && Array.isArray(parsed[dateKey].activities)) {
-            activities = parsed[dateKey].activities;
-          }
-        } catch (e) {
-          console.warn('Error parsing snw_calendar_schedules:', e);
-        }
-      }
-      
-      // FALLBACK: Check snw_visual_schedule_data (used by scheduleHelper.js)
-      // Format: { "2026-01-27": { items: [...], activities: [...] } }
-      if (activities.length === 0) {
-        const visualScheduleData = localStorage.getItem('snw_visual_schedule_data');
-        if (visualScheduleData) {
-          try {
-            const parsed = JSON.parse(visualScheduleData);
-            if (parsed[dateKey]) {
-              activities = parsed[dateKey].activities || parsed[dateKey].items || [];
-            }
-          } catch (e) {
-            console.warn('Error parsing snw_visual_schedule_data:', e);
-          }
-        }
-      }
-
-      // Filter to upcoming activities (next 3 hours, not completed)
-      const now = new Date();
-      const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-      const threeHoursLater = new Date(now.getTime() + 3 * 60 * 60 * 1000);
-      const maxTime = `${threeHoursLater.getHours().toString().padStart(2, '0')}:${threeHoursLater.getMinutes().toString().padStart(2, '0')}`;
-
-      const upcoming = activities
-        .filter(a => a.time && a.time >= currentTime && a.time <= maxTime && !a.completed)
-        .sort((a, b) => a.time.localeCompare(b.time))
-        .slice(0, 4);
-
-      setUpcomingActivities(upcoming);
-    } catch (error) {
-      console.error('Error loading upcoming activities:', error);
-      setUpcomingActivities([]);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await signOut();
-      navigate('/');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  };
+  const GreetingIcon = greeting.icon;
 
   return (
-    <div className="min-h-screen bg-[#FFFEF5] relative">
-      {/* Animated Background */}
-      <AnimatedBackground intensity="normal" />
-
+    <div className="min-h-screen bg-[#FFFEF5] relative overflow-hidden">
+      <AnimatedBackground variant="home" />
+      
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#4A9FD4]">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
-          <img 
-            src="/logo.jpeg" 
-            alt="ATLASassist" 
-            className="w-12 h-12 rounded-xl shadow-md border-2 border-[#4A9FD4]"
-          />
-          <div className="flex-1">
-            <h1 className="text-xl font-display text-[#4A9FD4] crayon-text">
-              ATLASassist
+      <header className="relative z-10 bg-gradient-to-r from-[#4A9FD4] to-[#6366F1] text-white">
+        <div className="max-w-4xl mx-auto px-4 py-6">
+          <div className="flex items-center gap-3 mb-2">
+            <GreetingIcon className="w-8 h-8" style={{ color: greeting.color }} />
+            <h1 className="text-2xl font-display">
+              {greeting.text}{userName ? `, ${userName}` : ''}!
             </h1>
-            <p className="text-xs font-crayon text-gray-500">
-              {user?.user_metadata?.full_name 
-                ? `Hi ${user.user_metadata.full_name.split(' ')[0]}! 👋`
-                : user?.user_metadata?.name
-                  ? `Hi ${user.user_metadata.name.split(' ')[0]}! 👋`
-                  : user?.email 
-                    ? `Hi ${user.email.split('@')[0]}! 👋` 
-                    : 'Welcome!'}
-            </p>
           </div>
-          <Sparkles className="text-[#F8D14A] w-6 h-6 animate-pulse" />
-          
-          {/* Settings */}
-          <button
-            onClick={() => navigate('/settings')}
-            className="p-2 bg-white border-3 border-gray-300 rounded-xl hover:border-[#4A9FD4] transition-all"
-          >
-            <Settings size={20} className="text-gray-600" />
-          </button>
-          
-          {/* Logout */}
-          <button
-            onClick={handleLogout}
-            className="p-2 bg-white border-3 border-gray-300 rounded-xl hover:border-red-400 transition-all"
-          >
-            <LogOut size={20} className="text-gray-600" />
-          </button>
+          <p className="text-white/80 font-crayon">
+            Welcome to ATLASassist
+          </p>
         </div>
       </header>
 
-      {/* Push Notification Prompt */}
-      <PushNotificationPrompt />
-
-      {/* Main Content */}
-      <main className="max-w-2xl mx-auto px-4 py-6 relative z-10">
-        
+      <main className="relative z-10 max-w-4xl mx-auto px-4 py-6">
         {/* Upcoming Activities Widget */}
-        <UpcomingActivities 
-          activities={upcomingActivities} 
-          onViewAll={() => navigate('/visual-schedule')}
-        />
+        {upcomingActivities.length > 0 && (
+          <div className="mb-6 bg-white rounded-2xl border-4 border-[#E63B2E] p-4 shadow-lg">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-display text-[#E63B2E] flex items-center gap-2">
+                <Clock size={20} />
+                Coming Up Today
+              </h2>
+              <button
+                onClick={() => navigate('/schedule')}
+                className="text-sm text-[#E63B2E] font-crayon flex items-center gap-1 hover:underline"
+              >
+                View All <ChevronRight size={16} />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {upcomingActivities.map((activity, index) => (
+                <div 
+                  key={activity.id || index}
+                  className="flex items-center gap-3 p-2 bg-red-50 rounded-xl"
+                >
+                  <span className="text-2xl">{activity.icon || activity.emoji || '📌'}</span>
+                  <div className="flex-1">
+                    <p className="font-crayon text-gray-800">{activity.title || activity.name}</p>
+                    <p className="text-sm text-gray-500">{activity.time}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-        {/* Featured Apps - Visual Schedule & Point to Talk */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          {featuredApps.map((app) => {
-            const IconComponent = app.icon;
+        {/* Hub Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {hubs.map((hub) => {
+            const Icon = hub.icon;
             return (
               <button
-                key={app.id}
-                onClick={() => navigate(app.path)}
-                className="relative p-5 rounded-2xl border-4 text-center transition-all duration-200 
-                         shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
-                style={{
-                  backgroundColor: app.color,
-                  borderColor: app.color,
-                }}
+                key={hub.id}
+                onClick={() => navigate(hub.path)}
+                className="bg-white rounded-2xl border-4 p-4 shadow-lg hover:scale-105 
+                           transition-all duration-200 text-left group"
+                style={{ borderColor: hub.color }}
               >
-                {/* Decorative star */}
-                <div className="absolute -top-2 -right-2 w-8 h-8 bg-[#F8D14A] rounded-full 
-                              flex items-center justify-center border-2 border-white shadow-md">
-                  <span className="text-sm">⭐</span>
+                <div 
+                  className="w-12 h-12 rounded-xl flex items-center justify-center mb-3 
+                             group-hover:scale-110 transition-transform"
+                  style={{ backgroundColor: `${hub.color}20` }}
+                >
+                  <Icon size={24} style={{ color: hub.color }} />
                 </div>
-                
-                {/* Icon */}
-                <div className="w-16 h-16 rounded-2xl bg-white/30 flex items-center justify-center mb-3 mx-auto">
-                  <span className="text-4xl">{app.emoji}</span>
-                </div>
-                
-                {/* Name */}
-                <h3 className="font-display text-white text-lg leading-tight drop-shadow-md">
-                  {app.name}
+                <h3 
+                  className="font-display text-lg mb-1"
+                  style={{ color: hub.color }}
+                >
+                  {hub.name}
                 </h3>
-                
-                {/* Description */}
-                <p className="font-crayon text-xs text-white/90 mt-1">
-                  {app.description}
+                <p className="text-sm text-gray-500 font-crayon">
+                  {hub.description}
                 </p>
               </button>
             );
           })}
         </div>
 
-        {/* Section Header */}
-        <div className="flex items-center gap-2 mb-4">
-          <div className="h-1 flex-1 bg-gradient-to-r from-transparent to-gray-200 rounded"></div>
-          <span className="font-crayon text-gray-400 text-sm">More Apps</span>
-          <div className="h-1 flex-1 bg-gradient-to-l from-transparent to-gray-200 rounded"></div>
-        </div>
-
-        {/* Other Apps Grid (Alphabetized) */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {appCategories.map((app, index) => (
-            <button
-              key={app.id}
-              onClick={() => navigate(app.path)}
-              className="relative p-4 rounded-2xl border-4 text-center transition-all duration-200 
-                       shadow-crayon hover:scale-105 hover:-rotate-1 active:scale-95"
-              style={{
-                backgroundColor: app.color + '20',
-                borderColor: app.color,
-                borderRadius: index % 2 === 0 ? '20px 8px 20px 8px' : '8px 20px 8px 20px',
-              }}
-            >
-              {/* Icon container */}
-              <div 
-                className="w-14 h-14 rounded-2xl bg-white/80 flex items-center justify-center mb-2 mx-auto"
-                style={{ border: `2px solid ${app.color}` }}
-              >
-                <span className="text-3xl">{app.emoji}</span>
-              </div>
-              
-              {/* Name */}
-              <h3 className="font-display text-gray-800 text-sm leading-tight">
-                {app.name}
-              </h3>
-              
-              {/* Description */}
-              <p className="font-crayon text-xs text-gray-500 mt-1">
-                {app.description}
-              </p>
-            </button>
-          ))}
-        </div>
-
-        {/* Dedication & Version */}
-        <div className="mt-8 text-center space-y-2">
-          <p className="text-sm font-crayon text-gray-500">
-            For Finn 💜 and for people like him.
-          </p>
-          <p className="text-xs font-crayon text-gray-400">
-            ATLASassist v2.1 {isInstalled ? '📱' : '🌐'}
-          </p>
+        {/* Quick Actions */}
+        <div className="mt-6 flex justify-center gap-4">
+          <button
+            onClick={() => navigate('/schedule')}
+            className="flex items-center gap-2 px-4 py-2 bg-[#E63B2E] text-white 
+                       rounded-xl font-crayon hover:bg-red-600 transition-colors"
+          >
+            <Calendar size={18} />
+            Today's Schedule
+          </button>
+          <button
+            onClick={() => navigate('/wellness/check-in')}
+            className="flex items-center gap-2 px-4 py-2 bg-[#E86B9A] text-white 
+                       rounded-xl font-crayon hover:bg-pink-600 transition-colors"
+          >
+            <Sparkles size={18} />
+            How Am I Feeling?
+          </button>
         </div>
       </main>
     </div>
