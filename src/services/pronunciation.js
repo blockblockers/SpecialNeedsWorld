@@ -1,9 +1,162 @@
 // pronunciation.js - Pronunciation Practice service with AI generation
+// FIXED: Added DEFAULT_CATEGORIES export that was missing
 // FIXED: Proper session validation and token refresh before Edge Function calls
 
 import { supabase, isSupabaseConfigured } from './supabase';
 
-const STORAGE_KEY = 'snw_pronunciation_progress';
+const STORAGE_KEY = 'snw_pronunciation_words';
+const CUSTOM_WORDS_KEY = 'snw_custom_pronunciation_words';
+
+// ============================================
+// DEFAULT CATEGORIES - EXPORTED FOR USE IN COMPONENTS
+// ============================================
+
+export const DEFAULT_CATEGORIES = [
+  {
+    id: 'animals',
+    name: 'Animals',
+    emoji: '🐶',
+    color: '#F5A623',
+    words: [
+      { word: 'dog', arasaacId: 4624 },
+      { word: 'cat', arasaacId: 4622 },
+      { word: 'bird', arasaacId: 4608 },
+      { word: 'fish', arasaacId: 4638 },
+      { word: 'horse', arasaacId: 4650 },
+      { word: 'cow', arasaacId: 4620 },
+      { word: 'pig', arasaacId: 4671 },
+      { word: 'sheep', arasaacId: 4679 },
+      { word: 'duck', arasaacId: 4628 },
+      { word: 'rabbit', arasaacId: 4675 },
+    ],
+  },
+  {
+    id: 'food',
+    name: 'Food',
+    emoji: '🍎',
+    color: '#E63B2E',
+    words: [
+      { word: 'apple', arasaacId: 2309 },
+      { word: 'banana', arasaacId: 2314 },
+      { word: 'bread', arasaacId: 2332 },
+      { word: 'milk', arasaacId: 2403 },
+      { word: 'water', arasaacId: 2496 },
+      { word: 'juice', arasaacId: 2384 },
+      { word: 'cookie', arasaacId: 2348 },
+      { word: 'pizza', arasaacId: 2430 },
+      { word: 'cheese', arasaacId: 2341 },
+      { word: 'egg', arasaacId: 2358 },
+    ],
+  },
+  {
+    id: 'body',
+    name: 'Body Parts',
+    emoji: '👋',
+    color: '#E86B9A',
+    words: [
+      { word: 'hand', arasaacId: 2536 },
+      { word: 'foot', arasaacId: 2526 },
+      { word: 'head', arasaacId: 2540 },
+      { word: 'eye', arasaacId: 2520 },
+      { word: 'ear', arasaacId: 2516 },
+      { word: 'nose', arasaacId: 2562 },
+      { word: 'mouth', arasaacId: 2558 },
+      { word: 'arm', arasaacId: 2502 },
+      { word: 'leg', arasaacId: 2550 },
+      { word: 'finger', arasaacId: 2524 },
+    ],
+  },
+  {
+    id: 'colors',
+    name: 'Colors',
+    emoji: '🎨',
+    color: '#8E6BBF',
+    words: [
+      { word: 'red', arasaacId: 5460 },
+      { word: 'blue', arasaacId: 5438 },
+      { word: 'green', arasaacId: 5448 },
+      { word: 'yellow', arasaacId: 5478 },
+      { word: 'orange', arasaacId: 5456 },
+      { word: 'purple', arasaacId: 5458 },
+      { word: 'pink', arasaacId: 5457 },
+      { word: 'black', arasaacId: 5436 },
+      { word: 'white', arasaacId: 5476 },
+      { word: 'brown', arasaacId: 5440 },
+    ],
+  },
+  {
+    id: 'family',
+    name: 'Family',
+    emoji: '👨‍👩‍👧',
+    color: '#4A9FD4',
+    words: [
+      { word: 'mom', arasaacId: 6786 },
+      { word: 'dad', arasaacId: 6778 },
+      { word: 'sister', arasaacId: 6804 },
+      { word: 'brother', arasaacId: 6770 },
+      { word: 'grandma', arasaacId: 6782 },
+      { word: 'grandpa', arasaacId: 6784 },
+      { word: 'baby', arasaacId: 6766 },
+      { word: 'family', arasaacId: 6780 },
+      { word: 'friend', arasaacId: 31891 },
+      { word: 'teacher', arasaacId: 3206 },
+    ],
+  },
+  {
+    id: 'actions',
+    name: 'Actions',
+    emoji: '🏃',
+    color: '#5CB85C',
+    words: [
+      { word: 'run', arasaacId: 6142 },
+      { word: 'jump', arasaacId: 6108 },
+      { word: 'walk', arasaacId: 6186 },
+      { word: 'sit', arasaacId: 6156 },
+      { word: 'stand', arasaacId: 6166 },
+      { word: 'eat', arasaacId: 6068 },
+      { word: 'drink', arasaacId: 6060 },
+      { word: 'sleep', arasaacId: 6158 },
+      { word: 'play', arasaacId: 6130 },
+      { word: 'read', arasaacId: 6138 },
+    ],
+  },
+  {
+    id: 'objects',
+    name: 'Objects',
+    emoji: '📦',
+    color: '#0891B2',
+    words: [
+      { word: 'ball', arasaacId: 3468 },
+      { word: 'book', arasaacId: 3476 },
+      { word: 'chair', arasaacId: 3490 },
+      { word: 'table', arasaacId: 3610 },
+      { word: 'door', arasaacId: 3510 },
+      { word: 'window', arasaacId: 3638 },
+      { word: 'bed', arasaacId: 3470 },
+      { word: 'car', arasaacId: 3486 },
+      { word: 'phone', arasaacId: 3572 },
+      { word: 'cup', arasaacId: 3500 },
+    ],
+  },
+  {
+    id: 'weather',
+    name: 'Weather',
+    emoji: '☀️',
+    color: '#F5A623',
+    words: [
+      { word: 'sun', arasaacId: 7632 },
+      { word: 'rain', arasaacId: 7618 },
+      { word: 'cloud', arasaacId: 7596 },
+      { word: 'snow', arasaacId: 7628 },
+      { word: 'wind', arasaacId: 7642 },
+      { word: 'hot', arasaacId: 7606 },
+      { word: 'cold', arasaacId: 7598 },
+      { word: 'storm', arasaacId: 7630 },
+      { word: 'rainbow', arasaacId: 7620 },
+      { word: 'sky', arasaacId: 7626 },
+    ],
+  },
+];
 
 // ============================================
 // SESSION VALIDATION HELPER
@@ -19,6 +172,7 @@ const getValidSession = async () => {
   }
 
   try {
+    // First, get current session
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
     if (sessionError) {
@@ -76,307 +230,262 @@ const saveLocalProgress = (progress) => {
   }
 };
 
+const getCustomWords = () => {
+  try {
+    const saved = localStorage.getItem(CUSTOM_WORDS_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch (error) {
+    console.error('Error reading custom words:', error);
+    return [];
+  }
+};
+
+const saveCustomWords = (words) => {
+  try {
+    localStorage.setItem(CUSTOM_WORDS_KEY, JSON.stringify(words));
+  } catch (error) {
+    console.error('Error saving custom words:', error);
+  }
+};
+
 // ============================================
-// WORD LISTS BY CATEGORY
+// CATEGORY OPERATIONS
 // ============================================
 
-export const WORD_CATEGORIES = {
-  animals: {
-    name: 'Animals',
-    icon: '🐾',
-    color: '#F5A623',
-    words: [
-      { word: 'cat', phonetic: '/kæt/', difficulty: 'easy' },
-      { word: 'dog', phonetic: '/dɔːɡ/', difficulty: 'easy' },
-      { word: 'bird', phonetic: '/bɜːrd/', difficulty: 'easy' },
-      { word: 'fish', phonetic: '/fɪʃ/', difficulty: 'easy' },
-      { word: 'elephant', phonetic: '/ˈelɪfənt/', difficulty: 'medium' },
-      { word: 'giraffe', phonetic: '/dʒɪˈræf/', difficulty: 'medium' },
-      { word: 'butterfly', phonetic: '/ˈbʌtərflaɪ/', difficulty: 'medium' },
-      { word: 'hippopotamus', phonetic: '/ˌhɪpəˈpɒtəməs/', difficulty: 'hard' },
-    ],
-  },
-  food: {
-    name: 'Food',
-    icon: '🍎',
-    color: '#E63B2E',
-    words: [
-      { word: 'apple', phonetic: '/ˈæpəl/', difficulty: 'easy' },
-      { word: 'banana', phonetic: '/bəˈnænə/', difficulty: 'easy' },
-      { word: 'bread', phonetic: '/bred/', difficulty: 'easy' },
-      { word: 'water', phonetic: '/ˈwɔːtər/', difficulty: 'easy' },
-      { word: 'spaghetti', phonetic: '/spəˈɡeti/', difficulty: 'medium' },
-      { word: 'broccoli', phonetic: '/ˈbrɒkəli/', difficulty: 'medium' },
-      { word: 'strawberry', phonetic: '/ˈstrɔːberi/', difficulty: 'medium' },
-    ],
-  },
-  colors: {
-    name: 'Colors',
-    icon: '🎨',
-    color: '#8E6BBF',
-    words: [
-      { word: 'red', phonetic: '/red/', difficulty: 'easy' },
-      { word: 'blue', phonetic: '/bluː/', difficulty: 'easy' },
-      { word: 'green', phonetic: '/ɡriːn/', difficulty: 'easy' },
-      { word: 'yellow', phonetic: '/ˈjeloʊ/', difficulty: 'easy' },
-      { word: 'purple', phonetic: '/ˈpɜːrpəl/', difficulty: 'medium' },
-      { word: 'orange', phonetic: '/ˈɒrɪndʒ/', difficulty: 'medium' },
-    ],
-  },
-  actions: {
-    name: 'Actions',
-    icon: '🏃',
-    color: '#4A9FD4',
-    words: [
-      { word: 'run', phonetic: '/rʌn/', difficulty: 'easy' },
-      { word: 'jump', phonetic: '/dʒʌmp/', difficulty: 'easy' },
-      { word: 'walk', phonetic: '/wɔːk/', difficulty: 'easy' },
-      { word: 'swim', phonetic: '/swɪm/', difficulty: 'easy' },
-      { word: 'climbing', phonetic: '/ˈklaɪmɪŋ/', difficulty: 'medium' },
-      { word: 'throwing', phonetic: '/ˈθroʊɪŋ/', difficulty: 'medium' },
-    ],
-  },
-  feelings: {
-    name: 'Feelings',
-    icon: '😊',
-    color: '#E86B9A',
-    words: [
-      { word: 'happy', phonetic: '/ˈhæpi/', difficulty: 'easy' },
-      { word: 'sad', phonetic: '/sæd/', difficulty: 'easy' },
-      { word: 'angry', phonetic: '/ˈæŋɡri/', difficulty: 'easy' },
-      { word: 'excited', phonetic: '/ɪkˈsaɪtɪd/', difficulty: 'medium' },
-      { word: 'surprised', phonetic: '/sərˈpraɪzd/', difficulty: 'medium' },
-      { word: 'frustrated', phonetic: '/ˈfrʌstreɪtɪd/', difficulty: 'hard' },
-    ],
-  },
+/**
+ * Get all categories including custom ones
+ */
+export const getCategories = () => {
+  return [...DEFAULT_CATEGORIES];
+};
+
+/**
+ * Get words for a specific category
+ */
+export const getCategoryWords = (categoryId) => {
+  const category = DEFAULT_CATEGORIES.find(c => c.id === categoryId);
+  if (!category) return [];
+  
+  const customWords = getCustomWords().filter(w => w.categoryId === categoryId);
+  return [...category.words, ...customWords];
+};
+
+/**
+ * Add a custom word to a category
+ */
+export const addCustomWord = (categoryId, word) => {
+  const customWords = getCustomWords();
+  const newWord = {
+    id: `custom_${Date.now()}`,
+    word: word.word,
+    categoryId,
+    arasaacId: word.arasaacId || null,
+    imageUrl: word.imageUrl || null,
+    createdAt: new Date().toISOString(),
+  };
+  saveCustomWords([...customWords, newWord]);
+  return newWord;
+};
+
+/**
+ * Remove a custom word
+ */
+export const removeCustomWord = (wordId) => {
+  const customWords = getCustomWords();
+  saveCustomWords(customWords.filter(w => w.id !== wordId));
 };
 
 // ============================================
 // PROGRESS TRACKING
 // ============================================
 
-export const getProgress = async () => {
-  if (!isSupabaseConfigured()) {
-    return { data: getLocalProgress(), error: null };
-  }
-
-  try {
-    const { session, error: sessionError } = await getValidSession();
-    
-    if (sessionError || !session) {
-      return { data: getLocalProgress(), error: null };
-    }
-
-    const { data, error } = await supabase
-      .from('pronunciation_progress')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      console.error('Error fetching progress:', error);
-      return { data: getLocalProgress(), error: error.message };
-    }
-
-    return { data: data?.progress || getLocalProgress(), error: null };
-  } catch (error) {
-    console.error('getProgress error:', error);
-    return { data: getLocalProgress(), error: error.message };
-  }
-};
-
-export const saveProgress = async (progress) => {
-  saveLocalProgress(progress);
-
-  if (!isSupabaseConfigured()) {
-    return { error: null };
-  }
-
-  try {
-    const { session, error: sessionError } = await getValidSession();
-    
-    if (sessionError || !session) {
-      return { error: null };
-    }
-
-    const { error } = await supabase
-      .from('pronunciation_progress')
-      .upsert({
-        user_id: session.user.id,
-        progress,
-        updated_at: new Date().toISOString(),
-      });
-
-    if (error) {
-      console.error('Error saving progress:', error);
-      return { error: error.message };
-    }
-
-    return { error: null };
-  } catch (error) {
-    console.error('saveProgress error:', error);
-    return { error: error.message };
-  }
-};
-
-export const recordAttempt = async (word, category, success, audioUrl = null) => {
-  const currentProgress = await getProgress();
-  const progress = currentProgress.data || {};
-
-  if (!progress[category]) {
-    progress[category] = {};
-  }
-
-  if (!progress[category][word]) {
-    progress[category][word] = {
+/**
+ * Record a practice attempt
+ */
+export const recordAttempt = (word, correct, categoryId) => {
+  const progress = getLocalProgress();
+  const key = `${categoryId}_${word}`;
+  
+  if (!progress[key]) {
+    progress[key] = {
+      word,
+      categoryId,
       attempts: 0,
-      successes: 0,
-      lastAttempt: null,
-      recordings: [],
+      correct: 0,
+      lastPracticed: null,
     };
   }
-
-  progress[category][word].attempts += 1;
-  if (success) {
-    progress[category][word].successes += 1;
+  
+  progress[key].attempts += 1;
+  if (correct) {
+    progress[key].correct += 1;
   }
-  progress[category][word].lastAttempt = new Date().toISOString();
+  progress[key].lastPracticed = new Date().toISOString();
+  
+  saveLocalProgress(progress);
+  return progress[key];
+};
 
-  if (audioUrl) {
-    progress[category][word].recordings.push({
-      url: audioUrl,
-      date: new Date().toISOString(),
-      success,
-    });
-  }
+/**
+ * Get progress for a word
+ */
+export const getWordProgress = (word, categoryId) => {
+  const progress = getLocalProgress();
+  const key = `${categoryId}_${word}`;
+  return progress[key] || null;
+};
 
-  return saveProgress(progress);
+/**
+ * Get overall progress for a category
+ */
+export const getCategoryProgress = (categoryId) => {
+  const progress = getLocalProgress();
+  const categoryWords = getCategoryWords(categoryId);
+  
+  let totalAttempts = 0;
+  let totalCorrect = 0;
+  let wordsPracticed = 0;
+  
+  categoryWords.forEach(w => {
+    const key = `${categoryId}_${w.word}`;
+    if (progress[key]) {
+      totalAttempts += progress[key].attempts;
+      totalCorrect += progress[key].correct;
+      wordsPracticed += 1;
+    }
+  });
+  
+  return {
+    totalAttempts,
+    totalCorrect,
+    wordsPracticed,
+    totalWords: categoryWords.length,
+    accuracy: totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0,
+  };
 };
 
 // ============================================
-// AI GENERATION - WITH SESSION VALIDATION
+// AI WORD GENERATION
 // ============================================
 
-export const generatePronunciationAudio = async (word, options = {}) => {
+/**
+ * Request more words for a category using AI
+ * FIXED: Proper session validation before Edge Function call
+ */
+export const requestMoreWords = async (categoryId, existingWords = []) => {
+  // Validate session first
   const { session, error: sessionError } = await getValidSession();
   
   if (sessionError || !session) {
     return { 
       data: null, 
-      error: sessionError || 'Please sign in to use AI features.' 
+      error: sessionError || 'Please sign in to generate more words. AI features require authentication.' 
     };
   }
 
+  const category = DEFAULT_CATEGORIES.find(c => c.id === categoryId);
+  if (!category) {
+    return { data: null, error: 'Category not found' };
+  }
+
   try {
-    const { data, error } = await supabase.functions.invoke('generate-pronunciation', {
+    const { data, error } = await supabase.functions.invoke('generate-pronunciation-words', {
       body: {
-        word,
-        speed: options.speed || 'normal',
-        voice: options.voice || 'neutral',
+        category: category.name,
+        existingWords: existingWords.map(w => w.word),
+        count: 5,
       },
     });
 
     if (error) {
       console.error('Edge function error:', error);
-      return { data: null, error: error.message || 'Failed to generate audio.' };
+      return { 
+        data: null, 
+        error: error.message || 'Failed to generate words. Please try again.' 
+      };
+    }
+
+    // Save the new words as custom words
+    if (data?.words) {
+      data.words.forEach(word => {
+        addCustomWord(categoryId, word);
+      });
     }
 
     return { data, error: null };
   } catch (error) {
-    console.error('generatePronunciationAudio error:', error);
-    return { data: null, error: error.message };
-  }
-};
-
-export const analyzeUserPronunciation = async (audioBlob, targetWord) => {
-  const { session, error: sessionError } = await getValidSession();
-  
-  if (sessionError || !session) {
+    console.error('requestMoreWords error:', error);
     return { 
       data: null, 
-      error: sessionError || 'Please sign in to use AI analysis.' 
+      error: error.message || 'Failed to generate words. Please check your connection.' 
     };
-  }
-
-  try {
-    // Convert blob to base64
-    const reader = new FileReader();
-    const base64Promise = new Promise((resolve, reject) => {
-      reader.onloadend = () => resolve(reader.result.split(',')[1]);
-      reader.onerror = reject;
-    });
-    reader.readAsDataURL(audioBlob);
-    const audioBase64 = await base64Promise;
-
-    const { data, error } = await supabase.functions.invoke('analyze-pronunciation', {
-      body: {
-        audio: audioBase64,
-        targetWord,
-      },
-    });
-
-    if (error) {
-      console.error('Edge function error:', error);
-      return { data: null, error: error.message || 'Failed to analyze pronunciation.' };
-    }
-
-    return { data, error: null };
-  } catch (error) {
-    console.error('analyzeUserPronunciation error:', error);
-    return { data: null, error: error.message };
-  }
-};
-
-export const generateWordImage = async (word) => {
-  const { session, error: sessionError } = await getValidSession();
-  
-  if (sessionError || !session) {
-    return { 
-      data: null, 
-      error: sessionError || 'Please sign in to generate images.' 
-    };
-  }
-
-  try {
-    const { data, error } = await supabase.functions.invoke('generate-word-image', {
-      body: { word },
-    });
-
-    if (error) {
-      console.error('Edge function error:', error);
-      return { data: null, error: error.message || 'Failed to generate image.' };
-    }
-
-    return { data, error: null };
-  } catch (error) {
-    console.error('generateWordImage error:', error);
-    return { data: null, error: error.message };
   }
 };
 
 // ============================================
-// TEXT TO SPEECH (Browser API)
+// CATEGORY USE TRACKING
 // ============================================
 
-export const speakWord = (word, rate = 0.8) => {
-  if ('speechSynthesis' in window) {
-    speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(word);
-    utterance.rate = rate;
-    utterance.pitch = 1;
-    speechSynthesis.speak(utterance);
-    return true;
+const CATEGORY_USE_KEY = 'snw_category_use_count';
+
+/**
+ * Increment category use count
+ */
+export const incrementCategoryUseCount = (categoryId) => {
+  try {
+    const counts = JSON.parse(localStorage.getItem(CATEGORY_USE_KEY) || '{}');
+    counts[categoryId] = (counts[categoryId] || 0) + 1;
+    localStorage.setItem(CATEGORY_USE_KEY, JSON.stringify(counts));
+    return counts[categoryId];
+  } catch (error) {
+    console.error('Error incrementing category use count:', error);
+    return 0;
   }
-  return false;
 };
+
+/**
+ * Get category use count
+ */
+export const getCategoryUseCount = (categoryId) => {
+  try {
+    const counts = JSON.parse(localStorage.getItem(CATEGORY_USE_KEY) || '{}');
+    return counts[categoryId] || 0;
+  } catch (error) {
+    return 0;
+  }
+};
+
+/**
+ * Get most used categories
+ */
+export const getMostUsedCategories = (limit = 3) => {
+  try {
+    const counts = JSON.parse(localStorage.getItem(CATEGORY_USE_KEY) || '{}');
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([id]) => DEFAULT_CATEGORIES.find(c => c.id === id))
+      .filter(Boolean);
+  } catch (error) {
+    return [];
+  }
+};
+
+// ============================================
+// EXPORTS
+// ============================================
 
 export default {
-  WORD_CATEGORIES,
-  getProgress,
-  saveProgress,
+  DEFAULT_CATEGORIES,
+  getCategories,
+  getCategoryWords,
+  addCustomWord,
+  removeCustomWord,
   recordAttempt,
-  generatePronunciationAudio,
-  analyzeUserPronunciation,
-  generateWordImage,
-  speakWord,
+  getWordProgress,
+  getCategoryProgress,
+  requestMoreWords,
+  incrementCategoryUseCount,
+  getCategoryUseCount,
+  getMostUsedCategories,
 };
