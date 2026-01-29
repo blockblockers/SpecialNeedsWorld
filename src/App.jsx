@@ -339,7 +339,9 @@ const AuthProvider = ({ children }) => {
     signIn,
     signUp,
     signInWithProvider,
+    signInWithGoogle: () => signInWithProvider('google'),
     continueAsGuest,
+    signInAsGuest: continueAsGuest, // Alias for EntryAuthScreen compatibility
     signOut,
     resetPassword,
     updatePassword,
