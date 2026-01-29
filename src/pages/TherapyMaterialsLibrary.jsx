@@ -1,20 +1,20 @@
 // TherapyMaterialsLibrary.jsx - Evidence-based therapy materials library
 // Curated resources from authoritative organizations and professional bodies
-// Real downloadable PDFs and external links to trusted sources
-// ENHANCED: In-app PDF viewer + Favorites system with Supabase sync
+// FIXED: Correct import path for supabase
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../supabaseClient';
 import { 
   ArrowLeft, Search, Download, Star, ExternalLink,
   Layers, FileText, Target, BookOpen, BarChart3,
   Mic, MessageCircle, Brain, Sparkles, ChevronRight,
   Grid3X3, List, Heart, Users, Baby, Volume2,
   Globe, Bookmark, Clock, CheckCircle, Hand, Eye,
-  Activity, Puzzle, Home, GraduationCap, X, 
-  Maximize2, Minimize2, Share2, HeartOff
+  Activity, Puzzle, Home, GraduationCap, X, Maximize2, 
+  Minimize2, Share2
 } from 'lucide-react';
+import { supabase, isSupabaseConfigured } from '../services/supabase';
+import { useAuth } from '../App';
 
 // Material categories - EXPANDED
 const CATEGORIES = [
@@ -921,219 +921,222 @@ const THERAPY_MATERIALS = [
   },
 ];
 
-// ============================================
-// PDF VIEWER MODAL COMPONENT
-// ============================================
-const PDFViewerModal = ({ material, onClose, onDownload, onOpenExternal }) => {
+// PDF Viewer Modal Component
+const PDFViewerModal = ({ material, onClose }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
-
-  const pdfUrl = material.directDownload || material.url;
-
-  // Handle iframe load
-  const handleIframeLoad = () => {
-    setIsLoading(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  
+  const pdfUrl = material.directDownload;
+  const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
+  
+  const handleDownload = () => {
+    const link = document.createElement('a');
+    link.href = pdfUrl;
+    link.download = `${material.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
-
-  const handleIframeError = () => {
-    setIsLoading(false);
-    setLoadError(true);
+  
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: material.title,
+          text: `${material.title} - ${material.organization}`,
+          url: material.url,
+        });
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          navigator.clipboard.writeText(material.url);
+        }
+      }
+    } else {
+      navigator.clipboard.writeText(material.url);
+    }
   };
-
+  
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div 
-        className={`bg-white rounded-2xl shadow-2xl flex flex-col transition-all duration-300 ${
-          isFullscreen 
-            ? 'fixed inset-2' 
-            : 'w-full max-w-4xl h-[85vh]'
-        }`}
-      >
+    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-2 sm:p-4">
+      <div className={`bg-white rounded-2xl overflow-hidden flex flex-col ${
+        isFullscreen ? 'w-full h-full' : 'w-full max-w-4xl h-[90vh]'
+      }`}>
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b-2 border-gray-100">
-          <div className="flex-1 min-w-0 pr-4">
-            <h3 className="font-display text-lg text-gray-800 truncate">{material.title}</h3>
-            <p className="text-sm text-gray-500 font-crayon">{material.organization}</p>
+        <div className="flex items-center gap-3 p-3 border-b bg-gray-50">
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+          >
+            <X size={20} />
+          </button>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-display text-sm text-gray-800 truncate">{material.title}</h3>
+            <p className="text-xs text-gray-500 font-crayon">{material.organization}</p>
           </div>
-          
-          {/* Action buttons */}
           <div className="flex items-center gap-2">
             <button
-              onClick={onDownload}
-              className="flex items-center gap-2 px-3 py-2 bg-[#10B981] text-white rounded-lg
-                         hover:bg-[#059669] transition-colors font-crayon text-sm"
+              onClick={handleShare}
+              className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+              title="Share"
             >
-              <Download size={16} />
-              Download
+              <Share2 size={18} />
             </button>
             <button
-              onClick={onOpenExternal}
-              className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg
-                         hover:bg-gray-200 transition-colors font-crayon text-sm"
+              onClick={handleDownload}
+              className="p-2 hover:bg-gray-200 rounded-lg transition-colors text-blue-600"
+              title="Download PDF"
             >
-              <ExternalLink size={16} />
-              Open
+              <Download size={18} />
             </button>
             <button
               onClick={() => setIsFullscreen(!isFullscreen)}
-              className="p-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              className="p-2 hover:bg-gray-200 rounded-lg transition-colors hidden sm:block"
+              title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
             >
               {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
             </button>
-            <button
-              onClick={onClose}
-              className="p-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-red-100 hover:text-red-600 transition-colors"
-            >
-              <X size={18} />
-            </button>
           </div>
         </div>
-
+        
         {/* PDF Viewer */}
-        <div className="flex-1 relative bg-gray-50 overflow-hidden">
-          {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+        <div className="flex-1 relative bg-gray-100">
+          {loading && (
+            <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
-                <div className="w-12 h-12 border-4 border-[#10B981] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <div className="w-10 h-10 border-4 border-[#10B981] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
                 <p className="font-crayon text-gray-500">Loading PDF...</p>
               </div>
             </div>
           )}
-          
-          {loadError ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
-              <div className="text-center p-8">
-                <FileText size={48} className="mx-auto text-gray-300 mb-4" />
-                <p className="font-display text-gray-700 mb-2">Unable to preview PDF</p>
-                <p className="font-crayon text-gray-500 mb-4">Some PDFs can't be displayed in-app due to security settings.</p>
+          {error ? (
+            <div className="absolute inset-0 flex items-center justify-center p-4">
+              <div className="text-center">
+                <FileText size={48} className="mx-auto text-gray-300 mb-3" />
+                <p className="font-crayon text-gray-500 mb-4">Unable to preview PDF</p>
                 <div className="flex gap-3 justify-center">
                   <button
-                    onClick={onDownload}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#10B981] text-white rounded-lg
-                               hover:bg-[#059669] transition-colors font-crayon"
+                    onClick={handleDownload}
+                    className="px-4 py-2 bg-[#10B981] text-white rounded-lg font-crayon flex items-center gap-2"
                   >
-                    <Download size={16} />
-                    Download PDF
+                    <Download size={16} /> Download PDF
                   </button>
-                  <button
-                    onClick={onOpenExternal}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg
-                               hover:bg-gray-300 transition-colors font-crayon"
+                  <a
+                    href={material.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-crayon flex items-center gap-2"
                   >
-                    <ExternalLink size={16} />
-                    Open in New Tab
-                  </button>
+                    <ExternalLink size={16} /> Open Source
+                  </a>
                 </div>
               </div>
             </div>
           ) : (
             <iframe
-              src={`${pdfUrl}#toolbar=1&navpanes=0`}
+              src={viewerUrl}
               className="w-full h-full border-0"
               title={material.title}
-              onLoad={handleIframeLoad}
-              onError={handleIframeError}
+              onLoad={() => setLoading(false)}
+              onError={() => { setLoading(false); setError(true); }}
             />
           )}
+        </div>
+        
+        {/* Footer */}
+        <div className="p-3 border-t bg-gray-50 flex items-center justify-between">
+          <p className="text-xs text-gray-500 font-crayon">
+            Source: <a href={material.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{material.organization}</a>
+          </p>
+          <button
+            onClick={handleDownload}
+            className="px-4 py-2 bg-[#10B981] text-white rounded-lg font-crayon text-sm flex items-center gap-2 hover:bg-[#059669]"
+          >
+            <Download size={16} /> Download PDF
+          </button>
         </div>
       </div>
     </div>
   );
 };
 
-// ============================================
-// MAIN COMPONENT
-// ============================================
 const TherapyMaterialsLibrary = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedType, setSelectedType] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('grid');
   const [showFreeOnly, setShowFreeOnly] = useState(false);
-  
-  // PDF Viewer state
-  const [viewingMaterial, setViewingMaterial] = useState(null);
-  
-  // Favorites state
   const [favorites, setFavorites] = useState([]);
-  const [favoritesLoaded, setFavoritesLoaded] = useState(false);
-  const [userId, setUserId] = useState(null);
+  const [viewingPDF, setViewingPDF] = useState(null);
+  const [toast, setToast] = useState(null);
 
-  // Load favorites from Supabase or localStorage
+  // Load favorites
   useEffect(() => {
     const loadFavorites = async () => {
-      try {
-        // Check for authenticated user
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (user) {
-          setUserId(user.id);
-          // Load from Supabase
+      // Try Supabase first
+      if (isSupabaseConfigured() && user && !user.isGuest) {
+        try {
           const { data, error } = await supabase
-            .from('therapy_favorites')
-            .select('resource_id')
+            .from('therapy_material_favorites')
+            .select('material_id')
             .eq('user_id', user.id);
           
           if (!error && data) {
-            setFavorites(data.map(f => f.resource_id));
+            setFavorites(data.map(f => f.material_id));
+            return;
           }
-        } else {
-          // Load from localStorage for guests
-          const stored = localStorage.getItem('atlasassist_therapy_favorites');
-          if (stored) {
-            setFavorites(JSON.parse(stored));
-          }
-        }
-      } catch (err) {
-        console.error('Error loading favorites:', err);
-        // Fallback to localStorage
-        const stored = localStorage.getItem('atlasassist_therapy_favorites');
-        if (stored) {
-          setFavorites(JSON.parse(stored));
+        } catch (e) {
+          console.error('Error loading favorites from Supabase:', e);
         }
       }
-      setFavoritesLoaded(true);
+      
+      // Fall back to localStorage
+      const saved = localStorage.getItem('therapy_material_favorites');
+      if (saved) {
+        setFavorites(JSON.parse(saved));
+      }
     };
-
+    
     loadFavorites();
-  }, []);
+  }, [user]);
+
+  // Show toast
+  const showToast = (message) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 2500);
+  };
 
   // Toggle favorite
-  const toggleFavorite = async (resourceId) => {
-    const isFavorited = favorites.includes(resourceId);
-    let newFavorites;
-
-    if (isFavorited) {
-      newFavorites = favorites.filter(id => id !== resourceId);
-    } else {
-      newFavorites = [...favorites, resourceId];
-    }
-
+  const toggleFavorite = async (materialId) => {
+    const isFavorited = favorites.includes(materialId);
+    const newFavorites = isFavorited
+      ? favorites.filter(id => id !== materialId)
+      : [...favorites, materialId];
+    
     setFavorites(newFavorites);
-
-    // Save to localStorage immediately
-    localStorage.setItem('atlasassist_therapy_favorites', JSON.stringify(newFavorites));
-
-    // Sync to Supabase if logged in
-    if (userId) {
+    localStorage.setItem('therapy_material_favorites', JSON.stringify(newFavorites));
+    
+    showToast(isFavorited ? 'Removed from favorites' : 'Added to favorites ❤️');
+    
+    // Sync to Supabase
+    if (isSupabaseConfigured() && user && !user.isGuest) {
       try {
         if (isFavorited) {
-          // Remove from Supabase
           await supabase
-            .from('therapy_favorites')
+            .from('therapy_material_favorites')
             .delete()
-            .eq('user_id', userId)
-            .eq('resource_id', resourceId);
+            .eq('user_id', user.id)
+            .eq('material_id', materialId);
         } else {
-          // Add to Supabase
           await supabase
-            .from('therapy_favorites')
-            .insert({ user_id: userId, resource_id: resourceId });
+            .from('therapy_material_favorites')
+            .insert({ user_id: user.id, material_id: materialId });
         }
-      } catch (err) {
-        console.error('Error syncing favorite:', err);
+      } catch (e) {
+        console.error('Error syncing favorite:', e);
       }
     }
   };
@@ -1154,7 +1157,6 @@ const TherapyMaterialsLibrary = () => {
       material.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       material.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       material.organization.toLowerCase().includes(searchQuery.toLowerCase());
-    
     return matchesType && matchesFree && matchesSearch;
   });
 
@@ -1163,33 +1165,13 @@ const TherapyMaterialsLibrary = () => {
 
   // Handle resource click
   const handleResourceClick = (material) => {
-    // If it's a previewable PDF, show in modal
     if (material.canPreview && material.directDownload) {
-      setViewingMaterial(material);
+      setViewingPDF(material);
     } else if (material.directDownload) {
-      // Direct download
       window.open(material.directDownload, '_blank');
     } else {
-      // Open external URL
       window.open(material.url, '_blank');
     }
-  };
-
-  // Handle download
-  const handleDownload = (material) => {
-    const url = material.directDownload || material.url;
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${material.title.replace(/[^a-z0-9]/gi, '_')}.pdf`;
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  // Handle open external
-  const handleOpenExternal = (material) => {
-    window.open(material.directDownload || material.url, '_blank');
   };
 
   // Get category count
@@ -1201,16 +1183,6 @@ const TherapyMaterialsLibrary = () => {
 
   return (
     <div className="min-h-screen bg-[#FFFEF5]">
-      {/* PDF Viewer Modal */}
-      {viewingMaterial && (
-        <PDFViewerModal
-          material={viewingMaterial}
-          onClose={() => setViewingMaterial(null)}
-          onDownload={() => handleDownload(viewingMaterial)}
-          onOpenExternal={() => handleOpenExternal(viewingMaterial)}
-        />
-      )}
-
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#10B981]">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
@@ -1229,7 +1201,8 @@ const TherapyMaterialsLibrary = () => {
               Therapy Materials Library
             </h1>
             <p className="text-sm text-gray-500 font-crayon">
-              {THERAPY_MATERIALS.length} resources • {favorites.length} saved
+              {THERAPY_MATERIALS.length} curated resources
+              {favorites.length > 0 && ` • ${favorites.length} saved`}
             </p>
           </div>
         </div>
@@ -1298,20 +1271,19 @@ const TherapyMaterialsLibrary = () => {
             {CATEGORIES.map(category => {
               const Icon = category.icon;
               const count = getCategoryCount(category.id);
-              const isFavoritesTab = category.id === 'favorites';
-              
+              const isFavorites = category.id === 'favorites';
               return (
                 <button
                   key={category.id}
                   onClick={() => setSelectedCategory(category.id)}
                   className={`flex items-center gap-2 px-3 py-2 rounded-xl whitespace-nowrap font-crayon text-sm transition-all
                     ${selectedCategory === category.id 
-                      ? isFavoritesTab
+                      ? isFavorites
                         ? 'bg-pink-100 text-pink-600 border-2 border-pink-400'
                         : 'bg-[#10B981]/10 text-[#10B981] border-2 border-[#10B981]' 
                       : 'bg-gray-50 text-gray-600 border-2 border-transparent hover:bg-gray-100'}`}
                 >
-                  <Icon size={14} className={isFavoritesTab && selectedCategory === category.id ? 'fill-pink-400' : ''} />
+                  <Icon size={14} className={isFavorites && selectedCategory === category.id ? 'text-pink-500' : ''} />
                   {category.name}
                   <span className="text-xs opacity-60">({count})</span>
                 </button>
@@ -1341,19 +1313,17 @@ const TherapyMaterialsLibrary = () => {
           </div>
         </div>
 
-        {/* Favorites Empty State */}
+        {/* Favorites empty state */}
         {selectedCategory === 'favorites' && favorites.length === 0 && (
-          <div className="text-center py-12 bg-white rounded-2xl border-3 border-pink-200">
+          <div className="text-center py-12 bg-pink-50 rounded-2xl border-2 border-pink-200 mb-6">
             <Heart size={48} className="mx-auto text-pink-300 mb-4" />
-            <p className="font-display text-gray-700 mb-2">No favorites yet</p>
-            <p className="text-sm text-gray-500 font-crayon mb-4">
-              Tap the heart icon on any resource to save it here
-            </p>
+            <p className="font-display text-pink-600 mb-2">No favorites yet</p>
+            <p className="text-sm text-gray-500 font-crayon">Tap the ❤️ on any resource to save it here</p>
             <button
               onClick={() => setSelectedCategory('all')}
-              className="px-4 py-2 bg-[#10B981] text-white rounded-lg font-crayon hover:bg-[#059669] transition-colors"
+              className="mt-4 px-4 py-2 bg-pink-500 text-white rounded-lg font-crayon text-sm"
             >
-              Browse All Resources
+              Browse Resources
             </button>
           </div>
         )}
@@ -1370,60 +1340,44 @@ const TherapyMaterialsLibrary = () => {
                 const typeInfo = getTypeInfo(material.type);
                 const TypeIcon = typeInfo?.icon || FileText;
                 const isFavorited = favorites.includes(material.id);
-                
                 return (
-                  <div
+                  <button
                     key={material.id}
+                    onClick={() => handleResourceClick(material)}
                     className="bg-gradient-to-br from-[#10B981]/10 to-[#059669]/10 rounded-2xl border-3 
-                               border-[#10B981] p-4 hover:shadow-lg transition-all group relative"
+                               border-[#10B981] p-4 text-left hover:shadow-lg transition-all group relative"
                   >
                     {/* Favorite button */}
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFavorite(material.id);
-                      }}
-                      className={`absolute top-3 right-3 p-2 rounded-full transition-all z-10
-                        ${isFavorited 
-                          ? 'bg-pink-100 text-pink-500' 
-                          : 'bg-white/80 text-gray-400 hover:text-pink-500'}`}
+                      onClick={(e) => { e.stopPropagation(); toggleFavorite(material.id); }}
+                      className={`absolute top-2 right-2 p-1.5 rounded-full transition-colors ${
+                        isFavorited ? 'bg-pink-100 text-pink-500' : 'bg-white/80 text-gray-300 hover:text-pink-400'
+                      }`}
                     >
-                      <Heart size={18} className={isFavorited ? 'fill-pink-500' : ''} />
+                      <Heart size={16} fill={isFavorited ? 'currentColor' : 'none'} />
                     </button>
-
-                    <button
-                      onClick={() => handleResourceClick(material)}
-                      className="flex items-start gap-3 text-left w-full"
-                    >
+                    
+                    <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-xl bg-[#10B981]/20 flex items-center justify-center flex-shrink-0">
                         <TypeIcon size={20} className="text-[#10B981]" />
                       </div>
-                      <div className="flex-1 min-w-0 pr-8">
+                      <div className="flex-1 min-w-0 pr-6">
                         <div className="flex items-center gap-2 mb-1">
                           <h3 className="font-display text-sm text-gray-800 truncate">{material.title}</h3>
+                        </div>
+                        <div className="flex items-center gap-2 mb-1">
                           {material.isFree && (
-                            <span className="px-1.5 py-0.5 bg-green-100 text-green-700 text-xs rounded-full flex-shrink-0">Free</span>
+                            <span className="px-1.5 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Free</span>
+                          )}
+                          {material.canPreview && (
+                            <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">Preview</span>
                           )}
                         </div>
                         <p className="text-xs text-[#10B981] font-crayon mb-1">{material.organization}</p>
                         <p className="text-xs text-gray-500 font-crayon line-clamp-2">{material.description}</p>
-                        
-                        {/* Preview/Download indicators */}
-                        <div className="flex items-center gap-2 mt-2">
-                          {material.canPreview && (
-                            <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                              <Eye size={10} /> Preview
-                            </span>
-                          )}
-                          {material.directDownload && (
-                            <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                              <Download size={10} /> Download
-                            </span>
-                          )}
-                        </div>
                       </div>
-                    </button>
-                  </div>
+                    </div>
+                  </button>
                 );
               })}
             </div>
@@ -1431,100 +1385,94 @@ const TherapyMaterialsLibrary = () => {
         )}
 
         {/* Materials Grid/List */}
-        {(selectedCategory !== 'favorites' || favorites.length > 0) && filteredMaterials.length > 0 && (
-          <div className={viewMode === 'grid' 
-            ? 'grid grid-cols-1 sm:grid-cols-2 gap-4' 
-            : 'space-y-3'
-          }>
-            {filteredMaterials.map(material => {
-              const typeInfo = getTypeInfo(material.type);
-              const TypeIcon = typeInfo?.icon || FileText;
-              const isFavorited = favorites.includes(material.id);
+        <div className={viewMode === 'grid' 
+          ? 'grid grid-cols-1 sm:grid-cols-2 gap-4' 
+          : 'space-y-3'
+        }>
+          {filteredMaterials.map(material => {
+            const typeInfo = getTypeInfo(material.type);
+            const TypeIcon = typeInfo?.icon || FileText;
+            const isFavorited = favorites.includes(material.id);
 
-              return (
-                <div
-                  key={material.id}
-                  className={`bg-white rounded-2xl border-3 p-4 shadow-md hover:shadow-lg 
-                             transition-all group relative ${
-                               viewMode === 'list' ? 'flex items-center gap-4' : ''
-                             }`}
-                  style={{ borderColor: typeInfo?.color || '#ccc' }}
+            return (
+              <button
+                key={material.id}
+                onClick={() => handleResourceClick(material)}
+                className={`bg-white rounded-2xl border-3 p-4 shadow-md hover:shadow-lg 
+                           transition-all text-left group relative ${
+                             viewMode === 'list' ? 'flex items-center gap-4' : ''
+                           }`}
+                style={{ borderColor: typeInfo?.color || '#ccc' }}
+              >
+                {/* Favorite button */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); toggleFavorite(material.id); }}
+                  className={`absolute top-2 right-2 p-1.5 rounded-full transition-colors z-10 ${
+                    isFavorited ? 'bg-pink-100 text-pink-500' : 'bg-gray-100 text-gray-300 hover:text-pink-400'
+                  }`}
                 >
-                  {/* Favorite button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleFavorite(material.id);
-                    }}
-                    className={`absolute top-3 right-3 p-2 rounded-full transition-all z-10
-                      ${isFavorited 
-                        ? 'bg-pink-100 text-pink-500' 
-                        : 'bg-gray-50 text-gray-300 hover:text-pink-500 hover:bg-pink-50'}`}
-                  >
-                    <Heart size={16} className={isFavorited ? 'fill-pink-500' : ''} />
-                  </button>
-
-                  <button
-                    onClick={() => handleResourceClick(material)}
-                    className={`text-left w-full ${viewMode === 'list' ? 'flex items-center gap-4' : ''}`}
-                  >
-                    {/* Icon */}
-                    <div 
-                      className={`rounded-xl flex items-center justify-center ${
-                        viewMode === 'grid' ? 'w-10 h-10 mb-3' : 'w-12 h-12 flex-shrink-0'
-                      }`}
-                      style={{ backgroundColor: `${typeInfo?.color}20` }}
-                    >
-                      <TypeIcon size={viewMode === 'grid' ? 20 : 24} style={{ color: typeInfo?.color }} />
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 min-w-0 pr-8">
-                      <div className="flex items-start gap-2 mb-1 flex-wrap">
-                        <h3 className="font-display text-sm text-gray-800">{material.title}</h3>
-                        {material.isFree && (
-                          <span className="px-1.5 py-0.5 bg-green-100 text-green-700 text-xs rounded-full flex-shrink-0">Free</span>
-                        )}
-                      </div>
-                      <p className="text-xs font-crayon mb-1" style={{ color: typeInfo?.color }}>
-                        {material.organization}
-                      </p>
-                      <p className="text-xs text-gray-500 font-crayon line-clamp-2 mb-2">
-                        {material.description}
-                      </p>
-                      
-                      {/* Action indicators */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="flex items-center gap-1 text-xs text-gray-400">
-                          <Star size={10} className="text-yellow-500 fill-yellow-500" />
-                          {material.rating}
-                        </span>
-                        <span 
-                          className="px-2 py-0.5 rounded-full text-xs"
-                          style={{ backgroundColor: `${typeInfo?.color}15`, color: typeInfo?.color }}
-                        >
-                          {typeInfo?.name}
-                        </span>
-                        {material.canPreview && (
-                          <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <Eye size={10} /> Preview
-                          </span>
-                        )}
-                        {material.directDownload && !material.canPreview && (
-                          <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <Download size={10} /> PDF
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </button>
+                  <Heart size={16} fill={isFavorited ? 'currentColor' : 'none'} />
+                </button>
+                
+                {/* Icon */}
+                <div 
+                  className={`rounded-xl flex items-center justify-center ${
+                    viewMode === 'grid' ? 'w-10 h-10 mb-3' : 'w-12 h-12 flex-shrink-0'
+                  }`}
+                  style={{ backgroundColor: `${typeInfo?.color}20` }}
+                >
+                  <TypeIcon size={viewMode === 'grid' ? 20 : 24} style={{ color: typeInfo?.color }} />
                 </div>
-              );
-            })}
-          </div>
-        )}
 
-        {/* Empty state for search/filters */}
+                {/* Content */}
+                <div className="flex-1 min-w-0 pr-8">
+                  <div className="flex items-start gap-2 mb-1">
+                    <h3 className="font-display text-sm text-gray-800 truncate">{material.title}</h3>
+                  </div>
+                  <div className="flex items-center gap-2 mb-1">
+                    {material.isFree && (
+                      <span className="px-1.5 py-0.5 bg-green-100 text-green-700 text-xs rounded-full flex-shrink-0">Free</span>
+                    )}
+                    {material.canPreview && (
+                      <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full flex-shrink-0">Preview</span>
+                    )}
+                    {material.directDownload && !material.canPreview && (
+                      <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full flex-shrink-0 flex items-center gap-1">
+                        <Download size={10} /> PDF
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs font-crayon mb-1" style={{ color: typeInfo?.color }}>
+                    {material.organization}
+                  </p>
+                  <p className="text-xs text-gray-500 font-crayon line-clamp-2 mb-2">
+                    {material.description}
+                  </p>
+                  <div className="flex items-center gap-3 text-xs text-gray-400">
+                    <span className="flex items-center gap-1">
+                      <Star size={10} className="text-yellow-500 fill-yellow-500" />
+                      {material.rating}
+                    </span>
+                    <span 
+                      className="px-2 py-0.5 rounded-full text-xs"
+                      style={{ backgroundColor: `${typeInfo?.color}15`, color: typeInfo?.color }}
+                    >
+                      {typeInfo?.name}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Action */}
+                <ExternalLink 
+                  size={18} 
+                  className="text-gray-300 group-hover:text-[#10B981] transition-colors flex-shrink-0 absolute bottom-4 right-4" 
+                />
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Empty state */}
         {filteredMaterials.length === 0 && selectedCategory !== 'favorites' && (
           <div className="text-center py-12">
             <Search size={48} className="mx-auto text-gray-300 mb-4" />
@@ -1540,8 +1488,9 @@ const TherapyMaterialsLibrary = () => {
             <h3 className="text-xl font-display">About This Library</h3>
           </div>
           <p className="font-crayon text-white/90 mb-4">
-            This library contains {THERAPY_MATERIALS.length} curated resources from authoritative organizations. 
-            Tap the heart icon to save favorites, or tap resources with "Preview" to view PDFs directly in the app.
+            This library contains {THERAPY_MATERIALS.length} curated resources from authoritative organizations 
+            including CDC, ASHA, Stuttering Foundation, CASANA, AssistiveWare, ARASAAC, and many more trusted sources. 
+            All resources are evidence-based and most are completely free.
           </p>
           <div className="flex flex-wrap gap-2">
             <span className="px-3 py-1 bg-white/20 rounded-full text-sm font-crayon">CDC</span>
@@ -1555,6 +1504,21 @@ const TherapyMaterialsLibrary = () => {
           </div>
         </div>
       </main>
+
+      {/* PDF Viewer Modal */}
+      {viewingPDF && (
+        <PDFViewerModal 
+          material={viewingPDF} 
+          onClose={() => setViewingPDF(null)} 
+        />
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-gray-800 text-white rounded-lg font-crayon text-sm shadow-lg animate-fade-in">
+          {toast}
+        </div>
+      )}
     </div>
   );
 };

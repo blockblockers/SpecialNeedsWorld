@@ -103,6 +103,7 @@ const TherapyTypes = lazy(() => import('./pages/TherapyTypes'));
 const Definitions = lazy(() => import('./pages/Definitions'));
 const FAQ = lazy(() => import('./pages/FAQ'));
 const TherapyMaterialsLibrary = lazy(() => import('./pages/TherapyMaterialsLibrary'));
+const ParentGuides = lazy(() => import('./pages/ParentGuides'));
 
 // Community
 const Community = lazy(() => import('./pages/Community'));
@@ -558,7 +559,9 @@ function App() {
             <Route path="/resources/therapy-types" element={<ProtectedRoute><TherapyTypes /></ProtectedRoute>} />
             <Route path="/resources/definitions" element={<ProtectedRoute><Definitions /></ProtectedRoute>} />
             <Route path="/resources/faq" element={<ProtectedRoute><FAQ /></ProtectedRoute>} />
-            <Route path="/resources/therapy-materials" element={<ProtectedRoute><TherapyMaterialsLibrary /></ProtectedRoute>} />
+            <Route path="/resources/therapy-materials" element={<ProtectedRoute><TherapyMaterialsLibrary />
+            <Route path="/resources/parent-guides" element={<ProtectedRoute><ParentGuides /></ProtectedRoute>} />
+</ProtectedRoute>} />
 
             {/* COMMUNITY */}
             <Route path="/community" element={<ProtectedRoute><Community /></ProtectedRoute>} />

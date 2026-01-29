@@ -1,5 +1,5 @@
 // EntryAuthScreen.jsx - Clean authentication screen for ATLASassist
-// FIXED: Google auth back-out now properly resets loading state
+// FIXED: Function names now match App.jsx context (continueAsGuest, signInWithProvider)
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -8,7 +8,16 @@ import { useAuth } from '../App';
 
 const EntryAuthScreen = () => {
   const navigate = useNavigate();
-  const { signIn, signUp, signInWithGoogle, signInAsGuest, isAuthenticated, resetPassword } = useAuth();
+  
+  // FIXED: Use correct function names from App.jsx context
+  const { 
+    signIn, 
+    signUp, 
+    signInWithProvider,  // Was: signInWithGoogle
+    continueAsGuest,      // Was: signInAsGuest
+    isAuthenticated, 
+    resetPassword 
+  } = useAuth();
   
   useEffect(() => {
     if (isAuthenticated) {
@@ -28,19 +37,14 @@ const EntryAuthScreen = () => {
   // Reset loading when window regains focus (handles Google OAuth popup close)
   useEffect(() => {
     const handleFocus = () => {
-      // If loading and window regains focus, user likely cancelled OAuth
       if (loading) {
-        setTimeout(() => {
-          setLoading(false);
-        }, 500);
+        setTimeout(() => setLoading(false), 500);
       }
     };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && loading) {
-        setTimeout(() => {
-          setLoading(false);
-        }, 500);
+        setTimeout(() => setLoading(false), 500);
       }
     };
 
@@ -61,9 +65,12 @@ const EntryAuthScreen = () => {
     clearMessages();
     setLoading(true);
     const result = await signIn(email, password);
-    if (result.error) setError(result.error.message);
-    else navigate('/hub');
-    setLoading(false);
+    if (result.error) {
+      setError(result.error.message);
+      setLoading(false);
+    } else {
+      navigate('/hub');
+    }
   };
 
   const handleSignUp = async (e) => {
@@ -75,26 +82,29 @@ const EntryAuthScreen = () => {
     }
     setLoading(true);
     const result = await signUp(email, password, displayName);
-    if (result.error) setError(result.error.message);
-    else if (result.requiresConfirmation) {
+    if (result.error) {
+      setError(result.error.message);
+    } else if (result.requiresConfirmation) {
       setSuccess('Check your email to confirm!');
       setMode('login');
-    } else navigate('/hub');
+    } else {
+      navigate('/hub');
+    }
     setLoading(false);
   };
 
+  // FIXED: Use signInWithProvider instead of signInWithGoogle
   const handleGoogleSignIn = async () => {
     clearMessages();
     setLoading(true);
     
     try {
-      const result = await signInWithGoogle();
+      const result = await signInWithProvider('google');
       if (result.error) { 
         setError(result.error.message); 
         setLoading(false); 
       }
       // Note: If successful, OAuth will redirect, so loading stays true
-      // If user cancels, the focus/visibility handlers will reset loading
     } catch (err) {
       setError('Google sign-in failed. Please try again.');
       setLoading(false);
@@ -112,7 +122,11 @@ const EntryAuthScreen = () => {
     setLoading(false);
   };
 
-  const handleGuestMode = () => { signInAsGuest(); navigate('/hub'); };
+  // FIXED: Use continueAsGuest instead of signInAsGuest
+  const handleGuestMode = () => { 
+    continueAsGuest(); 
+    navigate('/hub'); 
+  };
 
   // Main selection screen with app-style buttons
   const renderSelect = () => (
@@ -266,24 +280,24 @@ const EntryAuthScreen = () => {
         </div>
         
         <button type="submit" disabled={loading}
-          className="w-full py-3 bg-[#4A9FD4] text-white rounded-xl font-crayon text-lg shadow-crayon hover:shadow-crayon-lg disabled:opacity-50 flex items-center justify-center gap-2">
+          className="w-full py-3 bg-[#5CB85C] text-white rounded-xl font-crayon text-lg shadow-crayon hover:shadow-crayon-lg disabled:opacity-50 flex items-center justify-center gap-2">
           {loading ? <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin" /> : <><UserPlus size={20} /> Create Account</>}
         </button>
       </form>
     </div>
   );
 
-  // Forgot password
+  // Forgot password form
   const renderForgot = () => (
     <div className="space-y-3">
       <button onClick={() => switchMode('login')} className="flex items-center gap-1 text-[#8E6BBF] font-crayon text-sm hover:underline">
-        <ArrowLeft size={16} /> Back
+        <ArrowLeft size={16} /> Back to Login
       </button>
       
       <div className="text-center py-2">
-        <Mail size={32} className="mx-auto text-[#8E6BBF] mb-2" />
+        <Lock size={32} className="mx-auto text-[#8E6BBF] mb-2" />
         <h3 className="font-display text-xl text-[#8E6BBF]">Reset Password</h3>
-        <p className="font-crayon text-gray-600 text-sm">We'll send you a reset link</p>
+        <p className="font-crayon text-gray-500 text-sm mt-1">We'll send you a reset link</p>
       </div>
       
       {error && <div className="p-2 bg-red-100 border-2 border-[#E63B2E] rounded-lg text-red-700 text-sm font-crayon">{error}</div>}

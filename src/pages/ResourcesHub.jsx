@@ -1,11 +1,8 @@
 // ResourcesHub.jsx - Resources & Research hub for ATLASassist
-// FIXED: Button styling matches main hub (transparent bg + colored border)
-// FIXED: Animated background added
-// ADDED: Description banner at top
-// ADDED: Therapy Materials Library link
+// UPDATED: Added Therapy Materials Library and Parent Guides apps
 
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Library, ExternalLink, Sparkles } from 'lucide-react';
+import { ArrowLeft, Library, ExternalLink } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 
 // Theme color for this hub
@@ -28,6 +25,14 @@ const resourceApps = [
     color: '#DAA520',
     emoji: '❓',
     path: '/resources/faq',
+  },
+  {
+    id: 'parent-guides',
+    name: 'Parent Guides',
+    description: 'Evidence-based guides for families',
+    color: '#E86B9A',
+    emoji: '👨‍👩‍👧',
+    path: '/resources/parent-guides',
   },
   {
     id: 'printables',
@@ -54,18 +59,18 @@ const resourceApps = [
     path: '/resources/research',
   },
   {
-    id: 'therapy-materials',
+    id: 'therapy-library',
     name: 'Therapy Materials',
-    description: 'SLP resources & smart decks',
+    description: '70+ curated SLP resources',
     color: '#10B981',
-    emoji: '📋',
-    path: '/resources/therapy-materials',
+    emoji: '📚',
+    path: '/resources/therapy-library',
   },
   {
     id: 'therapy-types',
     name: 'Therapy Types',
     description: 'Learn about different therapies',
-    color: '#E86B9A',
+    color: '#4A9FD4',
     emoji: '🩺',
     path: '/resources/therapy-types',
   },
@@ -73,7 +78,7 @@ const resourceApps = [
     id: 'laws',
     name: 'US & State Resources',
     description: 'Laws, rights & advocacy info',
-    color: '#4A9FD4',
+    color: '#E63B2E',
     emoji: '⚖️',
     path: '/resources/knowledge',
   },
@@ -138,24 +143,9 @@ const ResourcesHub = () => {
 
       {/* Main Content */}
       <main className="max-w-2xl mx-auto px-4 py-6 relative z-10">
-        {/* Description Banner */}
-        <div className="mb-6 bg-gradient-to-r from-[#8E6BBF] to-[#6366F1] rounded-2xl p-5 text-white">
-          <div className="flex items-center gap-3 mb-2">
-            <Sparkles size={24} />
-            <h2 className="text-lg font-display">Resources & Research</h2>
-          </div>
-          <p className="text-white/90 font-crayon text-sm">
-            Helpful information, guides, and tools to support your journey. 
-            Find printables, research, therapy guides, and advocacy resources.
-          </p>
-        </div>
-
-        {/* Section Header */}
-        <div className="flex items-center gap-2 mb-4">
-          <div className="h-1 flex-1 bg-gradient-to-r from-transparent to-gray-200 rounded"></div>
-          <span className="font-crayon text-gray-400 text-sm">Browse Resources</span>
-          <div className="h-1 flex-1 bg-gradient-to-l from-transparent to-gray-200 rounded"></div>
-        </div>
+        <p className="text-center text-gray-600 font-crayon mb-6">
+          Helpful information, guides, and tools 📚
+        </p>
 
         {/* Apps Grid - Matching main hub styling */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
