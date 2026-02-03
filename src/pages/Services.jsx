@@ -2,6 +2,7 @@
 // Services.jsx - My Care Team Hub (formerly Services and Trackers)
 // FIXED: Renamed to "My Care Team" per user request
 // FIXED: All paths to match App.jsx routes
+// UPDATED: New cyan theme color and banner
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -11,8 +12,10 @@ import {
   Bell,
   FileText,
   Clock,
-  Shield
+  Shield,
+  Sparkles
 } from 'lucide-react';
+import AnimatedBackground from '../components/AnimatedBackground';
 
 // Service tracker items with FIXED paths
 const trackers = [
@@ -76,14 +79,17 @@ const Services = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-[#FFFEF5]">
+    <div className="min-h-screen bg-[#FFFEF5] relative">
+      {/* Animated Background */}
+      <AnimatedBackground intensity="light" />
+
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#008B8B]">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#0891B2]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/hub')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#008B8B] 
-                       rounded-xl font-display font-bold text-[#008B8B] hover:bg-[#008B8B] 
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#0891B2] 
+                       rounded-xl font-display font-bold text-[#0891B2] hover:bg-[#0891B2] 
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
@@ -95,7 +101,7 @@ const Services = () => {
             className="w-10 h-10 rounded-lg shadow-sm"
           />
           <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-display text-[#008B8B] crayon-text flex items-center gap-2">
+            <h1 className="text-lg sm:text-xl font-display text-[#0891B2] crayon-text flex items-center gap-2">
               👥 My Care Team
             </h1>
           </div>
@@ -103,10 +109,18 @@ const Services = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-2xl mx-auto px-4 py-6">
-        <p className="text-center text-gray-600 font-crayon mb-6">
-          Track appointments, goals, and your care team!
-        </p>
+      <main className="max-w-2xl mx-auto px-4 py-6 relative z-10">
+        {/* Description Banner */}
+        <div className="mb-6 bg-gradient-to-r from-[#0891B2] to-[#0E7490] rounded-2xl p-5 text-white">
+          <div className="flex items-center gap-3 mb-2">
+            <Users size={24} />
+            <h2 className="text-lg font-display">My Care Team</h2>
+          </div>
+          <p className="text-white/90 font-crayon text-sm">
+            Track appointments, goals, and your support network. Keep all your 
+            important care information organized in one place. 👥
+          </p>
+        </div>
 
         {/* Privacy Notice */}
         <div className="mb-6 p-4 bg-green-50 rounded-2xl border-3 border-green-300 flex items-start gap-3">

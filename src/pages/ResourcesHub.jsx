@@ -1,8 +1,9 @@
 // ResourcesHub.jsx - Resources & Research hub for ATLASassist
-// UPDATED: Added Therapy Materials Library and Parent Guides apps
+// UPDATED: Therapy Materials moved to Speech Therapy Hub
+// UPDATED: Added description banner
 
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Library, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Library, ExternalLink, Sparkles } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 
 // Theme color for this hub
@@ -57,14 +58,6 @@ const resourceApps = [
     color: '#5CB85C',
     emoji: '🔬',
     path: '/resources/research',
-  },
-  {
-    id: 'therapy-library',
-    name: 'Therapy Materials',
-    description: '70+ curated SLP resources',
-    color: '#10B981',
-    emoji: '📚',
-    path: '/resources/therapy-library',
   },
   {
     id: 'therapy-types',
@@ -143,9 +136,17 @@ const ResourcesHub = () => {
 
       {/* Main Content */}
       <main className="max-w-2xl mx-auto px-4 py-6 relative z-10">
-        <p className="text-center text-gray-600 font-crayon mb-6">
-          Helpful information, guides, and tools 📚
-        </p>
+        {/* Description Banner */}
+        <div className="mb-6 bg-gradient-to-r from-[#8E6BBF] to-[#7C3AED] rounded-2xl p-5 text-white">
+          <div className="flex items-center gap-3 mb-2">
+            <Library size={24} />
+            <h2 className="text-lg font-display">Resources & Research</h2>
+          </div>
+          <p className="text-white/90 font-crayon text-sm">
+            Helpful information, guides, and tools. Find research, learn about 
+            therapies, explore your rights, and access printable resources. 📚
+          </p>
+        </div>
 
         {/* Apps Grid - Matching main hub styling */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">

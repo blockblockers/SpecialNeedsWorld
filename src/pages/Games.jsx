@@ -2,6 +2,7 @@
 // ADDED: PlayerProfileCard with streak tracking
 // ADDED: Player Stats modal with detailed statistics
 // ADDED: Game stats service integration
+// UPDATED: Added description banner
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -18,7 +19,8 @@ import {
   Award,
   Calendar,
   Target,
-  TrendingUp
+  TrendingUp,
+  Gamepad2
 } from 'lucide-react';
 import { 
   loadGameStats, 
@@ -434,16 +436,24 @@ const Games = () => {
 
       {/* Main Content */}
       <main className="max-w-2xl mx-auto px-4 py-6">
+        {/* Description Banner */}
+        <div className="mb-6 bg-gradient-to-r from-[#5CB85C] to-[#16A34A] rounded-2xl p-5 text-white">
+          <div className="flex items-center gap-3 mb-2">
+            <Gamepad2 size={24} />
+            <h2 className="text-lg font-display">Games</h2>
+          </div>
+          <p className="text-white/90 font-crayon text-sm">
+            Fun games to play! Practice matching, memory, patterns, and more. 
+            Track your progress and earn stars! 🎮
+          </p>
+        </div>
+
         {/* Player Profile Card */}
         <PlayerProfileCard 
           stats={stats}
           onEditProfile={() => setShowEditProfile(true)}
           onViewStats={() => setShowStats(true)}
         />
-
-        <p className="text-center text-gray-600 font-crayon mb-6">
-          Fun games to play! Tap a game to start.
-        </p>
 
         {/* Games Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">

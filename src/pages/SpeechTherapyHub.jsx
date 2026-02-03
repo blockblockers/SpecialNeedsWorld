@@ -80,8 +80,16 @@ const speechApps = [
     name: 'Word Vault',
     description: 'Word database with games & homework',
     emoji: '📦',
-    color: '#10B981',
+    color: '#7C3AED',
     path: '/speech-therapy/word-vault',
+  },
+  {
+    id: 'therapy-materials',
+    name: 'Therapy Materials',
+    description: '70+ curated SLP resources',
+    emoji: '📚',
+    color: '#10B981',
+    path: '/resources/therapy-library',
   },
 ];
 
@@ -121,19 +129,19 @@ const SpeechTherapyHub = () => {
       <AnimatedBackground intensity="normal" />
       
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#10B981]">
+      <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#7C3AED]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/hub')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#10B981] 
-                       rounded-xl font-display font-bold text-[#10B981] hover:bg-[#10B981] 
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#7C3AED] 
+                       rounded-xl font-display font-bold text-[#7C3AED] hover:bg-[#7C3AED] 
                        hover:text-white transition-all shadow-md"
           >
             <ArrowLeft size={16} />
             Home
           </button>
           <div className="flex-1">
-            <h1 className="text-xl font-display text-[#10B981] flex items-center gap-2">
+            <h1 className="text-xl font-display text-[#7C3AED] flex items-center gap-2">
               <Mic size={24} />
               Speech Therapy
             </h1>
@@ -144,7 +152,7 @@ const SpeechTherapyHub = () => {
 
       <main className="relative z-10 max-w-2xl mx-auto px-4 py-6">
         {/* Featured Banner */}
-        <div className="mb-6 bg-gradient-to-r from-[#10B981] to-[#059669] rounded-2xl p-5 text-white">
+        <div className="mb-6 bg-gradient-to-r from-[#7C3AED] to-[#6D28D9] rounded-2xl p-5 text-white">
           <div className="flex items-center gap-3 mb-2">
             <Sparkles size={24} />
             <h2 className="text-lg font-display">Speech & Language Practice</h2>
@@ -197,8 +205,8 @@ const SpeechTherapyHub = () => {
         </div>
 
         {/* External App Recommendations */}
-        <div className="bg-white rounded-2xl border-4 border-[#10B981] p-4">
-          <h3 className="font-display text-[#10B981] mb-3 flex items-center gap-2">
+        <div className="bg-white rounded-2xl border-4 border-[#7C3AED] p-4">
+          <h3 className="font-display text-[#7C3AED] mb-3 flex items-center gap-2">
             <ExternalLink size={18} />
             Inspiration Sources
           </h3>
@@ -215,24 +223,24 @@ const SpeechTherapyHub = () => {
                 className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl 
                            hover:bg-gray-100 transition-colors group"
               >
-                <div className="w-10 h-10 bg-[#10B981]/20 rounded-lg flex items-center justify-center">
-                  <Mic size={20} className="text-[#10B981]" />
+                <div className="w-10 h-10 bg-[#7C3AED]/20 rounded-lg flex items-center justify-center">
+                  <Mic size={20} className="text-[#7C3AED]" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-crayon text-gray-800 truncate">{app.name}</p>
                   <p className="text-xs text-gray-500 truncate">{app.description}</p>
                 </div>
                 <ExternalLink size={16} className="text-gray-400 flex-shrink-0 
-                                                    group-hover:text-[#10B981] transition-colors" />
+                                                    group-hover:text-[#7C3AED] transition-colors" />
               </a>
             ))}
           </div>
         </div>
 
         {/* Tips Section */}
-        <div className="mt-6 bg-green-50 rounded-2xl border-2 border-green-200 p-4">
-          <h3 className="font-display text-green-700 mb-2">Speech Therapy Tips</h3>
-          <ul className="text-sm text-green-700 font-crayon space-y-1">
+        <div className="mt-6 bg-purple-50 rounded-2xl border-2 border-purple-200 p-4">
+          <h3 className="font-display text-purple-700 mb-2">Speech Therapy Tips</h3>
+          <ul className="text-sm text-purple-700 font-crayon space-y-1">
             <li>• Practice sounds in short, frequent sessions (5-10 minutes)</li>
             <li>• Use a mirror to help see mouth movements</li>
             <li>• Celebrate effort, not just accuracy</li>

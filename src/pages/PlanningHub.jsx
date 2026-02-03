@@ -1,8 +1,10 @@
 // PlanningHub.jsx - Planning & Documents hub for ATLASassist
 // FIXED: Single icon (emoji only)
+// UPDATED: Added AnimatedBackground and description banner
 
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ClipboardList, Sparkles } from 'lucide-react';
+import AnimatedBackground from '../components/AnimatedBackground';
 
 // Planning apps - FIXED: Removed icon property from render
 const planningApps = [
@@ -58,7 +60,10 @@ const PlanningHub = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFFEF5]">
+    <div className="min-h-screen bg-[#FFFEF5] relative">
+      {/* Animated Background */}
+      <AnimatedBackground intensity="light" />
+
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#CD853F]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
@@ -81,10 +86,18 @@ const PlanningHub = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-2xl mx-auto px-4 py-6">
-        <p className="text-center text-gray-600 font-crayon mb-6">
-          Important documents & planning tools for advocacy.
-        </p>
+      <main className="max-w-2xl mx-auto px-4 py-6 relative z-10">
+        {/* Description Banner */}
+        <div className="mb-6 bg-gradient-to-r from-[#CD853F] to-[#B45309] rounded-2xl p-5 text-white">
+          <div className="flex items-center gap-3 mb-2">
+            <ClipboardList size={24} />
+            <h2 className="text-lg font-display">Planning & Documents</h2>
+          </div>
+          <p className="text-white/90 font-crayon text-sm">
+            Important documents and planning tools for advocacy. Create student profiles, 
+            emergency info cards, and transition plans. 📋
+          </p>
+        </div>
 
         {/* Apps Grid - Updated to match EmotionalWellnessHub style */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">

@@ -4,11 +4,11 @@
 // FIXED: Animated background added
 
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Heart } from 'lucide-react';
+import { ArrowLeft, Heart, Sparkles } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 
 // Theme color for this hub
-const THEME_COLOR = '#20B2AA';
+const THEME_COLOR = '#A855F7';
 
 // Wellness app definitions - ALL APPS with correct paths
 const wellnessApps = [
@@ -125,9 +125,17 @@ const EmotionalWellnessHub = () => {
 
       {/* Main Content */}
       <main className="max-w-2xl mx-auto px-4 py-6 relative z-10">
-        <p className="text-center text-gray-600 font-crayon mb-6">
-          Tools to understand and manage your feelings 💚
-        </p>
+        {/* Description Banner */}
+        <div className="mb-6 bg-gradient-to-r from-[#A855F7] to-[#9333EA] rounded-2xl p-5 text-white">
+          <div className="flex items-center gap-3 mb-2">
+            <Heart size={24} />
+            <h2 className="text-lg font-display">Emotional Wellness</h2>
+          </div>
+          <p className="text-white/90 font-crayon text-sm">
+            Tools to understand and manage your feelings. Learn coping strategies, 
+            track emotions, and build emotional intelligence. 💜
+          </p>
+        </div>
 
         {/* Apps Grid - Matching main hub styling */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
