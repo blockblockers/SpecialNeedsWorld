@@ -135,17 +135,17 @@ const SpeechTherapyHub = () => {
             onClick={() => navigate('/hub')}
             className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#7C3AED] 
                        rounded-xl font-display font-bold text-[#7C3AED] hover:bg-[#7C3AED] 
-                       hover:text-white transition-all shadow-md"
+                       hover:text-white transition-all shadow-md hover:scale-105"
           >
             <ArrowLeft size={16} />
-            Home
+            Back
           </button>
+          <img src="/logo.jpeg" alt="ATLASassist" className="w-10 h-10 rounded-lg shadow-sm" />
           <div className="flex-1">
-            <h1 className="text-xl font-display text-[#7C3AED] flex items-center gap-2">
+            <h1 className="text-lg sm:text-xl font-display crayon-text flex items-center gap-2 text-[#7C3AED]">
               <Mic size={24} />
               Speech Therapy
             </h1>
-            <p className="text-sm text-gray-500 font-crayon">Articulation & language tools</p>
           </div>
         </div>
       </header>

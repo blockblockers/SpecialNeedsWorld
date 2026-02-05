@@ -15,7 +15,7 @@ const activityApps = [
     name: 'Choice Board',
     description: 'Make choices with pictures',
     color: '#F5A623',
-    emoji: 'â­',
+    emoji: '⭐',
     path: '/activities/choice-board',
     ready: true,
   },
@@ -24,7 +24,7 @@ const activityApps = [
     name: 'Coloring Book',
     description: 'Fun coloring pages',
     color: '#E63B2E',
-    emoji: 'ðŸŽ¨',
+    emoji: '🎨',
     path: '/activities/coloring',
     ready: true,
   },
@@ -33,7 +33,7 @@ const activityApps = [
     name: 'Music & Sounds',
     description: 'Calming music and sounds',
     color: '#87CEEB',
-    emoji: 'ðŸŽµ',
+    emoji: '🎵',
     path: '/activities/music',
     ready: true,
   },
@@ -42,7 +42,7 @@ const activityApps = [
     name: 'Photo Journal',
     description: 'Capture special moments',
     color: '#20B2AA',
-    emoji: 'ðŸ“¸',
+    emoji: '📸',
     path: '/activities/photo-journal',
     ready: true,
   },
@@ -51,7 +51,7 @@ const activityApps = [
     name: 'Reward Chart',
     description: 'Earn stars for achievements',
     color: '#DAA520',
-    emoji: 'ðŸ†',
+    emoji: '🏆',
     path: '/activities/rewards',
     ready: true,
   },
@@ -60,7 +60,7 @@ const activityApps = [
     name: 'Say It Right',
     description: 'Practice pronouncing words',
     color: '#4A9FD4',
-    emoji: 'ðŸ—£ï¸',
+    emoji: '🗣️',
     path: '/activities/pronunciation',
     ready: true,
   },
@@ -69,7 +69,7 @@ const activityApps = [
     name: 'Sensory Breaks',
     description: 'Calming activities with timers',
     color: '#8E6BBF',
-    emoji: 'ðŸ§˜',
+    emoji: '🧘',
     path: '/activities/sensory-breaks',
     ready: true,
   },
@@ -78,7 +78,7 @@ const activityApps = [
     name: 'Social Stories',
     description: 'Visual stories for situations',
     color: '#5CB85C',
-    emoji: 'ðŸ“–',
+    emoji: '📖',
     path: '/activities/social-stories',
     ready: true,
   },
@@ -103,17 +103,20 @@ const Activities = () => {
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate('/hub')}
-            className="flex items-center gap-2 px-3 py-2 bg-white border-3 border-[#4A9FD4] 
-                       rounded-xl font-display text-[#4A9FD4] hover:bg-[#4A9FD4] 
-                       hover:text-white transition-all text-sm"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border-4 border-[#4A9FD4] 
+                       rounded-xl font-display font-bold text-[#4A9FD4] hover:bg-[#4A9FD4] 
+                       hover:text-white transition-all shadow-md hover:scale-105"
           >
             <ArrowLeft size={16} />
             Back
           </button>
-          <h1 className="text-lg font-display text-[#4A9FD4] flex items-center gap-2">
-            <Sparkles size={24} />
-            Activities
-          </h1>
+          <img src="/logo.jpeg" alt="ATLASassist" className="w-10 h-10 rounded-lg shadow-sm" />
+          <div className="flex-1">
+            <h1 className="text-lg sm:text-xl font-display crayon-text flex items-center gap-2 text-[#4A9FD4]">
+              <Sparkles size={24} />
+              Activities & Learning
+            </h1>
+          </div>
         </div>
       </header>
 
