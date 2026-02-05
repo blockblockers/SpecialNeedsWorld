@@ -2,7 +2,7 @@
 // ADDED: PlayerProfileCard with streak tracking
 // ADDED: Player Stats modal with detailed statistics
 // ADDED: Game stats service integration
-// UPDATED: Added description banner
+// UPDATED: Gradient banner + AnimatedBackground
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -22,6 +22,7 @@ import {
   TrendingUp,
   Gamepad2
 } from 'lucide-react';
+import AnimatedBackground from '../components/AnimatedBackground';
 import { 
   loadGameStats, 
   updatePlayerProfile, 
@@ -411,7 +412,10 @@ const Games = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFFEF5]">
+    <div className="min-h-screen bg-[#FFFEF5] relative">
+      {/* Animated Background */}
+      <AnimatedBackground intensity="light" />
+
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#5CB85C]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
@@ -435,7 +439,7 @@ const Games = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-2xl mx-auto px-4 py-6">
+      <main className="max-w-2xl mx-auto px-4 py-6 relative z-10">
         {/* Description Banner */}
         <div className="mb-6 bg-gradient-to-r from-[#5CB85C] to-[#16A34A] rounded-2xl p-5 text-white">
           <div className="flex items-center gap-3 mb-2">
@@ -454,6 +458,13 @@ const Games = () => {
           onEditProfile={() => setShowEditProfile(true)}
           onViewStats={() => setShowStats(true)}
         />
+
+        {/* Section Header */}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="h-1 flex-1 bg-gradient-to-r from-transparent to-gray-200 rounded"></div>
+          <span className="font-crayon text-gray-400 text-sm">Choose a Game</span>
+          <div className="h-1 flex-1 bg-gradient-to-l from-transparent to-gray-200 rounded"></div>
+        </div>
 
         {/* Games Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">

@@ -2,7 +2,6 @@
 // FIXED: Removed Emotional Wellness button (separate hub)
 // FIXED: Button styling matches main hub (transparent bg + colored border)
 // FIXED: Animated background added
-// UPDATED: Added description banner
 
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, Sparkles } from 'lucide-react';
@@ -89,13 +88,20 @@ const Health = () => {
         {/* Description Banner */}
         <div className="mb-6 bg-gradient-to-r from-[#E86B9A] to-[#DB2777] rounded-2xl p-5 text-white">
           <div className="flex items-center gap-3 mb-2">
-            <Heart size={24} />
+            <Sparkles size={24} />
             <h2 className="text-lg font-display">Health & Wellness</h2>
           </div>
           <p className="text-white/90 font-crayon text-sm">
             Track your body and health! Monitor water intake, sleep patterns, 
             nutrition, exercise, and make healthy choices every day. ❤️
           </p>
+        </div>
+
+        {/* Section Header */}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="h-1 flex-1 bg-gradient-to-r from-transparent to-gray-200 rounded"></div>
+          <span className="font-crayon text-gray-400 text-sm">Health Tools</span>
+          <div className="h-1 flex-1 bg-gradient-to-l from-transparent to-gray-200 rounded"></div>
         </div>
 
         {/* Apps Grid - Matching main hub styling */}

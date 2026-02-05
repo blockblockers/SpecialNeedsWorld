@@ -1,6 +1,6 @@
 // ResourcesHub.jsx - Resources & Research hub for ATLASassist
 // UPDATED: Therapy Materials moved to Speech Therapy Hub
-// UPDATED: Added description banner
+// UPDATED: Added gradient banner
 
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Library, ExternalLink, Sparkles } from 'lucide-react';
@@ -139,13 +139,20 @@ const ResourcesHub = () => {
         {/* Description Banner */}
         <div className="mb-6 bg-gradient-to-r from-[#8E6BBF] to-[#7C3AED] rounded-2xl p-5 text-white">
           <div className="flex items-center gap-3 mb-2">
-            <Library size={24} />
+            <Sparkles size={24} />
             <h2 className="text-lg font-display">Resources & Research</h2>
           </div>
           <p className="text-white/90 font-crayon text-sm">
             Helpful information, guides, and tools. Find research, learn about 
             therapies, explore your rights, and access printable resources. 📚
           </p>
+        </div>
+
+        {/* Section Header */}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="h-1 flex-1 bg-gradient-to-r from-transparent to-gray-200 rounded"></div>
+          <span className="font-crayon text-gray-400 text-sm">Explore Resources</span>
+          <div className="h-1 flex-1 bg-gradient-to-l from-transparent to-gray-200 rounded"></div>
         </div>
 
         {/* Apps Grid - Matching main hub styling */}

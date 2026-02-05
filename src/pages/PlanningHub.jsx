@@ -1,6 +1,6 @@
 // PlanningHub.jsx - Planning & Documents hub for ATLASassist
 // FIXED: Single icon (emoji only)
-// UPDATED: Added AnimatedBackground and description banner
+// UPDATED: Added AnimatedBackground + gradient banner
 
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ClipboardList, Sparkles } from 'lucide-react';
@@ -90,13 +90,20 @@ const PlanningHub = () => {
         {/* Description Banner */}
         <div className="mb-6 bg-gradient-to-r from-[#CD853F] to-[#B45309] rounded-2xl p-5 text-white">
           <div className="flex items-center gap-3 mb-2">
-            <ClipboardList size={24} />
+            <Sparkles size={24} />
             <h2 className="text-lg font-display">Planning & Documents</h2>
           </div>
           <p className="text-white/90 font-crayon text-sm">
             Important documents and planning tools for advocacy. Create student profiles, 
             emergency info cards, and transition plans. 📋
           </p>
+        </div>
+
+        {/* Section Header */}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="h-1 flex-1 bg-gradient-to-r from-transparent to-gray-200 rounded"></div>
+          <span className="font-crayon text-gray-400 text-sm">Documents</span>
+          <div className="h-1 flex-1 bg-gradient-to-l from-transparent to-gray-200 rounded"></div>
         </div>
 
         {/* Apps Grid - Updated to match EmotionalWellnessHub style */}

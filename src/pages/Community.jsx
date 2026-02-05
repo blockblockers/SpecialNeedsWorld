@@ -199,17 +199,16 @@ const Community = () => {
 
       {/* Main Content */}
       <main className="max-w-2xl mx-auto px-4 py-6 relative z-10">
-        {/* Welcome Banner */}
-        <div className="mb-6 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl border-3" style={{ borderColor: `${THEME_COLOR}30` }}>
-          <div className="flex items-start gap-3">
-            <Heart size={24} style={{ color: THEME_COLOR }} className="flex-shrink-0 mt-1" />
-            <div>
-              <h2 className="font-display text-lg" style={{ color: THEME_COLOR }}>Welcome to Our Community!</h2>
-              <p className="font-crayon text-sm text-gray-600 mt-1">
-                Share experiences, ask questions, and find encouragement.
-              </p>
-            </div>
+        {/* Description Banner */}
+        <div className="mb-6 bg-gradient-to-r from-[#6366F1] to-[#4F46E5] rounded-2xl p-5 text-white">
+          <div className="flex items-center gap-3 mb-2">
+            <Sparkles size={24} />
+            <h2 className="text-lg font-display">Communities</h2>
           </div>
+          <p className="text-white/90 font-crayon text-sm">
+            Share experiences, ask questions, and find encouragement. 
+            Connect with other families on the journey. 💜
+          </p>
         </div>
 
         {/* Sign In Prompt for Guests */}

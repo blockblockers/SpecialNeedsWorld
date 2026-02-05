@@ -1,7 +1,6 @@
 // Tools.jsx - Daily Tools hub for ATLASassist
 // FIXED: Button styling matches main hub (transparent bg + colored border)
 // FIXED: Animated background added
-// UPDATED: Added description banner
 
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Wrench, Sparkles } from 'lucide-react';
@@ -96,13 +95,20 @@ const Tools = () => {
         {/* Description Banner */}
         <div className="mb-6 bg-gradient-to-r from-[#B8860B] to-[#92400E] rounded-2xl p-5 text-white">
           <div className="flex items-center gap-3 mb-2">
-            <Wrench size={24} />
+            <Sparkles size={24} />
             <h2 className="text-lg font-display">Daily Tools</h2>
           </div>
           <p className="text-white/90 font-crayon text-sm">
             Helpful everyday tools! Timers, counters, first-then boards, 
             and more to support daily routines and transitions. 🔧
           </p>
+        </div>
+
+        {/* Section Header */}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="h-1 flex-1 bg-gradient-to-r from-transparent to-gray-200 rounded"></div>
+          <span className="font-crayon text-gray-400 text-sm">Choose a Tool</span>
+          <div className="h-1 flex-1 bg-gradient-to-l from-transparent to-gray-200 rounded"></div>
         </div>
 
         {/* Tools Grid - Matching main hub styling */}

@@ -2,6 +2,7 @@
 // FIXED: All apps included with correct paths
 // FIXED: Button styling matches main hub (transparent bg + colored border)
 // FIXED: Animated background added
+// UPDATED: New orchid purple theme color + gradient banner
 
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, Sparkles } from 'lucide-react';
@@ -128,13 +129,20 @@ const EmotionalWellnessHub = () => {
         {/* Description Banner */}
         <div className="mb-6 bg-gradient-to-r from-[#A855F7] to-[#9333EA] rounded-2xl p-5 text-white">
           <div className="flex items-center gap-3 mb-2">
-            <Heart size={24} />
+            <Sparkles size={24} />
             <h2 className="text-lg font-display">Emotional Wellness</h2>
           </div>
           <p className="text-white/90 font-crayon text-sm">
             Tools to understand and manage your feelings. Learn coping strategies, 
             track emotions, and build emotional intelligence. 💜
           </p>
+        </div>
+
+        {/* Section Header */}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="h-1 flex-1 bg-gradient-to-r from-transparent to-gray-200 rounded"></div>
+          <span className="font-crayon text-gray-400 text-sm">Choose a Tool</span>
+          <div className="h-1 flex-1 bg-gradient-to-l from-transparent to-gray-200 rounded"></div>
         </div>
 
         {/* Apps Grid - Matching main hub styling */}

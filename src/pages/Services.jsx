@@ -2,7 +2,7 @@
 // Services.jsx - My Care Team Hub (formerly Services and Trackers)
 // FIXED: Renamed to "My Care Team" per user request
 // FIXED: All paths to match App.jsx routes
-// UPDATED: New cyan theme color and banner
+// UPDATED: Cyan theme color + gradient banner + AnimatedBackground
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -113,7 +113,7 @@ const Services = () => {
         {/* Description Banner */}
         <div className="mb-6 bg-gradient-to-r from-[#0891B2] to-[#0E7490] rounded-2xl p-5 text-white">
           <div className="flex items-center gap-3 mb-2">
-            <Users size={24} />
+            <Sparkles size={24} />
             <h2 className="text-lg font-display">My Care Team</h2>
           </div>
           <p className="text-white/90 font-crayon text-sm">
