@@ -1,10 +1,9 @@
 // PointToTalk.jsx - AAC Communication Board for ATLASassist
-// UPDATED: Combined board layouts (Basic/MyWords/Cloud) with customizable footer
-// UPDATED: AI-powered word suggestions with Claude API
-// UPDATED: Fixed ARASAAC pictogram alignment
+// ENHANCED: Quick Phrases, Recents Bar, Voice Settings, Larger Buttons, Visual Accessibility
+// ENHANCED: Word Morphology, Prediction, Motor Planning, Partner Scanning, Analytics
 // NAVIGATION: Back button goes to /hub
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -14,8 +13,6 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
-  Image,
-  Smile,
   X,
   Undo2,
   MessageSquare,
@@ -25,26 +22,81 @@ import {
   Plus,
   Cloud,
   User,
-  Sparkles,
   Upload,
   Loader2,
   FolderOpen,
   Info,
   TrendingUp,
-  Users
+  Users,
+  Zap,
+  Clock,
+  Eye,
+  EyeOff,
+  Maximize2,
+  Minimize2,
+  BarChart2,
+  PlayCircle,
+  PauseCircle,
+  Mic,
+  Grid,
+  Target,
+  Accessibility,
+  History,
+  SlidersHorizontal,
+  Contrast,
+  Type
 } from 'lucide-react';
-import { 
-  getButtonPictogramUrl, 
-  ARASAAC_PICTOGRAM_IDS 
-} from '../services/arasaac';
 import { supabase, isSupabaseConfigured } from '../services/supabase';
 import { useToast } from '../components/ThemedToast';
 import { useAuth } from '../App';
 
 // ============================================
+// STORAGE KEYS
+// ============================================
+const STORAGE_KEYS = {
+  footer: 'snw_ptt_footer_words',
+  customWords: 'snw_aac_custom_words',
+  layout: 'snw_aac_layout',
+  voiceSettings: 'snw_aac_voice_settings',
+  accessibility: 'snw_aac_accessibility',
+  recents: 'snw_aac_recents',
+  analytics: 'snw_aac_analytics',
+  motorPlanning: 'snw_aac_motor_planning',
+};
+
+// ============================================
+// QUICK PHRASES - Pre-built sentences
+// ============================================
+const QUICK_PHRASES = [
+  { id: 'qp-need-break', text: 'I need a break', emoji: '⏸️', color: '#8E6BBF', category: 'needs' },
+  { id: 'qp-more-please', text: 'Can I have more please?', emoji: '🙏', color: '#5CB85C', category: 'needs' },
+  { id: 'qp-dont-feel-good', text: "I don't feel good", emoji: '🤒', color: '#E86B9A', category: 'feelings' },
+  { id: 'qp-need-bathroom', text: 'I need to go to the bathroom', emoji: '🚽', color: '#4A9FD4', category: 'needs' },
+  { id: 'qp-help-please', text: 'Can you help me please?', emoji: '🙋', color: '#F5A623', category: 'help' },
+  { id: 'qp-too-loud', text: "It's too loud", emoji: '🔊', color: '#E63B2E', category: 'sensory' },
+  { id: 'qp-need-quiet', text: 'I need somewhere quiet', emoji: '🤫', color: '#87CEEB', category: 'sensory' },
+  { id: 'qp-want-alone', text: 'I want to be alone', emoji: '🚪', color: '#8E6BBF', category: 'needs' },
+  { id: 'qp-dont-understand', text: "I don't understand", emoji: '❓', color: '#F5A623', category: 'help' },
+  { id: 'qp-say-again', text: 'Can you say that again?', emoji: '🔄', color: '#4A9FD4', category: 'help' },
+  { id: 'qp-wait-please', text: 'Wait please, I need time', emoji: '⏳', color: '#F8D14A', category: 'needs' },
+  { id: 'qp-all-done', text: "I'm all done", emoji: '✅', color: '#5CB85C', category: 'status' },
+  { id: 'qp-hungry', text: "I'm hungry", emoji: '🍽️', color: '#F5A623', category: 'needs' },
+  { id: 'qp-thirsty', text: "I'm thirsty", emoji: '💧', color: '#4A9FD4', category: 'needs' },
+  { id: 'qp-tired', text: "I'm tired", emoji: '😴', color: '#87CEEB', category: 'feelings' },
+  { id: 'qp-hurts', text: 'Something hurts', emoji: '🤕', color: '#E63B2E', category: 'feelings' },
+  { id: 'qp-happy', text: "I'm happy", emoji: '😊', color: '#F8D14A', category: 'feelings' },
+  { id: 'qp-sad', text: "I'm sad", emoji: '😢', color: '#4A9FD4', category: 'feelings' },
+  { id: 'qp-scared', text: "I'm scared", emoji: '😨', color: '#8E6BBF', category: 'feelings' },
+  { id: 'qp-excited', text: "I'm excited", emoji: '🤩', color: '#F5A623', category: 'feelings' },
+  { id: 'qp-love-you', text: 'I love you', emoji: '❤️', color: '#E86B9A', category: 'social' },
+  { id: 'qp-thank-you', text: 'Thank you so much', emoji: '💕', color: '#E86B9A', category: 'social' },
+  { id: 'qp-sorry', text: "I'm sorry", emoji: '😔', color: '#87CEEB', category: 'social' },
+  { id: 'qp-good-morning', text: 'Good morning', emoji: '🌅', color: '#F5A623', category: 'social' },
+];
+
+// ============================================
 // LAYOUT DESCRIPTIONS
 // ============================================
-
 const LAYOUT_INFO = {
   basic: {
     title: 'Basic',
@@ -58,21 +110,72 @@ const LAYOUT_INFO = {
     icon: User,
     color: '#F5A623',
     description: 'Your personal collection of custom words.',
-    details: 'Words you create are saved here. Only you can see your personal words. Perfect for customizing vocabulary to your needs.'
+    details: 'Words you create are saved here. Only you can see your personal words.'
   },
   cloud: {
     title: 'Community',
     icon: Cloud,
     color: '#4A9FD4',
     description: 'Most popular words from all users.',
-    details: 'Shows the top 15 most-used words per category across all ATLASassist users. Words need at least 2 uses to appear. The community decides which words rise to the top!'
+    details: 'Shows top words per category. Community-curated vocabulary.'
   }
 };
 
 // ============================================
-// PHRASE BUILDING VOCABULARY
+// WORD MORPHOLOGY - Verb tenses, plurals, pronouns
 // ============================================
+const WORD_MORPHOLOGY = {
+  // Verbs with tenses
+  want: { present: 'want', past: 'wanted', progressive: 'wanting', forms: ['want', 'wanted', 'wanting'] },
+  need: { present: 'need', past: 'needed', progressive: 'needing', forms: ['need', 'needed', 'needing'] },
+  like: { present: 'like', past: 'liked', progressive: 'liking', forms: ['like', 'liked', 'liking'] },
+  go: { present: 'go', past: 'went', progressive: 'going', forms: ['go', 'went', 'going'] },
+  see: { present: 'see', past: 'saw', progressive: 'seeing', forms: ['see', 'saw', 'seeing'] },
+  hear: { present: 'hear', past: 'heard', progressive: 'hearing', forms: ['hear', 'heard', 'hearing'] },
+  have: { present: 'have', past: 'had', progressive: 'having', forms: ['have', 'had', 'having'] },
+  feel: { present: 'feel', past: 'felt', progressive: 'feeling', forms: ['feel', 'felt', 'feeling'] },
+  eat: { present: 'eat', past: 'ate', progressive: 'eating', forms: ['eat', 'ate', 'eating'] },
+  drink: { present: 'drink', past: 'drank', progressive: 'drinking', forms: ['drink', 'drank', 'drinking'] },
+  play: { present: 'play', past: 'played', progressive: 'playing', forms: ['play', 'played', 'playing'] },
+  help: { present: 'help', past: 'helped', progressive: 'helping', forms: ['help', 'helped', 'helping'] },
+  
+  // Pronouns
+  I: { subject: 'I', object: 'me', possessive: 'my', forms: ['I', 'me', 'my', 'mine'] },
+  you: { subject: 'you', object: 'you', possessive: 'your', forms: ['you', 'your', 'yours'] },
+  he: { subject: 'he', object: 'him', possessive: 'his', forms: ['he', 'him', 'his'] },
+  she: { subject: 'she', object: 'her', possessive: 'her', forms: ['she', 'her', 'hers'] },
+  we: { subject: 'we', object: 'us', possessive: 'our', forms: ['we', 'us', 'our', 'ours'] },
+  they: { subject: 'they', object: 'them', possessive: 'their', forms: ['they', 'them', 'their', 'theirs'] },
+  
+  // Common nouns with plurals
+  cookie: { singular: 'cookie', plural: 'cookies', forms: ['cookie', 'cookies'] },
+  apple: { singular: 'apple', plural: 'apples', forms: ['apple', 'apples'] },
+  toy: { singular: 'toy', plural: 'toys', forms: ['toy', 'toys'] },
+  book: { singular: 'book', plural: 'books', forms: ['book', 'books'] },
+  game: { singular: 'game', plural: 'games', forms: ['game', 'games'] },
+};
 
+// ============================================
+// PREDICTION - Next word suggestions
+// ============================================
+const PREDICTION_RULES = {
+  'I': ['want', 'need', 'like', 'feel', 'am', 'can', "can't", 'see', 'hear'],
+  'I want': ['food', 'water', 'play', 'help', 'hug', 'break', 'home', 'outside'],
+  'I need': ['help', 'bathroom', 'break', 'water', 'food', 'hug', 'time'],
+  'I feel': ['happy', 'sad', 'angry', 'scared', 'tired', 'sick', 'hungry', 'excited'],
+  'I am': ['happy', 'sad', 'tired', 'hungry', 'thirsty', 'done', 'ready', 'sorry'],
+  'I like': ['food', 'play', 'music', 'book', 'game', 'outside', 'hug'],
+  "I don't like": ['this', 'that', 'it', 'food', 'loud', 'waiting'],
+  'you': ['want', 'need', 'can', 'help'],
+  'can': ['I', 'you', 'we', 'help'],
+  'want': ['more', 'food', 'water', 'play', 'help', 'home', 'outside'],
+  'need': ['help', 'more', 'bathroom', 'break', 'water', 'food'],
+  'go': ['home', 'outside', 'bathroom', 'park', 'school', 'car'],
+};
+
+// ============================================
+// CORE VOCABULARY
+// ============================================
 const CORE_WORDS = {
   starters: [
     { id: 'i', text: 'I', emoji: '👤', color: '#4A9FD4' },
@@ -83,16 +186,16 @@ const CORE_WORDS = {
     { id: 'it', text: 'It', emoji: '👆', color: '#F5A623' },
   ],
   verbs: [
-    { id: 'want', text: 'want', emoji: '🙏', color: '#E63B2E', needsNoun: true, hasSubmenu: true },
-    { id: 'need', text: 'need', emoji: '❗', color: '#E63B2E', needsNoun: true, hasSubmenu: true },
-    { id: 'like', text: 'like', emoji: '👍', color: '#5CB85C', needsNoun: true, hasSubmenu: true },
+    { id: 'want', text: 'want', emoji: '🙏', color: '#E63B2E', needsNoun: true, hasSubmenu: true, hasMorphology: true },
+    { id: 'need', text: 'need', emoji: '❗', color: '#E63B2E', needsNoun: true, hasSubmenu: true, hasMorphology: true },
+    { id: 'like', text: 'like', emoji: '👍', color: '#5CB85C', needsNoun: true, hasSubmenu: true, hasMorphology: true },
     { id: 'dont-like', text: "don't like", emoji: '👎', color: '#E63B2E', needsNoun: true, hasSubmenu: true },
-    { id: 'feel', text: 'feel', emoji: '💭', color: '#8E6BBF', needsAdjective: true, hasSubmenu: true },
+    { id: 'feel', text: 'feel', emoji: '💭', color: '#8E6BBF', needsAdjective: true, hasSubmenu: true, hasMorphology: true },
     { id: 'am', text: 'am', emoji: '✨', color: '#F5A623', needsAdjective: true, hasSubmenu: true },
-    { id: 'see', text: 'see', emoji: '👀', color: '#4A9FD4', needsNoun: true, hasSubmenu: true },
-    { id: 'hear', text: 'hear', emoji: '👂', color: '#4A9FD4', needsNoun: true, hasSubmenu: true },
-    { id: 'have', text: 'have', emoji: '🤲', color: '#5CB85C', needsNoun: true, hasSubmenu: true },
-    { id: 'go', text: 'go', emoji: '🚶', color: '#4A9FD4', needsPlace: true, hasSubmenu: true },
+    { id: 'see', text: 'see', emoji: '👀', color: '#4A9FD4', needsNoun: true, hasSubmenu: true, hasMorphology: true },
+    { id: 'hear', text: 'hear', emoji: '👂', color: '#4A9FD4', needsNoun: true, hasSubmenu: true, hasMorphology: true },
+    { id: 'have', text: 'have', emoji: '🤲', color: '#5CB85C', needsNoun: true, hasSubmenu: true, hasMorphology: true },
+    { id: 'go', text: 'go', emoji: '🚶', color: '#4A9FD4', needsPlace: true, hasSubmenu: true, hasMorphology: true },
     { id: 'can', text: 'can', emoji: '💪', color: '#5CB85C' },
     { id: 'cant', text: "can't", emoji: '🚫', color: '#E63B2E' },
   ],
@@ -143,10 +246,8 @@ const CORE_WORDS = {
 };
 
 // ============================================
-// FOOTER QUICK WORDS - Customizable
+// FOOTER QUICK WORDS
 // ============================================
-const FOOTER_STORAGE_KEY = 'snw_ptt_footer_words';
-
 const AVAILABLE_FOOTER_WORDS = [
   { id: 'yes', text: 'Yes', emoji: '✅', color: '#5CB85C' },
   { id: 'no', text: 'No', emoji: '❌', color: '#E63B2E' },
@@ -172,24 +273,8 @@ const AVAILABLE_FOOTER_WORDS = [
 
 const DEFAULT_FOOTER_WORDS = ['yes', 'no', 'please', 'thank-you'];
 
-const loadFooterWords = () => {
-  try {
-    const saved = localStorage.getItem(FOOTER_STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      const valid = parsed.filter(id => AVAILABLE_FOOTER_WORDS.some(w => w.id === id));
-      return valid.length === 4 ? valid : DEFAULT_FOOTER_WORDS;
-    }
-  } catch (e) {}
-  return DEFAULT_FOOTER_WORDS;
-};
-
-const saveFooterWords = (words) => {
-  localStorage.setItem(FOOTER_STORAGE_KEY, JSON.stringify(words));
-};
-
 // ============================================
-// Noun categories
+// NOUN CATEGORIES
 // ============================================
 const NOUN_CATEGORIES = [
   { id: 'food', name: 'Food', emoji: '🍎', color: '#5CB85C' },
@@ -202,12 +287,11 @@ const NOUN_CATEGORIES = [
   { id: 'feelings', name: 'Feelings', emoji: '💜', color: '#8E6BBF' },
 ];
 
-// Nouns organized by category
 const NOUNS = {
   food: [
-    { id: 'apple', text: 'apple', emoji: '🍎', color: '#E63B2E' },
+    { id: 'apple', text: 'apple', emoji: '🍎', color: '#E63B2E', hasMorphology: true },
     { id: 'banana', text: 'banana', emoji: '🍌', color: '#F8D14A' },
-    { id: 'cookie', text: 'cookie', emoji: '🍪', color: '#8B5A2B' },
+    { id: 'cookie', text: 'cookie', emoji: '🍪', color: '#8B5A2B', hasMorphology: true },
     { id: 'pizza', text: 'pizza', emoji: '🍕', color: '#F5A623' },
     { id: 'sandwich', text: 'sandwich', emoji: '🥪', color: '#5CB85C' },
     { id: 'chicken', text: 'chicken', emoji: '🍗', color: '#F5A623' },
@@ -225,7 +309,7 @@ const NOUNS = {
     { id: 'drink', text: 'drink', emoji: '🥤', color: '#4A9FD4' },
   ],
   activities: [
-    { id: 'play', text: 'play', emoji: '🎮', color: '#5CB85C' },
+    { id: 'play', text: 'play', emoji: '🎮', color: '#5CB85C', hasMorphology: true },
     { id: 'read', text: 'read', emoji: '📚', color: '#8E6BBF' },
     { id: 'watch-tv', text: 'watch TV', emoji: '📺', color: '#87CEEB' },
     { id: 'outside', text: 'go outside', emoji: '🌳', color: '#5CB85C' },
@@ -235,7 +319,7 @@ const NOUNS = {
     { id: 'draw', text: 'draw', emoji: '✏️', color: '#F8D14A' },
     { id: 'music', text: 'music', emoji: '🎵', color: '#F5A623' },
     { id: 'swim', text: 'swim', emoji: '🏊', color: '#4A9FD4' },
-    { id: 'game', text: 'game', emoji: '🎲', color: '#E63B2E' },
+    { id: 'game', text: 'game', emoji: '🎲', color: '#E63B2E', hasMorphology: true },
     { id: 'break', text: 'a break', emoji: '⏸️', color: '#87CEEB' },
   ],
   places: [
@@ -262,9 +346,9 @@ const NOUNS = {
     { id: 'friend', text: 'friend', emoji: '🧑‍🤝‍🧑', color: '#F8D14A' },
   ],
   things: [
-    { id: 'toy', text: 'toy', emoji: '🧸', color: '#8B5A2B' },
+    { id: 'toy', text: 'toy', emoji: '🧸', color: '#8B5A2B', hasMorphology: true },
     { id: 'ball', text: 'ball', emoji: '⚽', color: '#5CB85C' },
-    { id: 'book', text: 'book', emoji: '📖', color: '#8E6BBF' },
+    { id: 'book', text: 'book', emoji: '📖', color: '#8E6BBF', hasMorphology: true },
     { id: 'phone', text: 'phone', emoji: '📱', color: '#4A9FD4' },
     { id: 'tablet', text: 'tablet', emoji: '📱', color: '#87CEEB' },
     { id: 'blanket', text: 'blanket', emoji: '🛏️', color: '#E86B9A' },
@@ -290,34 +374,70 @@ const NOUNS = {
 };
 
 // ============================================
-// Custom Words Storage
+// HELPER FUNCTIONS
 // ============================================
-const CUSTOM_WORDS_KEY = 'snw_aac_custom_words';
-const LAYOUT_KEY = 'snw_aac_layout';
 
-const loadCustomWords = () => {
+const loadFromStorage = (key, defaultValue) => {
   try {
-    return JSON.parse(localStorage.getItem(CUSTOM_WORDS_KEY) || '[]');
-  } catch { return []; }
+    const saved = localStorage.getItem(key);
+    return saved ? JSON.parse(saved) : defaultValue;
+  } catch {
+    return defaultValue;
+  }
 };
 
-const saveCustomWords = (words) => {
-  localStorage.setItem(CUSTOM_WORDS_KEY, JSON.stringify(words));
-};
-
-const loadLayout = () => {
-  return localStorage.getItem(LAYOUT_KEY) || 'basic';
-};
-
-const saveLayout = (layout) => {
-  localStorage.setItem(LAYOUT_KEY, layout);
+const saveToStorage = (key, value) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    console.error('Storage save error:', e);
+  }
 };
 
 // ============================================
-// Speech Synthesis Hook
+// VOICE SETTINGS HOOK
 // ============================================
 
-const useSpeech = () => {
+const useVoiceSettings = () => {
+  const [settings, setSettings] = useState(() => 
+    loadFromStorage(STORAGE_KEYS.voiceSettings, {
+      rate: 0.9,
+      pitch: 1.0,
+      voiceIndex: 0,
+    })
+  );
+  const [availableVoices, setAvailableVoices] = useState([]);
+  
+  useEffect(() => {
+    const loadVoices = () => {
+      const voices = speechSynthesis.getVoices();
+      // Filter to English voices for simplicity
+      const englishVoices = voices.filter(v => v.lang.startsWith('en'));
+      setAvailableVoices(englishVoices.length > 0 ? englishVoices : voices);
+    };
+    
+    loadVoices();
+    speechSynthesis.onvoiceschanged = loadVoices;
+    
+    return () => {
+      speechSynthesis.onvoiceschanged = null;
+    };
+  }, []);
+  
+  const updateSettings = (newSettings) => {
+    const updated = { ...settings, ...newSettings };
+    setSettings(updated);
+    saveToStorage(STORAGE_KEYS.voiceSettings, updated);
+  };
+  
+  return { settings, updateSettings, availableVoices };
+};
+
+// ============================================
+// SPEECH SYNTHESIS HOOK WITH SETTINGS
+// ============================================
+
+const useSpeech = (voiceSettings, availableVoices) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isSupported, setIsSupported] = useState(true);
 
@@ -332,15 +452,19 @@ const useSpeech = () => {
     
     speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.9;
-    utterance.pitch = 1.0;
+    utterance.rate = voiceSettings.rate;
+    utterance.pitch = voiceSettings.pitch;
+    
+    if (availableVoices.length > 0 && voiceSettings.voiceIndex < availableVoices.length) {
+      utterance.voice = availableVoices[voiceSettings.voiceIndex];
+    }
     
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
     
     speechSynthesis.speak(utterance);
-  }, [isSupported]);
+  }, [isSupported, voiceSettings, availableVoices]);
 
   const stop = useCallback(() => {
     speechSynthesis.cancel();
@@ -351,94 +475,289 @@ const useSpeech = () => {
 };
 
 // ============================================
-// Word Button Component - Fixed alignment
+// RECENTS HOOK
 // ============================================
 
-const WordButton = ({ word, onClick, size = 'normal', useArasaac = false, showSubmenuIndicator = false }) => {
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageError, setImageError] = useState(false);
+const useRecents = (maxItems = 10) => {
+  const [recents, setRecents] = useState(() => 
+    loadFromStorage(STORAGE_KEYS.recents, [])
+  );
   
-  // Get the correct pictogram ID from the word's ID
-  const pictogramId = useArasaac && ARASAAC_PICTOGRAM_IDS[word.id];
-  const pictogramUrl = pictogramId ? getButtonPictogramUrl(word.id) : null;
+  const addRecent = useCallback((word) => {
+    setRecents(prev => {
+      // Remove duplicates
+      const filtered = prev.filter(w => w.id !== word.id);
+      // Add to front, limit to maxItems
+      const updated = [word, ...filtered].slice(0, maxItems);
+      saveToStorage(STORAGE_KEYS.recents, updated);
+      return updated;
+    });
+  }, [maxItems]);
   
-  const showPictogram = useArasaac && pictogramUrl && !imageError;
+  const clearRecents = useCallback(() => {
+    setRecents([]);
+    saveToStorage(STORAGE_KEYS.recents, []);
+  }, []);
+  
+  return { recents, addRecent, clearRecents };
+};
+
+// ============================================
+// ANALYTICS HOOK
+// ============================================
+
+const useAnalytics = () => {
+  const [analytics, setAnalytics] = useState(() => 
+    loadFromStorage(STORAGE_KEYS.analytics, {
+      wordFrequency: {},
+      phrasePatterns: {},
+      sessionCount: 0,
+      totalWords: 0,
+      lastUsed: null,
+      hourlyUsage: {},
+    })
+  );
+  
+  const trackWord = useCallback((word) => {
+    const now = new Date();
+    const hour = now.getHours();
+    
+    setAnalytics(prev => {
+      const updated = {
+        ...prev,
+        wordFrequency: {
+          ...prev.wordFrequency,
+          [word.id]: (prev.wordFrequency[word.id] || 0) + 1,
+        },
+        totalWords: prev.totalWords + 1,
+        lastUsed: now.toISOString(),
+        hourlyUsage: {
+          ...prev.hourlyUsage,
+          [hour]: (prev.hourlyUsage[hour] || 0) + 1,
+        },
+      };
+      saveToStorage(STORAGE_KEYS.analytics, updated);
+      return updated;
+    });
+  }, []);
+  
+  const trackPhrase = useCallback((words) => {
+    if (words.length < 2) return;
+    const pattern = words.map(w => w.id).join(' → ');
+    
+    setAnalytics(prev => {
+      const updated = {
+        ...prev,
+        phrasePatterns: {
+          ...prev.phrasePatterns,
+          [pattern]: (prev.phrasePatterns[pattern] || 0) + 1,
+        },
+      };
+      saveToStorage(STORAGE_KEYS.analytics, updated);
+      return updated;
+    });
+  }, []);
+  
+  const getTopWords = useCallback((limit = 10) => {
+    return Object.entries(analytics.wordFrequency)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, limit)
+      .map(([id, count]) => ({ id, count }));
+  }, [analytics.wordFrequency]);
+  
+  const clearAnalytics = useCallback(() => {
+    const reset = {
+      wordFrequency: {},
+      phrasePatterns: {},
+      sessionCount: 0,
+      totalWords: 0,
+      lastUsed: null,
+      hourlyUsage: {},
+    };
+    setAnalytics(reset);
+    saveToStorage(STORAGE_KEYS.analytics, reset);
+  }, []);
+  
+  return { analytics, trackWord, trackPhrase, getTopWords, clearAnalytics };
+};
+
+// ============================================
+// ACCESSIBILITY HOOK
+// ============================================
+
+const useAccessibility = () => {
+  const [settings, setSettings] = useState(() => 
+    loadFromStorage(STORAGE_KEYS.accessibility, {
+      buttonSize: 'normal', // 'small', 'normal', 'large', 'xlarge'
+      gridColumns: 4, // 3, 4, 5, 6
+      highContrast: false,
+      reducedMotion: false,
+      showLabels: true,
+    })
+  );
+  
+  const updateSettings = (newSettings) => {
+    const updated = { ...settings, ...newSettings };
+    setSettings(updated);
+    saveToStorage(STORAGE_KEYS.accessibility, updated);
+  };
+  
+  return { settings, updateSettings };
+};
+
+// ============================================
+// PARTNER SCANNING HOOK
+// ============================================
+
+const usePartnerScanning = () => {
+  const [isScanning, setIsScanning] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [scanSpeed, setScanSpeed] = useState(2000); // ms
+  const [scanItems, setScanItems] = useState([]);
+  const scanIntervalRef = useRef(null);
+  
+  const startScanning = useCallback((items) => {
+    setScanItems(items);
+    setCurrentIndex(0);
+    setIsScanning(true);
+  }, []);
+  
+  const stopScanning = useCallback(() => {
+    setIsScanning(false);
+    setCurrentIndex(0);
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+    }
+  }, []);
+  
+  const selectCurrent = useCallback(() => {
+    if (scanItems.length > 0 && currentIndex < scanItems.length) {
+      return scanItems[currentIndex];
+    }
+    return null;
+  }, [scanItems, currentIndex]);
+  
+  useEffect(() => {
+    if (isScanning && scanItems.length > 0) {
+      scanIntervalRef.current = setInterval(() => {
+        setCurrentIndex(prev => (prev + 1) % scanItems.length);
+      }, scanSpeed);
+    }
+    
+    return () => {
+      if (scanIntervalRef.current) {
+        clearInterval(scanIntervalRef.current);
+      }
+    };
+  }, [isScanning, scanItems.length, scanSpeed]);
+  
+  return { 
+    isScanning, 
+    currentIndex, 
+    scanSpeed, 
+    setScanSpeed,
+    startScanning, 
+    stopScanning, 
+    selectCurrent 
+  };
+};
+
+// ============================================
+// WORD BUTTON COMPONENT
+// ============================================
+
+const WordButton = ({ 
+  word, 
+  onClick, 
+  size = 'normal', 
+  showSubmenuIndicator = false,
+  isHighlighted = false,
+  highContrast = false,
+  reducedMotion = false,
+  onLongPress = null,
+}) => {
+  const longPressRef = useRef(null);
+  const [isPressed, setIsPressed] = useState(false);
   
   const sizeConfig = {
     small: { 
       padding: 'p-2', 
-      minHeight: 'min-h-[70px]', 
+      minHeight: 'min-h-[60px]', 
       text: 'text-xs',
-      emoji: 'text-2xl',
-      imgSize: 36
+      emoji: 'text-xl',
     },
     normal: { 
       padding: 'p-3', 
-      minHeight: 'min-h-[85px]', 
+      minHeight: 'min-h-[80px]', 
       text: 'text-sm',
-      emoji: 'text-3xl',
-      imgSize: 44
+      emoji: 'text-2xl',
     },
     large: { 
       padding: 'p-4', 
       minHeight: 'min-h-[100px]', 
       text: 'text-base',
+      emoji: 'text-3xl',
+    },
+    xlarge: { 
+      padding: 'p-5', 
+      minHeight: 'min-h-[120px]', 
+      text: 'text-lg',
       emoji: 'text-4xl',
-      imgSize: 56
     },
   };
   
   const config = sizeConfig[size];
   
+  const handleTouchStart = () => {
+    setIsPressed(true);
+    if (onLongPress) {
+      longPressRef.current = setTimeout(() => {
+        onLongPress(word);
+      }, 500);
+    }
+  };
+  
+  const handleTouchEnd = () => {
+    setIsPressed(false);
+    if (longPressRef.current) {
+      clearTimeout(longPressRef.current);
+    }
+  };
+  
   return (
     <button
       onClick={() => onClick(word)}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onMouseDown={handleTouchStart}
+      onMouseUp={handleTouchEnd}
+      onMouseLeave={handleTouchEnd}
       className={`
-        ${config.padding} ${config.minHeight} rounded-xl border-3 transition-all
-        hover:scale-105 active:scale-95 shadow-md relative
-        flex flex-col items-center justify-center gap-1
+        ${config.padding} ${config.minHeight} rounded-xl border-3 
+        ${reducedMotion ? '' : 'transition-all hover:scale-105 active:scale-95'}
+        shadow-md relative flex flex-col items-center justify-center gap-1
+        ${isHighlighted ? 'ring-4 ring-yellow-400 ring-offset-2 animate-pulse' : ''}
+        ${isPressed ? 'scale-95' : ''}
       `}
       style={{ 
-        backgroundColor: word.color,
-        borderColor: word.color,
-        color: word.textColor || 'white',
+        backgroundColor: highContrast ? (word.color === '#FFFEF5' ? '#000' : word.color) : word.color,
+        borderColor: highContrast ? '#fff' : word.color,
+        color: highContrast ? '#fff' : (word.textColor || 'white'),
       }}
     >
-      {/* Submenu indicator */}
       {showSubmenuIndicator && word.hasSubmenu && (
         <div className="absolute top-1 right-1 bg-white/30 rounded-full p-0.5">
           <ChevronRight size={10} />
         </div>
       )}
       
-      {/* Image/Emoji container - fixed size box for alignment */}
-      <div 
-        className="flex items-center justify-center relative"
-        style={{ width: config.imgSize, height: config.imgSize }}
-      >
-        {showPictogram ? (
-          <>
-            <img
-              src={pictogramUrl}
-              alt={word.text}
-              className="absolute inset-0 w-full h-full object-contain rounded bg-white/95 p-0.5"
-              style={{ 
-                opacity: imageLoaded ? 1 : 0,
-                transition: 'opacity 0.2s'
-              }}
-              onLoad={() => setImageLoaded(true)}
-              onError={() => setImageError(true)}
-            />
-            {!imageLoaded && (
-              <div className="absolute inset-0 bg-white/30 rounded animate-pulse" />
-            )}
-          </>
-        ) : (
-          <span className={`${config.emoji} leading-none`}>{word.emoji}</span>
-        )}
-      </div>
+      {word.hasMorphology && (
+        <div className="absolute top-1 left-1 bg-white/30 rounded-full p-0.5">
+          <Type size={8} />
+        </div>
+      )}
       
-      {/* Text - always centered below image */}
+      <span className={`${config.emoji} leading-none`}>{word.emoji}</span>
       <span className={`font-crayon ${config.text} leading-tight text-center w-full`}>
         {word.text}
       </span>
@@ -447,84 +766,322 @@ const WordButton = ({ word, onClick, size = 'normal', useArasaac = false, showSu
 };
 
 // ============================================
-// Category Button Component
-// ============================================
-
-const CategoryButton = ({ category, onClick, isActive }) => (
-  <button
-    onClick={() => onClick(category)}
-    className={`
-      p-3 rounded-xl border-3 transition-all
-      hover:scale-105 active:scale-95
-      flex flex-col items-center justify-center gap-1
-      ${isActive ? 'ring-2 ring-offset-2 ring-gray-800' : ''}
-    `}
-    style={{ 
-      backgroundColor: category.color,
-      borderColor: category.color,
-    }}
-  >
-    <span className="text-2xl">{category.emoji}</span>
-    <span className="font-crayon text-xs text-white leading-tight text-center">
-      {category.name}
-    </span>
-  </button>
-);
-
-// ============================================
-// Sentence Strip Component
+// SENTENCE STRIP COMPONENT
 // ============================================
 
 const SentenceStrip = ({ words, onSpeak, onClear, onUndo, isSpeaking }) => {
-  if (words.length === 0) {
-    return (
-      <div className="bg-white rounded-2xl border-4 border-dashed border-gray-300 p-4 text-center">
-        <p className="font-crayon text-gray-400 flex items-center justify-center gap-2">
-          <MessageSquare size={18} />
-          Tap words below to build a sentence
-        </p>
+  return (
+    <div className="flex items-center gap-2 p-3 bg-white rounded-2xl border-4 border-[#87CEEB] shadow-lg min-h-[70px]">
+      <div className="flex-1 flex items-center gap-1 overflow-x-auto py-1">
+        {words.length === 0 ? (
+          <span className="font-crayon text-gray-400 text-sm">
+            Tap words to build a sentence...
+          </span>
+        ) : (
+          words.map((word, idx) => (
+            <span 
+              key={idx} 
+              className="px-2 py-1 rounded-lg font-crayon text-white text-sm whitespace-nowrap flex items-center gap-1"
+              style={{ backgroundColor: word.color }}
+            >
+              <span>{word.emoji}</span>
+              <span>{word.text}</span>
+            </span>
+          ))
+        )}
       </div>
-    );
+      
+      <div className="flex gap-1">
+        <button
+          onClick={onUndo}
+          disabled={words.length === 0}
+          className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-30"
+        >
+          <Undo2 size={18} className="text-gray-600" />
+        </button>
+        <button
+          onClick={onClear}
+          disabled={words.length === 0}
+          className="p-2 rounded-full bg-red-100 hover:bg-red-200 transition-colors disabled:opacity-30"
+        >
+          <Trash2 size={18} className="text-red-500" />
+        </button>
+        <button
+          onClick={onSpeak}
+          disabled={words.length === 0 || isSpeaking}
+          className="p-2 rounded-full bg-[#5CB85C] hover:bg-green-600 text-white transition-colors disabled:opacity-30"
+        >
+          <Volume2 size={18} />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ============================================
+// RECENTS BAR COMPONENT
+// ============================================
+
+const RecentsBar = ({ recents, onWordClick, onClear }) => {
+  if (recents.length === 0) return null;
+  
+  return (
+    <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-2 border-2 border-amber-200">
+      <div className="flex items-center gap-2 mb-1">
+        <History size={14} className="text-amber-600" />
+        <span className="font-crayon text-xs text-amber-700">Recent words</span>
+        <button 
+          onClick={onClear}
+          className="ml-auto text-amber-500 hover:text-amber-700 text-xs"
+        >
+          Clear
+        </button>
+      </div>
+      <div className="flex gap-1.5 overflow-x-auto pb-1">
+        {recents.map((word, idx) => (
+          <button
+            key={`${word.id}-${idx}`}
+            onClick={() => onWordClick(word)}
+            className="flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg bg-white border-2 
+                     hover:scale-105 active:scale-95 transition-all"
+            style={{ borderColor: word.color }}
+          >
+            <span className="text-sm">{word.emoji}</span>
+            <span className="font-crayon text-xs" style={{ color: word.color }}>
+              {word.text}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ============================================
+// PREDICTION BAR COMPONENT
+// ============================================
+
+const PredictionBar = ({ sentence, onWordClick, allWords }) => {
+  const predictions = useMemo(() => {
+    if (sentence.length === 0) return [];
+    
+    // Build current phrase
+    const phrase = sentence.map(w => w.text).join(' ');
+    
+    // Check for matching prediction rules
+    for (const [pattern, suggestions] of Object.entries(PREDICTION_RULES)) {
+      if (phrase.toLowerCase().endsWith(pattern.toLowerCase())) {
+        return suggestions.slice(0, 5).map(text => {
+          // Find the word object
+          const foundWord = findWordByText(text, allWords);
+          return foundWord || { id: text, text, emoji: '💬', color: '#87CEEB' };
+        });
+      }
+    }
+    
+    // Default: show common follow-ups based on last word
+    const lastWord = sentence[sentence.length - 1];
+    if (PREDICTION_RULES[lastWord?.text]) {
+      return PREDICTION_RULES[lastWord.text].slice(0, 5).map(text => {
+        const foundWord = findWordByText(text, allWords);
+        return foundWord || { id: text, text, emoji: '💬', color: '#87CEEB' };
+      });
+    }
+    
+    return [];
+  }, [sentence, allWords]);
+  
+  if (predictions.length === 0) return null;
+  
+  return (
+    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-2 border-2 border-blue-200">
+      <div className="flex items-center gap-2 mb-1">
+        <Zap size={14} className="text-blue-600" />
+        <span className="font-crayon text-xs text-blue-700">Next word suggestions</span>
+      </div>
+      <div className="flex gap-1.5 overflow-x-auto pb-1">
+        {predictions.map((word, idx) => (
+          <button
+            key={`pred-${word.id}-${idx}`}
+            onClick={() => onWordClick(word)}
+            className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border-2 
+                     hover:scale-105 active:scale-95 transition-all shadow-sm"
+            style={{ borderColor: word.color }}
+          >
+            <span className="text-lg">{word.emoji}</span>
+            <span className="font-crayon text-sm" style={{ color: word.color }}>
+              {word.text}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// Helper to find word by text
+const findWordByText = (text, allWords) => {
+  const searchText = text.toLowerCase();
+  
+  // Search in all word collections
+  for (const word of CORE_WORDS.quickWords) {
+    if (word.text.toLowerCase() === searchText) return word;
+  }
+  for (const word of CORE_WORDS.verbs) {
+    if (word.text.toLowerCase() === searchText) return word;
+  }
+  for (const word of CORE_WORDS.adjectives) {
+    if (word.text.toLowerCase() === searchText) return word;
+  }
+  for (const category of Object.values(NOUNS)) {
+    for (const word of category) {
+      if (word.text.toLowerCase() === searchText) return word;
+    }
+  }
+  
+  return null;
+};
+
+// ============================================
+// MORPHOLOGY TOOLBAR COMPONENT
+// ============================================
+
+const MorphologyToolbar = ({ word, onSelect, onClose }) => {
+  const morphology = WORD_MORPHOLOGY[word.text.toLowerCase()];
+  
+  if (!morphology) {
+    onClose();
+    return null;
   }
   
   return (
-    <div className="bg-white rounded-2xl border-4 border-[#4A9FD4] p-3 shadow-lg">
-      <div className="flex items-center gap-2">
-        <div className="flex-1 flex flex-wrap gap-1.5 min-h-[44px] items-center">
-          {words.map((word, index) => (
-            <span 
-              key={index}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-crayon"
-              style={{ backgroundColor: `${word.color}25`, color: word.color }}
+    <div className="fixed bottom-24 left-0 right-0 z-50 px-4">
+      <div className="max-w-lg mx-auto bg-white rounded-2xl shadow-2xl border-4 border-purple-400 overflow-hidden">
+        <div className="bg-purple-500 text-white p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Type size={18} />
+            <span className="font-display">Word forms: {word.text}</span>
+          </div>
+          <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="p-3 flex flex-wrap gap-2">
+          {morphology.forms.map((form, idx) => (
+            <button
+              key={form}
+              onClick={() => {
+                onSelect({ ...word, text: form, id: `${word.id}-${form}` });
+                onClose();
+              }}
+              className="px-4 py-2 rounded-xl border-2 border-purple-300 bg-purple-50 
+                       hover:bg-purple-100 hover:scale-105 active:scale-95 transition-all
+                       font-crayon text-purple-700"
             >
-              <span>{word.emoji}</span>
-              <span className="font-semibold">{word.text}</span>
-            </span>
+              {form}
+            </button>
           ))}
         </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================
+// QUICK PHRASES SECTION COMPONENT
+// ============================================
+
+const QuickPhrasesSection = ({ onSelect, buttonSize, highContrast, reducedMotion }) => {
+  const [showAll, setShowAll] = useState(false);
+  const displayPhrases = showAll ? QUICK_PHRASES : QUICK_PHRASES.slice(0, 8);
+  
+  return (
+    <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-3 border-2 border-purple-200">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="font-display text-sm text-purple-700 flex items-center gap-1">
+          <MessageSquare size={16} />
+          Quick Phrases
+        </h3>
+        <button 
+          onClick={() => setShowAll(!showAll)}
+          className="text-xs font-crayon text-purple-600 hover:text-purple-800"
+        >
+          {showAll ? 'Show less' : `Show all (${QUICK_PHRASES.length})`}
+        </button>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {displayPhrases.map(phrase => (
+          <button
+            key={phrase.id}
+            onClick={() => onSelect(phrase)}
+            className={`p-3 rounded-xl border-2 text-left flex items-start gap-2
+                      hover:scale-102 active:scale-98 transition-all
+                      ${reducedMotion ? '' : 'hover:shadow-md'}`}
+            style={{ 
+              borderColor: phrase.color,
+              backgroundColor: highContrast ? phrase.color : `${phrase.color}15`,
+            }}
+          >
+            <span className="text-xl flex-shrink-0">{phrase.emoji}</span>
+            <span 
+              className="font-crayon text-sm leading-tight"
+              style={{ color: highContrast ? '#fff' : phrase.color }}
+            >
+              {phrase.text}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ============================================
+// SCANNING OVERLAY COMPONENT
+// ============================================
+
+const ScanningOverlay = ({ isActive, onSelect, onStop, scanSpeed, onSpeedChange }) => {
+  if (!isActive) return null;
+  
+  return (
+    <div className="fixed top-0 left-0 right-0 z-50 bg-yellow-400 p-3 shadow-lg">
+      <div className="max-w-4xl mx-auto flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="animate-pulse">
+            <Target size={24} className="text-yellow-800" />
+          </div>
+          <span className="font-display text-yellow-900">Partner Scanning Active</span>
+        </div>
         
-        <div className="flex gap-1.5">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-yellow-800">Speed:</span>
+            <input
+              type="range"
+              min="500"
+              max="4000"
+              step="250"
+              value={scanSpeed}
+              onChange={(e) => onSpeedChange(Number(e.target.value))}
+              className="w-24"
+            />
+            <span className="text-sm text-yellow-800">{scanSpeed / 1000}s</span>
+          </div>
+          
           <button
-            onClick={onUndo}
-            className="p-2.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors"
-            title="Undo last word"
+            onClick={onSelect}
+            className="px-6 py-2 bg-green-500 text-white rounded-xl font-display 
+                     hover:bg-green-600 active:scale-95 transition-all shadow-lg"
           >
-            <Undo2 size={18} />
+            SELECT
           </button>
+          
           <button
-            onClick={onSpeak}
-            disabled={isSpeaking}
-            className="p-2.5 bg-[#5CB85C] text-white rounded-full hover:bg-green-600 transition-colors shadow-md"
-            title="Speak sentence"
+            onClick={onStop}
+            className="px-4 py-2 bg-red-500 text-white rounded-xl font-display 
+                     hover:bg-red-600 active:scale-95 transition-all"
           >
-            <Volume2 size={18} />
-          </button>
-          <button
-            onClick={onClear}
-            className="p-2.5 bg-[#E63B2E] text-white rounded-full hover:bg-red-600 transition-colors"
-            title="Clear all"
-          >
-            <Trash2 size={18} />
+            Stop
           </button>
         </div>
       </div>
@@ -533,172 +1090,445 @@ const SentenceStrip = ({ words, onSpeak, onClear, onUndo, isSpeaking }) => {
 };
 
 // ============================================
-// Add Word Modal Component
+// ANALYTICS MODAL COMPONENT
 // ============================================
 
-const AddWordModal = ({ isOpen, onClose, onSave, isLoading }) => {
-  const [word, setWord] = useState('');
-  const [emoji, setEmoji] = useState('💬');
-  const [color, setColor] = useState('#4A9FD4');
-  const [category, setCategory] = useState('things');
-  const [isSuggesting, setIsSuggesting] = useState(false);
-
-  const colors = [
-    '#5CB85C', '#4A9FD4', '#E63B2E', '#F5A623', 
-    '#8E6BBF', '#E86B9A', '#87CEEB', '#F8D14A', '#20B2AA'
-  ];
-
-  const handleAiSuggest = async () => {
-    if (!word.trim() || !isSupabaseConfigured()) return;
-    
-    setIsSuggesting(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('suggest-aac-word', {
-        body: { word: word.trim() }
-      });
-      
-      if (!error && data) {
-        if (data.emoji) setEmoji(data.emoji);
-        if (data.color) setColor(data.color);
-        if (data.category) setCategory(data.category);
-      }
-    } catch (err) {
-      console.error('AI suggestion error:', err);
-    }
-    setIsSuggesting(false);
-  };
-
-  const handleSubmit = () => {
-    if (!word.trim()) return;
-    
-    onSave({
-      id: `custom_${Date.now()}`,
-      text: word.trim(),
-      emoji,
-      color,
-      category,
-      isCustom: true,
-    });
-    
-    setWord('');
-    setEmoji('💬');
-    setColor('#4A9FD4');
-    setCategory('things');
-    onClose();
-  };
-
+const AnalyticsModal = ({ isOpen, onClose, analytics, getTopWords, onClear }) => {
   if (!isOpen) return null;
-
+  
+  const topWords = getTopWords(15);
+  const maxCount = topWords[0]?.count || 1;
+  
+  // Peak usage hours
+  const peakHours = Object.entries(analytics.hourlyUsage)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 3);
+  
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-[#FFFEF5] w-full max-w-md rounded-3xl overflow-hidden border-4 border-[#5CB85C]">
-        <div className="bg-[#5CB85C] text-white p-4 flex items-center justify-between">
+      <div className="bg-[#FFFEF5] w-full max-w-lg rounded-3xl overflow-hidden border-4 border-[#8E6BBF] max-h-[80vh] flex flex-col">
+        <div className="bg-[#8E6BBF] text-white p-4 flex items-center justify-between flex-shrink-0">
           <h3 className="font-display text-xl flex items-center gap-2">
-            <Plus size={24} />
-            Add Custom Word
+            <BarChart2 size={24} />
+            Usage Analytics
           </h3>
           <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
             <X size={24} />
           </button>
         </div>
         
-        <div className="p-6 space-y-4">
-          {/* Word Input */}
-          <div>
-            <label className="block font-crayon text-gray-600 mb-2">Word or Phrase</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={word}
-                onChange={(e) => setWord(e.target.value)}
-                placeholder="Enter word..."
-                className="flex-1 px-4 py-2 border-3 border-gray-200 rounded-xl font-crayon focus:border-[#5CB85C] focus:outline-none"
-              />
-              {isSupabaseConfigured() && (
-                <button
-                  onClick={handleAiSuggest}
-                  disabled={!word.trim() || isSuggesting}
-                  className="p-2 bg-[#8E6BBF] text-white rounded-xl hover:bg-purple-600 disabled:opacity-50 transition-all"
-                  title="AI Suggest"
-                >
-                  {isSuggesting ? <Loader2 size={20} className="animate-spin" /> : <Sparkles size={20} />}
-                </button>
-              )}
+        <div className="p-4 overflow-y-auto flex-1">
+          {/* Summary Stats */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="bg-blue-50 rounded-xl p-3 text-center">
+              <p className="text-2xl font-display text-blue-600">{analytics.totalWords}</p>
+              <p className="text-xs font-crayon text-blue-500">Total Words</p>
+            </div>
+            <div className="bg-green-50 rounded-xl p-3 text-center">
+              <p className="text-2xl font-display text-green-600">
+                {Object.keys(analytics.wordFrequency).length}
+              </p>
+              <p className="text-xs font-crayon text-green-500">Unique Words</p>
             </div>
           </div>
           
-          {/* Emoji Input */}
+          {/* Top Words */}
+          <div className="mb-4">
+            <h4 className="font-display text-sm text-gray-700 mb-2">Most Used Words</h4>
+            {topWords.length > 0 ? (
+              <div className="space-y-1.5">
+                {topWords.map(({ id, count }) => {
+                  const word = findWordByText(id, {}) || { emoji: '💬', text: id };
+                  return (
+                    <div key={id} className="flex items-center gap-2">
+                      <span className="text-lg w-6">{word.emoji}</span>
+                      <span className="font-crayon text-sm flex-1">{id}</span>
+                      <div className="flex-1 max-w-24">
+                        <div 
+                          className="h-3 rounded-full bg-purple-400"
+                          style={{ width: `${(count / maxCount) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-500 w-8 text-right">{count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 text-center py-4">No data yet</p>
+            )}
+          </div>
+          
+          {/* Peak Hours */}
+          {peakHours.length > 0 && (
+            <div className="mb-4">
+              <h4 className="font-display text-sm text-gray-700 mb-2">Peak Usage Times</h4>
+              <div className="flex gap-2">
+                {peakHours.map(([hour, count]) => (
+                  <div key={hour} className="bg-amber-50 rounded-lg px-3 py-2 text-center">
+                    <p className="font-display text-amber-600">
+                      {hour > 12 ? `${hour - 12}PM` : hour === 0 ? '12AM' : `${hour}AM`}
+                    </p>
+                    <p className="text-xs text-amber-500">{count} words</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          <button
+            onClick={() => {
+              if (confirm('Clear all analytics data?')) {
+                onClear();
+              }
+            }}
+            className="w-full py-2 border-2 border-red-300 text-red-500 rounded-xl font-crayon
+                     hover:bg-red-50 transition-colors"
+          >
+            Clear Analytics Data
+          </button>
+        </div>
+        
+        <div className="p-4 border-t flex-shrink-0">
+          <button
+            onClick={onClose}
+            className="w-full py-3 bg-[#8E6BBF] text-white rounded-xl font-display hover:bg-purple-600"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================
+// SETTINGS MODAL COMPONENT
+// ============================================
+
+const SettingsModal = ({ 
+  isOpen, 
+  onClose, 
+  voiceSettings, 
+  onVoiceChange, 
+  availableVoices,
+  accessibility,
+  onAccessibilityChange,
+  onShowAnalytics,
+  onStartScanning,
+}) => {
+  if (!isOpen) return null;
+  
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-[#FFFEF5] w-full max-w-md rounded-3xl overflow-hidden border-4 border-[#4A9FD4] max-h-[85vh] flex flex-col">
+        <div className="bg-[#4A9FD4] text-white p-4 flex items-center justify-between flex-shrink-0">
+          <h3 className="font-display text-xl flex items-center gap-2">
+            <Settings size={24} />
+            Settings
+          </h3>
+          <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
+            <X size={24} />
+          </button>
+        </div>
+        
+        <div className="p-4 overflow-y-auto flex-1 space-y-6">
+          {/* Voice Settings */}
           <div>
-            <label className="block font-crayon text-gray-600 mb-2">Emoji</label>
+            <h4 className="font-display text-lg text-gray-800 mb-3 flex items-center gap-2">
+              <Volume2 size={18} />
+              Voice Settings
+            </h4>
+            
+            <div className="space-y-4">
+              {/* Voice Selection */}
+              {availableVoices.length > 0 && (
+                <div>
+                  <label className="block text-sm font-crayon text-gray-600 mb-1">Voice</label>
+                  <select
+                    value={voiceSettings.voiceIndex}
+                    onChange={(e) => onVoiceChange({ voiceIndex: Number(e.target.value) })}
+                    className="w-full p-2 border-2 border-gray-200 rounded-xl font-crayon"
+                  >
+                    {availableVoices.map((voice, idx) => (
+                      <option key={idx} value={idx}>
+                        {voice.name} ({voice.lang})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              
+              {/* Speech Rate */}
+              <div>
+                <label className="block text-sm font-crayon text-gray-600 mb-1">
+                  Speed: {voiceSettings.rate.toFixed(1)}x
+                </label>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="1.5"
+                  step="0.1"
+                  value={voiceSettings.rate}
+                  onChange={(e) => onVoiceChange({ rate: Number(e.target.value) })}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-gray-400">
+                  <span>Slower</span>
+                  <span>Faster</span>
+                </div>
+              </div>
+              
+              {/* Pitch */}
+              <div>
+                <label className="block text-sm font-crayon text-gray-600 mb-1">
+                  Pitch: {voiceSettings.pitch.toFixed(1)}
+                </label>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="1.5"
+                  step="0.1"
+                  value={voiceSettings.pitch}
+                  onChange={(e) => onVoiceChange({ pitch: Number(e.target.value) })}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-gray-400">
+                  <span>Lower</span>
+                  <span>Higher</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Button Size */}
+          <div>
+            <h4 className="font-display text-lg text-gray-800 mb-3 flex items-center gap-2">
+              <Maximize2 size={18} />
+              Button Size
+            </h4>
+            <div className="grid grid-cols-4 gap-2">
+              {['small', 'normal', 'large', 'xlarge'].map((size) => (
+                <button
+                  key={size}
+                  onClick={() => onAccessibilityChange({ buttonSize: size })}
+                  className={`p-3 rounded-xl border-3 font-crayon text-sm capitalize transition-all
+                    ${accessibility.buttonSize === size 
+                      ? 'border-[#5CB85C] bg-[#5CB85C]/10 text-[#5CB85C]' 
+                      : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                >
+                  {size === 'xlarge' ? 'XL' : size.charAt(0).toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          {/* Grid Columns */}
+          <div>
+            <h4 className="font-display text-lg text-gray-800 mb-3 flex items-center gap-2">
+              <Grid size={18} />
+              Grid Size
+            </h4>
+            <div className="grid grid-cols-4 gap-2">
+              {[3, 4, 5, 6].map((cols) => (
+                <button
+                  key={cols}
+                  onClick={() => onAccessibilityChange({ gridColumns: cols })}
+                  className={`p-3 rounded-xl border-3 font-crayon transition-all
+                    ${accessibility.gridColumns === cols 
+                      ? 'border-[#5CB85C] bg-[#5CB85C]/10 text-[#5CB85C]' 
+                      : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                >
+                  {cols}×{cols}
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          {/* Accessibility Options */}
+          <div>
+            <h4 className="font-display text-lg text-gray-800 mb-3 flex items-center gap-2">
+              <Accessibility size={18} />
+              Accessibility
+            </h4>
+            <div className="space-y-3">
+              <label className="flex items-center justify-between p-3 bg-gray-50 rounded-xl cursor-pointer">
+                <span className="font-crayon flex items-center gap-2">
+                  <Contrast size={18} />
+                  High Contrast
+                </span>
+                <input
+                  type="checkbox"
+                  checked={accessibility.highContrast}
+                  onChange={(e) => onAccessibilityChange({ highContrast: e.target.checked })}
+                  className="w-5 h-5 rounded"
+                />
+              </label>
+              
+              <label className="flex items-center justify-between p-3 bg-gray-50 rounded-xl cursor-pointer">
+                <span className="font-crayon flex items-center gap-2">
+                  <PauseCircle size={18} />
+                  Reduced Motion
+                </span>
+                <input
+                  type="checkbox"
+                  checked={accessibility.reducedMotion}
+                  onChange={(e) => onAccessibilityChange({ reducedMotion: e.target.checked })}
+                  className="w-5 h-5 rounded"
+                />
+              </label>
+            </div>
+          </div>
+          
+          {/* Tools */}
+          <div>
+            <h4 className="font-display text-lg text-gray-800 mb-3 flex items-center gap-2">
+              <SlidersHorizontal size={18} />
+              Tools
+            </h4>
+            <div className="space-y-2">
+              <button
+                onClick={onStartScanning}
+                className="w-full p-3 border-2 border-yellow-400 bg-yellow-50 rounded-xl font-crayon
+                         text-yellow-700 hover:bg-yellow-100 transition-colors flex items-center justify-center gap-2"
+              >
+                <Target size={18} />
+                Start Partner Scanning
+              </button>
+              
+              <button
+                onClick={onShowAnalytics}
+                className="w-full p-3 border-2 border-purple-400 bg-purple-50 rounded-xl font-crayon
+                         text-purple-700 hover:bg-purple-100 transition-colors flex items-center justify-center gap-2"
+              >
+                <BarChart2 size={18} />
+                View Usage Analytics
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div className="p-4 border-t flex-shrink-0">
+          <button
+            onClick={onClose}
+            className="w-full py-3 bg-[#4A9FD4] text-white rounded-xl font-display hover:bg-blue-600"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================
+// ADD WORD MODAL (existing, cleaned up)
+// ============================================
+
+const AddWordModal = ({ isOpen, onClose, onSave, isLoading }) => {
+  const [text, setText] = useState('');
+  const [emoji, setEmoji] = useState('💬');
+  const [color, setColor] = useState('#4A9FD4');
+  const [category, setCategory] = useState('things');
+  
+  if (!isOpen) return null;
+  
+  const colors = ['#E63B2E', '#F5A623', '#F8D14A', '#5CB85C', '#4A9FD4', '#8E6BBF', '#E86B9A', '#87CEEB'];
+  
+  const handleSave = () => {
+    if (!text.trim()) return;
+    onSave({
+      id: `custom-${Date.now()}`,
+      text: text.trim(),
+      emoji,
+      color,
+      category,
+      isCustom: true,
+    });
+    setText('');
+    setEmoji('💬');
+    onClose();
+  };
+  
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-[#FFFEF5] w-full max-w-sm rounded-3xl overflow-hidden border-4 border-[#5CB85C]">
+        <div className="bg-[#5CB85C] text-white p-4 flex items-center justify-between">
+          <h3 className="font-display text-xl flex items-center gap-2">
+            <Plus size={24} />
+            Add Word
+          </h3>
+          <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full">
+            <X size={24} />
+          </button>
+        </div>
+        
+        <div className="p-4 space-y-4">
+          <div>
+            <label className="block text-sm font-crayon text-gray-600 mb-1">Word</label>
+            <input
+              type="text"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Enter word..."
+              className="w-full p-3 border-2 border-gray-200 rounded-xl font-crayon focus:border-[#5CB85C] outline-none"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-crayon text-gray-600 mb-1">Emoji</label>
             <input
               type="text"
               value={emoji}
               onChange={(e) => setEmoji(e.target.value)}
-              className="w-20 px-4 py-2 border-3 border-gray-200 rounded-xl text-2xl text-center focus:border-[#5CB85C] focus:outline-none"
+              className="w-full p-3 border-2 border-gray-200 rounded-xl text-2xl text-center focus:border-[#5CB85C] outline-none"
             />
           </div>
           
-          {/* Color Selection */}
           <div>
-            <label className="block font-crayon text-gray-600 mb-2">Color</label>
-            <div className="flex flex-wrap gap-2">
-              {colors.map((c) => (
+            <label className="block text-sm font-crayon text-gray-600 mb-1">Color</label>
+            <div className="flex gap-2 flex-wrap">
+              {colors.map(c => (
                 <button
                   key={c}
                   onClick={() => setColor(c)}
-                  className={`w-10 h-10 rounded-full border-3 transition-all ${
-                    color === c ? 'ring-2 ring-offset-2 ring-gray-800 scale-110' : ''
-                  }`}
-                  style={{ backgroundColor: c, borderColor: c }}
+                  className={`w-8 h-8 rounded-full border-3 ${color === c ? 'border-gray-800 scale-110' : 'border-transparent'}`}
+                  style={{ backgroundColor: c }}
                 />
               ))}
             </div>
           </div>
           
-          {/* Category Selection */}
           <div>
-            <label className="block font-crayon text-gray-600 mb-2">Category</label>
+            <label className="block text-sm font-crayon text-gray-600 mb-1">Category</label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-4 py-2 border-3 border-gray-200 rounded-xl font-crayon focus:border-[#5CB85C] focus:outline-none"
+              className="w-full p-3 border-2 border-gray-200 rounded-xl font-crayon focus:border-[#5CB85C] outline-none"
             >
-              {NOUN_CATEGORIES.map((cat) => (
+              {NOUN_CATEGORIES.map(cat => (
                 <option key={cat.id} value={cat.id}>{cat.emoji} {cat.name}</option>
               ))}
             </select>
           </div>
           
-          {/* Preview */}
-          <div className="p-4 bg-gray-50 rounded-xl">
-            <p className="font-crayon text-sm text-gray-500 mb-2">Preview:</p>
-            <div
-              className="inline-flex flex-col items-center p-3 rounded-xl border-3"
-              style={{ backgroundColor: color, borderColor: color }}
-            >
-              <span className="text-3xl">{emoji}</span>
-              <span className="font-crayon text-white text-sm">{word || 'Word'}</span>
-            </div>
-          </div>
-          
-          {/* Buttons */}
-          <div className="flex gap-3">
+          <div className="flex gap-2 pt-2">
             <button
               onClick={onClose}
-              className="flex-1 py-3 rounded-xl font-display border-3 border-gray-200 text-gray-600
-                       hover:bg-gray-50 transition-all"
+              className="flex-1 py-3 border-2 border-gray-200 rounded-xl font-crayon hover:bg-gray-50"
             >
               Cancel
             </button>
             <button
-              onClick={handleSubmit}
-              disabled={!word.trim() || isLoading}
-              className="flex-1 py-3 rounded-xl font-display bg-[#5CB85C] text-white
-                       hover:bg-green-600 transition-all disabled:opacity-50
-                       flex items-center justify-center gap-2"
+              onClick={handleSave}
+              disabled={!text.trim() || isLoading}
+              className="flex-1 py-3 bg-[#5CB85C] text-white rounded-xl font-crayon 
+                       hover:bg-green-600 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isLoading ? <Loader2 size={20} className="animate-spin" /> : <Check size={20} />}
-              Save Word
+              Save
             </button>
           </div>
         </div>
@@ -708,7 +1538,7 @@ const AddWordModal = ({ isOpen, onClose, onSave, isLoading }) => {
 };
 
 // ============================================
-// Layout Info Modal
+// LAYOUT INFO MODAL
 // ============================================
 
 const LayoutInfoModal = ({ isOpen, onClose, layout }) => {
@@ -732,7 +1562,7 @@ const LayoutInfoModal = ({ isOpen, onClose, layout }) => {
           <p className="font-crayon text-gray-500 text-sm">{info.details}</p>
           <button
             onClick={onClose}
-            className="w-full mt-6 py-3 rounded-xl font-display text-white transition-all"
+            className="w-full mt-6 py-3 rounded-xl font-display text-white"
             style={{ backgroundColor: info.color }}
           >
             Got it!
@@ -744,52 +1574,72 @@ const LayoutInfoModal = ({ isOpen, onClose, layout }) => {
 };
 
 // ============================================
-// Main Component
+// MAIN COMPONENT
 // ============================================
 
 const PointToTalk = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const { user } = useAuth();
-  const { speak, isSpeaking } = useSpeech();
   
-  // State
+  // Voice settings
+  const { settings: voiceSettings, updateSettings: updateVoiceSettings, availableVoices } = useVoiceSettings();
+  const { speak, isSpeaking } = useSpeech(voiceSettings, availableVoices);
+  
+  // Accessibility
+  const { settings: accessibility, updateSettings: updateAccessibility } = useAccessibility();
+  
+  // Recents & Analytics
+  const { recents, addRecent, clearRecents } = useRecents(10);
+  const { analytics, trackWord, trackPhrase, getTopWords, clearAnalytics } = useAnalytics();
+  
+  // Partner scanning
+  const { 
+    isScanning, 
+    currentIndex, 
+    scanSpeed, 
+    setScanSpeed,
+    startScanning, 
+    stopScanning, 
+    selectCurrent 
+  } = usePartnerScanning();
+  
+  // Core state
   const [sentence, setSentence] = useState([]);
-  const [view, setView] = useState('main'); // main, categories, nouns
+  const [view, setView] = useState('main');
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [useArasaac, setUseArasaac] = useState(() => {
-    return localStorage.getItem('snw_aac_symbols') === 'arasaac';
-  });
   const [showSettings, setShowSettings] = useState(false);
-  const [footerWords, setFooterWords] = useState(() => loadFooterWords());
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [footerWords, setFooterWords] = useState(() => 
+    loadFromStorage(STORAGE_KEYS.footer, DEFAULT_FOOTER_WORDS)
+  );
   const [editingFooter, setEditingFooter] = useState(false);
   const [tempFooterWords, setTempFooterWords] = useState([]);
   
   // Layout state
-  const [layout, setLayout] = useState(() => loadLayout());
-  const [customWords, setCustomWords] = useState(() => loadCustomWords());
+  const [layout, setLayout] = useState(() => loadFromStorage(STORAGE_KEYS.layout, 'basic'));
+  const [customWords, setCustomWords] = useState(() => loadFromStorage(STORAGE_KEYS.customWords, []));
   const [cloudWords, setCloudWords] = useState([]);
   const [loadingCloud, setLoadingCloud] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showLayoutInfo, setShowLayoutInfo] = useState(false);
   const [selectedLayoutInfo, setSelectedLayoutInfo] = useState(null);
   
-  // Determine what to show based on sentence context
+  // Morphology state
+  const [morphologyWord, setMorphologyWord] = useState(null);
+  
+  // Contextual state
   const lastWord = sentence[sentence.length - 1];
   const needsNoun = lastWord?.needsNoun;
   const needsAdjective = lastWord?.needsAdjective;
   const needsPlace = lastWord?.needsPlace;
   
-  // Save preferences
+  // Save layout changes
   useEffect(() => {
-    localStorage.setItem('snw_aac_symbols', useArasaac ? 'arasaac' : 'emoji');
-  }, [useArasaac]);
-  
-  useEffect(() => {
-    saveLayout(layout);
+    saveToStorage(STORAGE_KEYS.layout, layout);
   }, [layout]);
   
-  // Load cloud words when layout is 'cloud'
+  // Load cloud words
   useEffect(() => {
     if (layout === 'cloud' && isSupabaseConfigured()) {
       loadCloudWords();
@@ -799,7 +1649,6 @@ const PointToTalk = () => {
   const loadCloudWords = async () => {
     setLoadingCloud(true);
     try {
-      // Get popular words from database
       const { data, error } = await supabase
         .from('aac_words')
         .select('*')
@@ -821,9 +1670,8 @@ const PointToTalk = () => {
   const handleAddCustomWord = async (word) => {
     const newWords = [...customWords, word];
     setCustomWords(newWords);
-    saveCustomWords(newWords);
+    saveToStorage(STORAGE_KEYS.customWords, newWords);
     
-    // Also save to cloud if signed in
     if (user && !user.isGuest && isSupabaseConfigured()) {
       try {
         await supabase.from('aac_words').insert({
@@ -838,30 +1686,48 @@ const PointToTalk = () => {
         });
         toast.success('Word Added', 'Saved locally and to cloud');
       } catch (err) {
-        console.error('Cloud save error:', err);
         toast.success('Word Added', 'Saved locally');
       }
     } else {
-      toast.success('Word Added', 'Saved to your local library');
+      toast.success('Word Added', 'Saved to your library');
     }
   };
   
   // Add word to sentence
-  const addWord = (word) => {
+  const addWord = useCallback((word) => {
     setSentence(prev => [...prev, word]);
     speak(word.text);
+    addRecent(word);
+    trackWord(word);
     
     if (word.needsNoun) setView('categories');
     else if (word.needsPlace) {
       setSelectedCategory('places');
       setView('nouns');
     }
-  };
+  }, [speak, addRecent, trackWord]);
+  
+  // Handle quick phrase (speaks immediately)
+  const handleQuickPhrase = useCallback((phrase) => {
+    speak(phrase.text);
+    trackWord(phrase);
+    toast.success('Speaking', phrase.text);
+  }, [speak, trackWord, toast]);
+  
+  // Handle morphology selection
+  const handleMorphologySelect = useCallback((word) => {
+    setSentence(prev => [...prev, word]);
+    speak(word.text);
+    addRecent(word);
+    trackWord(word);
+  }, [speak, addRecent, trackWord]);
 
   // Add noun and return to main
   const addNoun = (noun) => {
     setSentence(prev => [...prev, noun]);
     speak(noun.text);
+    addRecent(noun);
+    trackWord(noun);
     setView('main');
     setSelectedCategory(null);
   };
@@ -869,15 +1735,20 @@ const PointToTalk = () => {
   // Actions
   const speakSentence = () => {
     if (sentence.length > 0) {
-      speak(sentence.map(w => w.text).join(' '));
+      const text = sentence.map(w => w.text).join(' ');
+      speak(text);
+      trackPhrase(sentence);
     }
   };
+  
   const clearSentence = () => setSentence([]);
   const undoLastWord = () => setSentence(prev => prev.slice(0, -1));
+  
   const selectCategory = (cat) => {
     setSelectedCategory(cat.id);
     setView('nouns');
   };
+  
   const goBack = () => {
     if (view === 'nouns') {
       setView('categories');
@@ -904,7 +1775,7 @@ const PointToTalk = () => {
   const saveFooterConfig = () => {
     if (tempFooterWords.length === 4) {
       setFooterWords(tempFooterWords);
-      saveFooterWords(tempFooterWords);
+      saveToStorage(STORAGE_KEYS.footer, tempFooterWords);
       setEditingFooter(false);
     }
   };
@@ -942,13 +1813,72 @@ const PointToTalk = () => {
       })), ...baseWords];
     }
     
-    // Basic layout - default + custom
     const myWords = customWords.filter(w => w.category === categoryId);
     return [...baseWords, ...myWords];
   };
+  
+  // Handle long press for morphology
+  const handleLongPress = (word) => {
+    if (word.hasMorphology && WORD_MORPHOLOGY[word.text.toLowerCase()]) {
+      setMorphologyWord(word);
+    }
+  };
+  
+  // Get all words for prediction
+  const allWords = useMemo(() => {
+    const words = [];
+    Object.values(CORE_WORDS).forEach(category => {
+      if (Array.isArray(category)) words.push(...category);
+    });
+    Object.values(NOUNS).forEach(category => {
+      words.push(...category);
+    });
+    return words;
+  }, []);
+  
+  // Start partner scanning
+  const handleStartScanning = () => {
+    const items = [...CORE_WORDS.quickWords, ...CORE_WORDS.starters, ...CORE_WORDS.verbs];
+    startScanning(items);
+    setShowSettings(false);
+  };
+  
+  // Handle scan select
+  const handleScanSelect = () => {
+    const item = selectCurrent();
+    if (item) {
+      addWord(item);
+    }
+  };
+
+  // Grid columns class
+  const gridColsClass = {
+    3: 'grid-cols-3',
+    4: 'grid-cols-4',
+    5: 'grid-cols-5',
+    6: 'grid-cols-6',
+  }[accessibility.gridColumns] || 'grid-cols-4';
 
   return (
-    <div className="min-h-screen bg-[#FFFEF5] flex flex-col pb-20">
+    <div className={`min-h-screen bg-[#FFFEF5] flex flex-col pb-20 ${isScanning ? 'pt-16' : ''}`}>
+      {/* Partner Scanning Overlay */}
+      <ScanningOverlay
+        isActive={isScanning}
+        onSelect={handleScanSelect}
+        onStop={stopScanning}
+        scanSpeed={scanSpeed}
+        onSpeedChange={setScanSpeed}
+      />
+      
+      {/* Morphology Toolbar */}
+      {morphologyWord && (
+        <MorphologyToolbar
+          word={morphologyWord}
+          onSelect={handleMorphologySelect}
+          onClose={() => setMorphologyWord(null)}
+        />
+      )}
+      
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#FFFEF5]/95 backdrop-blur-sm border-b-4 border-[#4A9FD4]">
         <div className="max-w-4xl mx-auto px-3 py-2 flex items-center gap-2">
@@ -964,28 +1894,6 @@ const PointToTalk = () => {
           <div className="flex-1">
             <h1 className="text-lg font-display text-[#4A9FD4]">💬 Point to Talk</h1>
           </div>
-          
-          {/* Combined EMOJI/ARASAAC Toggle */}
-          <button
-            onClick={() => setUseArasaac(!useArasaac)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border-3 font-display text-sm font-bold transition-all
-              ${useArasaac 
-                ? 'bg-[#4A9FD4] border-[#4A9FD4] text-white' 
-                : 'bg-[#F5A623] border-[#F5A623] text-white'
-              }`}
-          >
-            {useArasaac ? (
-              <>
-                <Image size={16} />
-                <span className="hidden sm:inline">ARASAAC</span>
-              </>
-            ) : (
-              <>
-                <Smile size={16} />
-                <span className="hidden sm:inline">Emoji</span>
-              </>
-            )}
-          </button>
           
           {/* Add Word Button */}
           <button
@@ -1039,13 +1947,27 @@ const PointToTalk = () => {
 
       {/* Sentence Strip */}
       <div className="px-3 py-2 bg-gradient-to-b from-[#87CEEB]/20 to-transparent">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto space-y-2">
           <SentenceStrip 
             words={sentence}
             onSpeak={speakSentence}
             onClear={clearSentence}
             onUndo={undoLastWord}
             isSpeaking={isSpeaking}
+          />
+          
+          {/* Prediction Bar */}
+          <PredictionBar 
+            sentence={sentence}
+            onWordClick={addWord}
+            allWords={allWords}
+          />
+          
+          {/* Recents Bar */}
+          <RecentsBar 
+            recents={recents}
+            onWordClick={addWord}
+            onClear={clearRecents}
           />
         </div>
       </div>
@@ -1054,36 +1976,48 @@ const PointToTalk = () => {
       <main className="flex-1 max-w-4xl mx-auto w-full px-3 py-3 overflow-y-auto">
         {view === 'main' && (
           <div className="space-y-4">
-            {/* Quick Words - Always visible at top */}
+            {/* Quick Phrases Section */}
+            <QuickPhrasesSection 
+              onSelect={handleQuickPhrase}
+              buttonSize={accessibility.buttonSize}
+              highContrast={accessibility.highContrast}
+              reducedMotion={accessibility.reducedMotion}
+            />
+            
+            {/* Quick Words */}
             <div>
               <h3 className="font-display text-sm text-gray-600 mb-2 flex items-center gap-1">
                 ⚡ Quick Words
               </h3>
-              <div className="grid grid-cols-4 gap-2">
-                {CORE_WORDS.quickWords.map(word => (
+              <div className={`grid ${gridColsClass} gap-2`}>
+                {CORE_WORDS.quickWords.map((word, idx) => (
                   <WordButton 
                     key={word.id} 
                     word={word} 
                     onClick={addWord}
-                    size="small"
-                    useArasaac={useArasaac}
+                    size={accessibility.buttonSize}
+                    isHighlighted={isScanning && currentIndex === idx}
+                    highContrast={accessibility.highContrast}
+                    reducedMotion={accessibility.reducedMotion}
+                    onLongPress={handleLongPress}
                   />
                 ))}
               </div>
             </div>
             
-            {/* Show adjectives if the last word needs one */}
+            {/* Show adjectives if needed */}
             {needsAdjective && (
               <div className="bg-purple-50 rounded-xl p-3 border-3 border-purple-200 animate-pulse-once">
                 <h3 className="font-display text-sm text-purple-700 mb-2">💭 How do you feel?</h3>
-                <div className="grid grid-cols-4 gap-2">
+                <div className={`grid ${gridColsClass} gap-2`}>
                   {CORE_WORDS.adjectives.map(word => (
                     <WordButton 
                       key={word.id} 
                       word={word} 
                       onClick={addWord}
-                      size="small"
-                      useArasaac={useArasaac}
+                      size={accessibility.buttonSize}
+                      highContrast={accessibility.highContrast}
+                      reducedMotion={accessibility.reducedMotion}
                     />
                   ))}
                 </div>
@@ -1094,14 +2028,16 @@ const PointToTalk = () => {
             {!needsAdjective && (
               <div>
                 <h3 className="font-display text-sm text-gray-600 mb-2">👤 Start with...</h3>
-                <div className="grid grid-cols-6 gap-2">
+                <div className={`grid grid-cols-6 gap-2`}>
                   {CORE_WORDS.starters.map(word => (
                     <WordButton 
                       key={word.id} 
                       word={word} 
                       onClick={addWord}
-                      size="small"
-                      useArasaac={useArasaac}
+                      size={accessibility.buttonSize}
+                      highContrast={accessibility.highContrast}
+                      reducedMotion={accessibility.reducedMotion}
+                      onLongPress={handleLongPress}
                     />
                   ))}
                 </div>
@@ -1111,16 +2047,18 @@ const PointToTalk = () => {
             {/* Verbs */}
             {!needsAdjective && (
               <div>
-                <h3 className="font-display text-sm text-gray-600 mb-2">🎬 Action Words</h3>
-                <div className="grid grid-cols-4 gap-2">
+                <h3 className="font-display text-sm text-gray-600 mb-2">💬 Actions</h3>
+                <div className={`grid ${gridColsClass} gap-2`}>
                   {CORE_WORDS.verbs.map(word => (
                     <WordButton 
                       key={word.id} 
                       word={word} 
                       onClick={addWord}
-                      size="small"
-                      useArasaac={useArasaac}
-                      showSubmenuIndicator={true}
+                      size={accessibility.buttonSize}
+                      showSubmenuIndicator
+                      highContrast={accessibility.highContrast}
+                      reducedMotion={accessibility.reducedMotion}
+                      onLongPress={handleLongPress}
                     />
                   ))}
                 </div>
@@ -1128,75 +2066,86 @@ const PointToTalk = () => {
             )}
             
             {/* Questions */}
-            {!needsAdjective && (
-              <div>
-                <h3 className="font-display text-sm text-gray-600 mb-2">❓ Questions</h3>
-                <div className="grid grid-cols-6 gap-2">
-                  {CORE_WORDS.questions.map(word => (
-                    <WordButton 
-                      key={word.id} 
-                      word={word} 
-                      onClick={addWord}
-                      size="small"
-                      useArasaac={useArasaac}
-                    />
-                  ))}
-                </div>
+            <div>
+              <h3 className="font-display text-sm text-gray-600 mb-2">❓ Questions</h3>
+              <div className={`grid grid-cols-6 gap-2`}>
+                {CORE_WORDS.questions.map(word => (
+                  <WordButton 
+                    key={word.id} 
+                    word={word} 
+                    onClick={addWord}
+                    size={accessibility.buttonSize}
+                    highContrast={accessibility.highContrast}
+                    reducedMotion={accessibility.reducedMotion}
+                  />
+                ))}
               </div>
-            )}
+            </div>
           </div>
         )}
-        
-        {/* Category Selection View */}
+
+        {/* Categories View */}
         {view === 'categories' && (
           <div>
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-4">
               <button
                 onClick={goBack}
-                className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+                className="p-2 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
               >
                 <ChevronLeft size={20} />
               </button>
-              <h3 className="font-display text-gray-700">Choose a category</h3>
+              <h3 className="font-display text-lg text-gray-700">Choose a category</h3>
             </div>
-            <div className="grid grid-cols-4 gap-3">
+            <div className={`grid ${gridColsClass} gap-3`}>
               {NOUN_CATEGORIES.map(cat => (
-                <CategoryButton
+                <button
                   key={cat.id}
-                  category={cat}
-                  onClick={selectCategory}
-                />
+                  onClick={() => selectCategory(cat)}
+                  className={`p-4 rounded-xl border-3 flex flex-col items-center justify-center gap-2
+                            hover:scale-105 active:scale-95 transition-all shadow-md`}
+                  style={{ 
+                    backgroundColor: cat.color, 
+                    borderColor: cat.color,
+                    minHeight: accessibility.buttonSize === 'xlarge' ? '120px' : 
+                              accessibility.buttonSize === 'large' ? '100px' : '80px'
+                  }}
+                >
+                  <span className={accessibility.buttonSize === 'xlarge' ? 'text-4xl' : 
+                                  accessibility.buttonSize === 'large' ? 'text-3xl' : 'text-2xl'}>
+                    {cat.emoji}
+                  </span>
+                  <span className="font-crayon text-white text-sm">{cat.name}</span>
+                </button>
               ))}
             </div>
           </div>
         )}
-        
-        {/* Noun Selection View */}
+
+        {/* Nouns View */}
         {view === 'nouns' && selectedCategory && (
           <div>
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-4">
               <button
                 onClick={goBack}
-                className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+                className="p-2 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
               >
                 <ChevronLeft size={20} />
               </button>
-              <h3 className="font-display text-gray-700 flex items-center gap-2">
-                {NOUN_CATEGORIES.find(c => c.id === selectedCategory)?.emoji}
+              <h3 className="font-display text-lg text-gray-700">
+                {NOUN_CATEGORIES.find(c => c.id === selectedCategory)?.emoji}{' '}
                 {NOUN_CATEGORIES.find(c => c.id === selectedCategory)?.name}
-                {layout === 'cloud' && loadingCloud && (
-                  <Loader2 size={16} className="animate-spin text-gray-400" />
-                )}
               </h3>
             </div>
-            <div className="grid grid-cols-4 gap-2">
+            <div className={`grid ${gridColsClass} gap-2`}>
               {getWordsForCategory(selectedCategory).map(word => (
-                <WordButton
-                  key={word.id}
-                  word={word}
+                <WordButton 
+                  key={word.id} 
+                  word={word} 
                   onClick={addNoun}
-                  size="small"
-                  useArasaac={useArasaac}
+                  size={accessibility.buttonSize}
+                  highContrast={accessibility.highContrast}
+                  reducedMotion={accessibility.reducedMotion}
+                  onLongPress={handleLongPress}
                 />
               ))}
             </div>
@@ -1204,7 +2153,7 @@ const PointToTalk = () => {
         )}
       </main>
 
-      {/* Footer - Customizable Quick Words */}
+      {/* Footer - Quick Words */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t-4 border-[#4A9FD4] z-40">
         <div className="max-w-4xl mx-auto px-3 py-2 flex items-center justify-around gap-2">
           {footerWords.map((wordId) => {
@@ -1213,7 +2162,8 @@ const PointToTalk = () => {
               <button
                 key={wordId}
                 onClick={() => addWord(word)}
-                className="flex flex-col items-center p-2 rounded-xl transition-all hover:scale-105 active:scale-95"
+                className={`flex flex-col items-center p-2 rounded-xl transition-all 
+                          ${accessibility.reducedMotion ? '' : 'hover:scale-105 active:scale-95'}`}
                 style={{ backgroundColor: `${word.color}20` }}
               >
                 <span className="text-2xl">{word.emoji}</span>
@@ -1224,7 +2174,6 @@ const PointToTalk = () => {
             );
           })}
           
-          {/* Edit Footer Button */}
           <button
             onClick={startEditingFooter}
             className="flex flex-col items-center p-2 text-gray-400 hover:text-[#4A9FD4] transition-colors"
@@ -1255,7 +2204,6 @@ const PointToTalk = () => {
                 Choose 4 words for your quick access bar
               </p>
               
-              {/* Selected Words Preview */}
               <div className="mb-4 p-3 bg-gray-50 rounded-xl">
                 <p className="font-crayon text-xs text-gray-500 mb-2">Selected ({tempFooterWords.length}/4):</p>
                 <div className="flex justify-around min-h-[50px] items-center">
@@ -1274,7 +2222,6 @@ const PointToTalk = () => {
                 </div>
               </div>
               
-              {/* Available Words Grid */}
               <div className="grid grid-cols-4 gap-2 max-h-[300px] overflow-y-auto">
                 {AVAILABLE_FOOTER_WORDS.map(word => {
                   const isSelected = tempFooterWords.includes(word.id);
@@ -1303,7 +2250,6 @@ const PointToTalk = () => {
                 })}
               </div>
               
-              {/* Actions */}
               <div className="mt-4 flex gap-2">
                 <button
                   onClick={resetFooterDefaults}
@@ -1337,60 +2283,29 @@ const PointToTalk = () => {
       )}
 
       {/* Settings Modal */}
-      {showSettings && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#FFFEF5] w-full max-w-sm rounded-3xl overflow-hidden border-4 border-[#4A9FD4]">
-            <div className="bg-[#4A9FD4] text-white p-4 flex items-center justify-between">
-              <h3 className="font-display text-xl flex items-center gap-2">
-                <Settings size={24} />
-                Settings
-              </h3>
-              <button onClick={() => setShowSettings(false)} className="p-1 hover:bg-white/20 rounded-full">
-                <X size={24} />
-              </button>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              <div>
-                <h4 className="font-display text-lg text-gray-800 mb-3">Symbol Style</h4>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setUseArasaac(false)}
-                    className={`flex-1 p-4 rounded-xl border-3 transition-all ${
-                      !useArasaac ? 'border-[#5CB85C] bg-[#5CB85C]/10' : 'border-gray-300'
-                    }`}
-                  >
-                    <Smile size={32} className="mx-auto mb-2 text-[#F5A623]" />
-                    <p className="font-crayon text-sm text-center">Emoji</p>
-                  </button>
-                  <button
-                    onClick={() => setUseArasaac(true)}
-                    className={`flex-1 p-4 rounded-xl border-3 transition-all ${
-                      useArasaac ? 'border-[#5CB85C] bg-[#5CB85C]/10' : 'border-gray-300'
-                    }`}
-                  >
-                    <Image size={32} className="mx-auto mb-2 text-[#4A9FD4]" />
-                    <p className="font-crayon text-sm text-center">ARASAAC</p>
-                  </button>
-                </div>
-              </div>
-              
-              {useArasaac && (
-                <p className="text-xs text-gray-500 text-center">
-                  Pictograms by ARASAAC (arasaac.org) - CC BY-NC-SA
-                </p>
-              )}
-              
-              <button
-                onClick={() => setShowSettings(false)}
-                className="w-full py-3 bg-[#4A9FD4] text-white rounded-xl font-display hover:bg-blue-600 transition-colors"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        voiceSettings={voiceSettings}
+        onVoiceChange={updateVoiceSettings}
+        availableVoices={availableVoices}
+        accessibility={accessibility}
+        onAccessibilityChange={updateAccessibility}
+        onShowAnalytics={() => {
+          setShowSettings(false);
+          setShowAnalytics(true);
+        }}
+        onStartScanning={handleStartScanning}
+      />
+      
+      {/* Analytics Modal */}
+      <AnalyticsModal
+        isOpen={showAnalytics}
+        onClose={() => setShowAnalytics(false)}
+        analytics={analytics}
+        getTopWords={getTopWords}
+        onClear={clearAnalytics}
+      />
       
       {/* Add Word Modal */}
       <AddWordModal

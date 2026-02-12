@@ -1,4 +1,7 @@
 // SocialStories.jsx - Social Stories for ATLASassist
+// FIXED: Toast crash - showToast mapped to toast.type() methods
+// FIXED: Session refresh before edge function call
+// FIXED: Display AI-generated images with emoji fallback
 // UPDATED: Added Community Stories browser with user-created stories
 // UPDATED: JWT authentication enabled - requires login for AI story creation
 // UPDATED: Added Visual Schedule integration
@@ -184,7 +187,20 @@ const generateLocalStory = (topic) => {
 const SocialStories = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { showToast } = useToast();
+  
+  // ============================================
+  // FIX: Toast hook returns {success, error, warning, info, ...} not showToast
+  // Create a helper that maps showToast(message, type) to toast.type(message)
+  // ============================================
+  const toast = useToast();
+  const showToast = (message, type = 'info') => {
+    const fn = toast[type];
+    if (typeof fn === 'function') {
+      fn(message);
+    } else {
+      toast.info(message);
+    }
+  };
   
   // View state
   const [view, setView] = useState('browse'); // browse, create, reading, community
@@ -298,7 +314,7 @@ const SocialStories = () => {
   };
 
   // ============================================
-  // STORY GENERATION
+  // STORY GENERATION - FIXED
   // ============================================
 
   const generateStory = async () => {
@@ -343,17 +359,33 @@ const SocialStories = () => {
 
       // Call Edge Function
       if (isSupabaseConfigured()) {
-        // Get the current session for auth token
-        const { data: { session } } = await supabase.auth.getSession();
+        // ============================================
+        // FIX: Refresh session BEFORE checking access_token
+        // This ensures we have a valid, non-expired token
+        // ============================================
+        let session = null;
         
-        if (!session?.access_token) {
-          showToast('Session expired. Please sign in again.', 'error');
-          navigate('/login');
-          return;
+        // First try to get current session
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        session = sessionData?.session;
+        
+        // If no session or token looks expired, try refreshing
+        if (!session?.access_token || sessionError) {
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError || !refreshData?.session) {
+            showToast('Session expired. Please sign in again.', 'error');
+            setGenerating(false);
+            setGenerationStatus('');
+            navigate('/login');
+            return;
+          }
+          session = refreshData.session;
         }
 
+        // Now call the edge function with the fresh token
+        // supabase.functions.invoke auto-includes the token, but we can also pass it explicitly
         const { data, error } = await supabase.functions.invoke('generate-social-story', {
-          body: { topic: newTopic.trim(), pageCount: 6 },
+          body: { topic: newTopic.trim(), pageCount: 6, generateImages: true },
           headers: {
             Authorization: `Bearer ${session.access_token}`,
           },
@@ -370,12 +402,12 @@ const SocialStories = () => {
 
         setGenerationStatus('Saving to library...');
 
-        // Save to database
+        // Save to database - the edge function returns the story with images already
         const { category, emoji } = categorizeStory(newTopic);
         const storyData = {
           topic: newTopic.trim(),
           topic_normalized: newTopic.toLowerCase().trim(),
-          pages: data.pages,
+          pages: data.pages, // These now include imageUrl from edge function
           category: data.category || category,
           emoji: data.emoji || emoji,
           is_public: true,
@@ -401,7 +433,14 @@ const SocialStories = () => {
 
         setCurrentPage(0);
         setView('reading');
-        showToast('Story created successfully!', 'success');
+        
+        // Show success message with image count if available
+        const imgCount = data.imagesGenerated || 0;
+        if (imgCount > 0) {
+          showToast(`Story created with ${imgCount} illustrations!`, 'success');
+        } else {
+          showToast('Story created successfully!', 'success');
+        }
       } else {
         // Fallback to local generation
         const localStory = generateLocalStory(newTopic);
@@ -416,13 +455,14 @@ const SocialStories = () => {
       const errorMessage = error?.message || 'Unknown error';
       
       // Check for specific error types
-      if (errorMessage.includes('401') || errorMessage.includes('authentication') || errorMessage.includes('unauthorized')) {
+      if (errorMessage.includes('401') || errorMessage.includes('authentication') || 
+          errorMessage.includes('unauthorized') || errorMessage.includes('Invalid or expired token')) {
         showToast('Session expired. Please sign in again.', 'error');
         setGenerating(false);
         setGenerationStatus('');
         navigate('/login');
         return;
-      } else if (errorMessage.includes('API key')) {
+      } else if (errorMessage.includes('API key') || errorMessage.includes('ANTHROPIC_API_KEY')) {
         showToast('API key not configured. Using fallback story.', 'warning');
       } else {
         showToast(`Error: ${errorMessage}`, 'error');
@@ -927,7 +967,7 @@ const SocialStories = () => {
   };
 
   // ============================================
-  // RENDER: READING VIEW
+  // RENDER: READING VIEW - FIXED to show AI images
   // ============================================
 
   const renderReadingView = () => {
@@ -977,12 +1017,33 @@ const SocialStories = () => {
           {selectedStory.emoji} {selectedStory.topic}
         </h2>
 
-        {/* Story Page */}
+        {/* Story Page - FIXED: Now shows AI-generated images with emoji fallback */}
         <div className="bg-white rounded-3xl border-4 border-[#8E6BBF] p-6 min-h-[300px] flex flex-col items-center justify-center">
-          {/* Page Image/Emoji */}
-          <div className="text-6xl mb-6">
-            {page.emoji || selectedStory.emoji || '📖'}
-          </div>
+          {/* Page Image - AI generated or emoji fallback */}
+          {page.imageUrl ? (
+            <div className="w-full max-w-xs mb-4">
+              <img
+                src={page.imageUrl}
+                alt={page.imageDescription || `Illustration for page ${currentPage + 1}`}
+                className="w-full h-auto rounded-2xl shadow-lg object-cover"
+                onError={(e) => {
+                  // If image fails to load, replace with emoji
+                  e.target.style.display = 'none';
+                  const fallback = e.target.nextSibling;
+                  if (fallback) fallback.style.display = 'block';
+                }}
+              />
+              {/* Hidden emoji fallback - shown only if image fails */}
+              <div className="text-6xl text-center py-4" style={{ display: 'none' }}>
+                {page.emoji || selectedStory.emoji || '📖'}
+              </div>
+            </div>
+          ) : (
+            /* No image URL - show emoji */
+            <div className="text-6xl mb-6">
+              {page.emoji || selectedStory.emoji || '📖'}
+            </div>
+          )}
 
           {/* Page Text */}
           <p className="text-xl font-crayon text-center text-gray-800 leading-relaxed">
